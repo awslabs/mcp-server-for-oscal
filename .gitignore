@@ -1,0 +1,25 @@
+# Peru artifact directories
+/build
+/private
+/.hatch
+
+# Python
+*.egg-info/
+__pycache__/
+.coverage
+.ruff_cache
+.pytest_cache
+.mypy_cache
+.venv
+/htmlcov
+
+#VSCode
+.vscode
+*.code-workspace
+
+.env
+*.zip
+
+# Don't add OSCAL schemas to the repo since we'll download and extract them during build process.
+**/oscal_schemas/*.json
+**/oscal_schemas/*.xsd

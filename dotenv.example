@@ -1,0 +1,16 @@
+# OSCAL MCP Server Environment Configuration
+# Copy this file to .env and set your actual values
+
+# AWS Bedrock Configuration (can be overridden by command line arguments)
+# export BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-20250514-v1:0
+export OSCAL_KB_ID=
+
+# AWS Configuration
+export AWS_PROFILE=your_aws_profile_name
+export AWS_REGION=us-east-1
+
+# Logging Configuration
+export LOG_LEVEL=INFO
+
+# Server Configuration 
+# OSCAL_MCP_SERVER_NAME=OSCAL

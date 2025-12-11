@@ -1,0 +1,234 @@
+# OSCAL MCP Server Test Suite
+
+This directory contains a comprehensive functional test suite for the OSCAL MCP Server package, designed to work with the pytest framework.
+
+## Overview
+
+The test suite provides thorough coverage of all major components of the OSCAL MCP Server:
+
+- **Configuration management** (`test_config.py`)
+- **MCP tools** (`tools/test_*.py`)
+- **Main application logic** (`test_main.py`)
+- **Utility functions** (`test_utils.py`)
+- **Integration testing** (`test_integration.py`)
+
+## Test Structure
+
+```
+tests/
+├── conftest.py              # Pytest configuration and shared fixtures
+├── test_config.py           # Configuration module tests
+├── test_main.py             # Main application tests
+├── test_utils.py            # Utility function tests
+├── test_integration.py      # Integration tests
+├── tools/                   # Tool-specific tests
+│   ├── __init__.py
+│   ├── test_query_documentation.py
+│   ├── test_get_schema.py
+│   └── test_list_models.py
+└── README.md               # This file
+```
+
+## Test Categories
+
+### Unit Tests
+- **Configuration Tests**: Environment variable loading, validation, argument parsing
+- **Tool Tests**: Individual MCP tool functionality with mocked dependencies
+- **Utility Tests**: OSCAL model type enumerations and helper functions
+- **Main Module Tests**: CLI argument parsing, logging setup, server initialization
+
+### Integration Tests
+- **MCP Server Integration**: Tool registration, schema validation, server setup
+- **End-to-End Workflows**: Complete tool execution paths
+- **Error Handling**: Cross-component error propagation and handling
+
+## Key Features
+
+### Comprehensive Mocking
+- **AWS Services**: Mocked Bedrock client and session management
+- **File System**: Mocked schema file operations
+- **External Dependencies**: MCP context, logging
+
+### Fixtures and Test Data
+- **Sample Responses**: Realistic Bedrock knowledge base responses
+- **Schema Examples**: Complete OSCAL JSON and XSD schema samples
+- **Configuration Scenarios**: Various environment and argument combinations
+
+### Test Markers
+- `@pytest.mark.unit`: Unit tests (automatically applied)
+- `@pytest.mark.integration`: Integration tests (automatically applied)
+- `@pytest.mark.asyncio`: Async tests (automatically detected)
+- `@pytest.mark.slow`: Long-running tests
+
+## Running Tests
+
+### Basic Test Execution
+```bash
+# Run all tests
+python -m pytest tests/
+
+# Run with verbose output
+python -m pytest tests/ -v
+
+# Run specific test categories
+python -m pytest tests/ -m unit
+python -m pytest tests/ -m integration
+```
+
+### Coverage Analysis
+```bash
+# Run tests with coverage
+python -m pytest tests/ --cov=mcp_server_for_oscal
+
+# Generate HTML coverage report
+python -m pytest tests/ --cov=mcp_server_for_oscal --cov-report=html
+```
+
+### Parallel Execution
+```bash
+# Run tests in parallel (requires pytest-xdist)
+python -m pytest tests/ -n auto
+```
+
+## Test Configuration
+
+### Environment Variables
+Tests automatically handle environment variable isolation using the `clean_environment` fixture. The following variables are managed:
+
+- `BEDROCK_MODEL_ID`, `OSCAL_KB_ID`
+- `AWS_PROFILE`, `AWS_REGION`
+- `LOG_LEVEL`, `OSCAL_MCP_SERVER_NAME`
+
+### Async Test Support
+Async tests are automatically detected and marked with `@pytest.mark.asyncio`. The pytest-asyncio plugin handles async test execution.
+
+## Test Data and Fixtures
+
+### Shared Fixtures (`conftest.py`)
+- `mock_context`: MCP context mock
+- `mock_config`: Configuration object mock
+- `sample_bedrock_response`: Realistic AWS Bedrock response
+- `sample_json_schema`: Complete OSCAL JSON schema
+- `sample_xsd_schema`: OSCAL XSD schema content
+- `clean_environment`: Isolated environment variables
+
+### Tool-Specific Fixtures
+Each tool test module includes specialized fixtures for that tool's requirements.
+
+## Mocking Strategy
+
+### External Dependencies
+- **AWS Boto3**: Session and client mocking with realistic responses
+- **File System**: Schema file access mocking
+- **Logging**: Logger configuration and output capture
+- **MCP Framework**: Context and server mocking
+
+### Error Simulation
+Tests include comprehensive error scenarios:
+- AWS service errors (credentials, permissions, resource not found)
+- File system errors (missing files, permission issues)
+- Configuration errors (missing required values, invalid formats)
+- Network errors (connection failures, timeouts)
+
+## Test Patterns
+
+### Tool Testing with Mocks
+```python
+@patch('module.Session')
+def test_tool_success(mock_session, mock_context):
+    """Test successful tool execution."""
+    # Setup mocks
+    mock_client = Mock()
+    mock_session.return_value.client.return_value = mock_client
+    
+    # Execute and verify
+    result = tool_function("input", mock_context)
+    assert result == expected_result
+```
+
+### Async Tool Testing
+```python
+@pytest.mark.asyncio
+async def test_async_tool(mock_context):
+    """Test async tool functionality."""
+    result = await async_tool_function(mock_context)
+    assert result is not None
+```
+
+## Error Handling Tests
+
+### AWS Service Errors
+```python
+def test_aws_error_handling(mock_session, mock_context):
+    """Test handling of AWS service errors."""
+    mock_client.operation.side_effect = ClientError(error_response, 'Operation')
+    
+    with pytest.raises(Exception):
+        tool_function("input", mock_context)
+    
+    mock_context.error.assert_called_once()
+```
+
+### Configuration Validation
+```python
+def test_config_validation_failure():
+    """Test configuration validation with missing required values."""
+    config = Config()
+    with pytest.raises(ValueError, match="required"):
+        config.validate()
+```
+
+## Best Practices
+
+### Test Organization
+- Group related tests in classes
+- Use descriptive test names that explain the scenario
+- Include both positive and negative test cases
+- Test edge cases and error conditions
+
+### Mocking Guidelines
+- Mock at the boundary of your system (external dependencies)
+- Use realistic mock data that matches actual service responses
+- Verify mock interactions to ensure correct API usage
+- Reset mocks between tests to avoid interference
+
+### Fixture Usage
+- Use shared fixtures for common setup
+- Create specific fixtures for complex test data
+- Leverage pytest's dependency injection for clean test code
+- Use fixture scopes appropriately (function, class, module, session)
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Import Errors**: Ensure the package is installed in development mode
+2. **Async Test Failures**: Verify pytest-asyncio is installed
+3. **Mock Assertion Failures**: Check that mocks are properly reset between tests
+4. **Environment Isolation**: Use the `clean_environment` fixture for configuration tests
+
+### Debug Tips
+- Use `pytest -s` to see print statements and logging output
+- Use `pytest --pdb` to drop into debugger on failures
+- Use `pytest -k pattern` to run specific tests matching a pattern
+- Use `pytest --tb=long` for detailed tracebacks
+
+## Contributing
+
+When adding new tests:
+
+1. Follow the existing test structure and naming conventions
+2. Include both success and failure scenarios
+3. Mock external dependencies appropriately
+4. Add fixtures for reusable test data
+5. Update this README if adding new test categories or patterns
+
+## Dependencies
+
+The test suite requires:
+- `pytest`: Test framework
+- `pytest-asyncio`: Async test support
+- `unittest.mock`: Mocking framework (built-in)
+- Package dependencies: `boto3`, `mcp`, etc.
+
+All test dependencies are managed through the project's `pyproject.toml` configuration.
