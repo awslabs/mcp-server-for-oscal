@@ -29,7 +29,7 @@ def get_oscal_schema(ctx: Context, model_name: str = "complete", schema_type: st
         str: The requested schema as JSON string
     """
     logger.debug(
-        f"get_oscal_model_schema(model_name: {model_name}, syntax: {schema_type}, session client params: {ctx.session.client_params})"
+        "get_oscal_model_schema(model_name: %s, syntax: %s, session client params: %s)", model_name, schema_type, ctx.session.client_params
     )
 
     if schema_type not in ["json", "xsd"]:

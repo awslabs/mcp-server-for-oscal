@@ -300,7 +300,12 @@ class TestIntegration:
         from mcp_server_for_oscal import config, main
 
         # Test tool imports
-        from mcp_server_for_oscal.tools import get_schema, list_models, query_documentation, utils
+        from mcp_server_for_oscal.tools import (
+            get_schema,
+            list_models,
+            query_documentation,
+            utils,
+        )
 
         # Verify key components exist
         assert hasattr(main, 'main')

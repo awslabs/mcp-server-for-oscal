@@ -206,10 +206,10 @@ class TestGetSchema:
 
                 # Verify logging
                 mock_logger.debug.assert_called_once()
-                debug_call_args = mock_logger.debug.call_args[0][0]
-                assert "get_oscal_model_schema" in debug_call_args
-                assert "model_name: catalog" in debug_call_args
-                assert "syntax: json" in debug_call_args
+                debug_call_args = mock_logger.debug.call_args[0]
+                assert "get_oscal_model_schema" in debug_call_args[0]
+                assert "catalog" in debug_call_args[1]
+                assert "json" in debug_call_args[2]
 
     def test_open_schema_file_success(self):
         """Test successful schema file opening."""

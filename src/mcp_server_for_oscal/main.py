@@ -85,7 +85,7 @@ def main():
         logging.getLogger("mcp").setLevel(args.log_level)
         logging.getLogger(__name__).setLevel(args.log_level)
     except ValueError:
-        logger.warning(f"Failed to set log level to: {args.log_level}")
+        logger.warning("Failed to set log level to: %s", args.log_level)
 
     # # Create the agent
     # global agent
@@ -93,8 +93,8 @@ def main():
 
     try:
         mcp.run(transport="streamable-http")
-    except Exception as e:
-        logger.exception(f"Error running MCP server: {e}")
+    except Exception:
+        logger.exception("Error running MCP server")
         raise
 
 
