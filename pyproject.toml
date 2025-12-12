@@ -1,0 +1,115 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mcp-server-for-oscal"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+  # Put your dependencies here!
+  "boto3>=1.42.7",
+  "mcp>=1.23.3",
+  "strands-agents>=1.19.0",
+]
+requires-python = ">=3.11"
+description = "OSCAL MCP server"
+# dynamic = ["version"]
+
+# [tool.hatch.version]
+# source = "vcs"
+# [tool.hatch.version.raw-options]
+# version_scheme = "no-guess-dev"
+# # see also: tool.hatch.build.hooks.vcs below
+# [tool.hatch.build.hooks.vcs]
+# version-file = "_version.py"
+
+[tool.hatch.envs.default]
+# This controls what version of Python you want to be the default
+# when running any scripts or tools to do things like debug test failures
+# or do general development. 
+python = "3.12"
+dependencies = ["pytest", "mypy", "boto3-stubs"]
+
+[tool.pytest.ini_options]
+addopts = ["--durations=5", "--color=yes"]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source_pkgs = ["mcp_server_for_oscal"]
+branch = true
+parallel = true
+
+[tool.coverage.paths]
+"mcp_server_for_oscal" = [
+  "src/mcp_server_for_oscal",
+  "**/site-packages/mcp_server_for_oscal",
+]
+
+[tool.coverage.report]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
+show_missing = true
+# fail_under = 99
+
+[tool.coverage.xml]
+output = "private/docs/coverage/coverage.xml"
+
+[tool.coverage.html]
+directory = "private/docs/coverage/"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+isort.known-first-party = ["mcp_server_for_oscal"]
+exclude = ["./build", ".hatch", "private"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use magic values, assertions, and relative imports
+"tests/**/*" = ["PLR2004", "S101", "TID252", "PLC0415"]
+
+[tool.hatch.build]
+directory = "./build"
+
+[tool.hatch.env]
+python = "3.12"
+
+[tool.hatch.envs.test]
+python = "3.12"
+dependencies = ["pytest", "mypy", "boto3-stubs"]
+
+[tool.hatch.envs.default.scripts]
+# These are scripts you can run using `hatch run <script-name>`
+typing = [
+  "mkdir -p .mypy_cache",
+  "mypy --install-types --non-interactive src/mcp_server_for_oscal tests",
+]
+
+
+update = [
+  "uv pip install -U -r pyproject.toml",
+  "uv pip compile pyproject.toml -o requirements.txt",
+]
+
+release = ["typing", "hatch test --all --cover", "hatch build"]
+
+server = ["python -m mcp_server_for_oscal.main"]
+
+[tool.hatch.envs.hatch-test.scripts]
+run = "pytest{env:HATCH_TEST_ARGS:} {args}"
+run-cov = "coverage run -m pytest{env:HATCH_TEST_ARGS:} {args}"
+cov-combine = "coverage combine"
+cov-report = ["coverage report", "coverage html", "coverage xml"]
+
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.11", "3.12"]
+
+# This is necessary to use 'uv' as the resolver if this is the top-level package
+# in a monorepo (which is usually the case).  Remove this if copying the
+# package into a monorepo
+[tool.uv.workspace]
