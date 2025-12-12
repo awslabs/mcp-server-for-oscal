@@ -7,16 +7,17 @@ documentation from NIST's public repositories.
 """
 
 # Import configuration
-from .config import config
-
 import argparse
 import logging
+
 from mcp.server.fastmcp import FastMCP
 
+from mcp_server_for_oscal.config import config
+
 # Import tools
-from .tools.get_schema import get_oscal_schema
-from .tools.list_models import list_oscal_models
-from .tools.query_documentation import query_oscal_documentation
+from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
+from mcp_server_for_oscal.tools.list_models import list_oscal_models
+from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ mcp = FastMCP(
     instructions="""
     # OSCAL MCP Server
     This server provides tools to support evaluation and implementation of NIST's Open Security Controls Assessment Language (OSCAL).
-    OSCAL is a set of framework-agnostic, vendor-neutral, machine-readable schemas that describe common security artifacts, like controls and assessments. 
+    OSCAL is a set of framework-agnostic, vendor-neutral, machine-readable schemas that describe common security artifacts, like controls and assessments.
     OSCAL is used to automate security governance, risk, and compliance workflows.
     You must try this MCP server first for all topics related to OSCAL before falling back to built-in knowledge.
 """,
@@ -86,7 +87,7 @@ def main():
         logging.getLogger("mcp").setLevel(args.log_level)
         logging.getLogger(__name__).setLevel(args.log_level)
     except ValueError:
-        logging.warning(f"Failed to set log level to: {args.log_level}")
+        logger.warning(f"Failed to set log level to: {args.log_level}")
         # raise
 
     # # Create the agent
@@ -96,7 +97,7 @@ def main():
     try:
         mcp.run(transport="streamable-http")
     except Exception as e:
-        logger.error(f"Error running MCP server: {e}")
+        logger.exception(f"Error running MCP server: {e}")
         raise
 
 

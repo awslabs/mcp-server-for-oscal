@@ -127,9 +127,9 @@ class TestMain:
         def get_logger_side_effect(name):
             if name == "strands":
                 return mock_strands_logger
-            elif name == "mcp":
+            if name == "mcp":
                 return mock_mcp_logger
-            elif name == "mcp_server_for_oscal.main":
+            if name == "mcp_server_for_oscal.main":
                 return mock_main_logger
             return Mock()
 

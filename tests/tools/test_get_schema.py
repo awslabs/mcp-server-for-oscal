@@ -227,11 +227,11 @@ class TestGetSchema:
         with patch('builtins.open', mock_open(read_data='{"test": "data"}')) as mock_file:
             # Test with various path prefixes that should be stripped
             test_files = ["./schema.json", ".\\schema.json", "/schema.json", "\\schema.json"]
-            
+
             for test_file in test_files:
                 mock_file.reset_mock()
                 open_schema_file(test_file)
-                
+
                 # Verify the file path ends with the cleaned filename
                 call_args = mock_file.call_args[0][0]
                 assert str(call_args).endswith("oscal_schemas/schema.json")

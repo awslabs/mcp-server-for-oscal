@@ -10,7 +10,7 @@ from boto3 import Session
 from mcp.server.fastmcp.server import Context
 from strands import tool
 
-from ..config import config
+from mcp_server_for_oscal.config import config
 
 logger = logging.getLogger(__name__)
 logger.setLevel(config.log_level)
@@ -19,7 +19,7 @@ logger.setLevel(config.log_level)
 @tool
 def query_oscal_documentation(query: str, ctx: Context) -> Any:
     """
-    A tool to query authoritative OSCAL documentation stored in an Amazon Bedrock Knowledgebase.
+    A tool to query OSCAL-related documentation. Use this tool when a question about OSCAL cannot be answered just by analyzing model schemas. In case the question is about an explicit property of an OSCAL model, try to find the answer using the get_schema tool first.
 
     Args:
         query: Question or search query about OSCAL
@@ -33,9 +33,8 @@ def query_oscal_documentation(query: str, ctx: Context) -> Any:
         if ctx is not None:
             garbage = ctx.warning(msg)
         return query_local(query, ctx)
-    else:
-        return query_kb(query, ctx)
-    
+    return query_kb(query, ctx)
+
 
 def query_kb(query: str, ctx: Context) -> Any:
     """Query Amazon Bedrock Knowledgebase using Boto SDK."""
@@ -60,7 +59,7 @@ def query_kb(query: str, ctx: Context) -> Any:
 
     except Exception as e:
         msg = f"Error running query {query} documentation: {e}"
-        logger.error(msg)
+        logger.exception(msg)
         if ctx is not None:
             garbage = ctx.error(msg)
         raise

@@ -4,7 +4,7 @@ Tool for listing available OSCAL model types.
 
 from strands import tool
 
-from .utils import OSCALModelType
+from mcp_server_for_oscal.utils import OSCALModelType
 
 
 @tool

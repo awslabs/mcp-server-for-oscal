@@ -196,7 +196,7 @@ def sample_xsd_schema():
            targetNamespace="http://csrc.nist.gov/ns/oscal/1.0"
            elementFormDefault="qualified"
            version="1.1.2">
-  
+
   <xs:annotation>
     <xs:documentation>
       <h1>OSCAL Control Catalog Model: XML Schema</h1>

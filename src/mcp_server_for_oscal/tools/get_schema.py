@@ -4,21 +4,20 @@ Tool for retrieving OSCAL schemas.
 
 import json
 import logging
-import os.path
 from pathlib import Path
 from typing import Any
 
 from mcp.server.fastmcp.server import Context
 from strands import tool
 
-from .utils import OSCALModelType
+from mcp_server_for_oscal.utils import OSCALModelType
 
 logger = logging.getLogger(__name__)
 
 @tool
 def get_oscal_schema(ctx: Context, model_name: str = "complete", schema_type: str = "json") -> str:
     """
-    A tool that returns the schema for specified OSCAL model. Try this tool first for any questions about the structure of OSCAL models. 
+    A tool that returns the schema for specified OSCAL model. Try this tool first for any questions about the structure of OSCAL models.
     By default we return a JSON schema, but `schema_type` parameter can change that behavior.
 
     Args:
@@ -54,7 +53,7 @@ def get_oscal_schema(ctx: Context, model_name: str = "complete", schema_type: st
         schema = json.load(open_schema_file(schema_file_name))
     except Exception:
         msg = f"failed to open schema {schema_file_name}"
-        logger.error(msg)
+        logger.exception(msg)
         if ctx is not None:
             garbage = ctx.error(msg)
         raise
@@ -73,5 +72,5 @@ def open_schema_file(file_name: str) -> Any:
         return open(schema_file_path)
     except Exception:
         msg = f"failed to open file {file_name}"
-        logger.error(msg)
+        logger.exception(msg)
         raise

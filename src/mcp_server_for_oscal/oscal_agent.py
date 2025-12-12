@@ -4,7 +4,7 @@ from strands import Agent
 from strands.models import BedrockModel
 
 # Import configuration
-from .config import config
+from mcp_server_for_oscal.config import config
 
 
 def create_oscal_agent(s: boto3.Session) -> Agent:
