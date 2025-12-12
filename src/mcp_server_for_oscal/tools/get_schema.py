@@ -10,7 +10,7 @@ from typing import Any
 from mcp.server.fastmcp.server import Context
 from strands import tool
 
-from mcp_server_for_oscal.utils import OSCALModelType
+from mcp_server_for_oscal.tools.utils import OSCALModelType
 
 logger = logging.getLogger(__name__)
 

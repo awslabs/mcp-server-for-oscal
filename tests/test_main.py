@@ -105,8 +105,8 @@ class TestMain:
             main()
 
         # Verify error was logged
-        mock_logger.error.assert_called_once()
-        error_call_args = mock_logger.error.call_args[0][0]
+        mock_logger.exception.assert_called_once()
+        error_call_args = mock_logger.exception.call_args[0][0]
         assert "Error running MCP server" in error_call_args
 
     @patch('mcp_server_for_oscal.main.logging.getLogger')

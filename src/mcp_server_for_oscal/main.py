@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 """
-Simple OSCAL Agent using Strands framework.
+Simple OSCAL MCP server using FastMCP.
 
-This creates a simple agent that can answer OSCAL questions by fetching
-documentation from NIST's public repositories.
 """
 
 # Import configuration
@@ -88,7 +86,6 @@ def main():
         logging.getLogger(__name__).setLevel(args.log_level)
     except ValueError:
         logger.warning(f"Failed to set log level to: {args.log_level}")
-        # raise
 
     # # Create the agent
     # global agent
