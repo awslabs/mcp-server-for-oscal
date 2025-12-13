@@ -98,6 +98,13 @@ update = [
 
 release = ["typing", "hatch test --all --cover --junitxml private/docs/pytest.xml", "hatch build"]
 
+# Updates contents of `src/mcp_server_for_oscal/oscal_schemas`, overwriting existing files
+update-oscal-schemas = [ "bin/update-oscal-schemas.sh"]
+
+update-awesome-oscal = [
+  "curl -L -o src/mcp_server_for_oscal/oscal_docs/awesome-oscal.md https://raw.githubusercontent.com/oscal-club/awesome-oscal/refs/heads/main/README.md"
+]
+
 server = ["python -m mcp_server_for_oscal.main"]
 
 [tool.hatch.envs.hatch-test.scripts]

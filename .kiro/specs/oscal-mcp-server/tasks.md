@@ -193,14 +193,47 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - Update existing tests to work with new transport parameter
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7_
 
-- [ ] 15. Add missing property-based tests using Hypothesis
+- [x] 15. Implement the list_oscal_resources tool
+  - Create list_oscal_resources.py in the tools directory
+  - Implement tool function with @tool decorator
+  - Add file reading functionality for awesome-oscal.md from oscal_docs directory
+  - Implement proper error handling for file not found and read failures
+  - Add encoding handling for robust file reading
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
+
+- [ ]* 15.1 Write property tests for OSCAL resources file content return
+  - **Property 22: OSCAL Resources File Content Return**
+  - **Validates: Requirements 9.1, 9.2, 9.3, 9.6**
+
+- [ ]* 15.2 Write property tests for OSCAL resources error handling
+  - **Property 23: OSCAL Resources Error Handling**
+  - **Validates: Requirements 9.4, 9.5**
+
+- [ ]* 15.3 Write property tests for OSCAL resources encoding handling
+  - **Property 24: OSCAL Resources Encoding Handling**
+  - **Validates: Requirements 9.7**
+
+- [x] 15.4 Write unit tests for list_oscal_resources tool
+  - Test successful file reading and content return
+  - Test file not found error handling
+  - Test file read permission errors
+  - Test encoding edge cases
+  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
+
+- [x] 15.5 Register the new tool with MCP server
+  - Update main.py to import and register list_oscal_resources tool
+  - Ensure tool is properly exposed through MCP protocol
+  - Update server instructions to mention the new tool
+  - _Requirements: 5.1, 5.2_
+
+- [ ] 16. Add missing property-based tests using Hypothesis
   - Install and configure Hypothesis for property-based testing
-  - Implement the 21 correctness properties identified in the design
+  - Implement the 24 correctness properties identified in the design (including new tool properties)
   - Ensure each property test runs minimum 100 iterations
   - Tag tests with feature and property information
   - _Requirements: All requirements covered by correctness properties_
 
-- [ ] 16. Final integration verification
+- [ ] 17. Final integration verification
   - Ensure all tests pass including new property-based tests
   - Verify end-to-end functionality works correctly with both transports
   - Test MCP server can start with stdio transport (default)
@@ -220,16 +253,17 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
 
 **Implementation Status: ~85% Complete**
 
-The OSCAL MCP Server implementation has all core functionality implemented but needs stdio transport support added. The main remaining work involves:
+The OSCAL MCP Server implementation has most core functionality implemented but needs the new list_oscal_resources tool and stdio transport support added. The main remaining work involves:
 
 1. ✅ **RESOLVED**: Import path issues have been fixed - 90/91 tests now pass
-2. **New Feature**: Add stdio transport support and make it the default
-3. **Enhancement**: Adding property-based tests to validate the 21 correctness properties  
-4. **Minor Fix**: One failing test in error logging behavior (non-critical)
-5. **Verification**: Final integration testing with both transport types
+2. **New Feature**: Implement the list_oscal_resources tool for community resources
+3. **New Feature**: Add stdio transport support and make it the default
+4. **Enhancement**: Adding property-based tests to validate the 24 correctness properties  
+5. **Minor Fix**: One failing test in error logging behavior (non-critical)
+6. **Verification**: Final integration testing with both transport types
 
 **Key Accomplishments:**
-- ✅ All three MCP tools fully implemented (query_documentation, list_models, get_schema)
+- ✅ Three of four MCP tools fully implemented (query_documentation, list_models, get_schema)
 - ✅ Complete configuration management with env vars and CLI args
 - ✅ FastMCP server integration with proper tool registration
 - ✅ Comprehensive unit test suite with high coverage
@@ -239,9 +273,10 @@ The OSCAL MCP Server implementation has all core functionality implemented but n
 
 **Immediate Next Steps:**
 1. ✅ **COMPLETED**: Import paths fixed - tests now running successfully
-2. Add stdio transport support to configuration and main server
-3. Update unit tests for new transport functionality
-4. Add Hypothesis for property-based testing
-5. Implement the 21 correctness properties as property tests
-6. Fix minor test failure (optional)
-7. Verify end-to-end functionality with both transport types
+2. Implement the list_oscal_resources tool for community resources
+3. Add stdio transport support to configuration and main server
+4. Update unit tests for new transport functionality
+5. Add Hypothesis for property-based testing
+6. Implement the 24 correctness properties as property tests
+7. Fix minor test failure (optional)
+8. Verify end-to-end functionality with both transport types

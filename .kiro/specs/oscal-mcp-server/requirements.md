@@ -127,3 +127,17 @@ This document specifies the requirements for an MCP (Model Context Protocol) ser
 4. WHEN opening schema files, THE MCP_Server SHALL resolve paths relative to the package structure
 5. THE MCP_Server SHALL handle file not found errors with descriptive messages
 6. THE MCP_Server SHALL return schemas as properly formatted JSON strings
+
+### Requirement 9: OSCAL Community Resources Listing
+
+**User Story:** As an AI assistant, I want to access a curated list of OSCAL community resources, so that I can provide users with comprehensive information about available OSCAL tools, content, and educational materials.
+
+#### Acceptance Criteria
+
+1. WHEN a list_oscal_resources request is received, THE MCP_Server SHALL return the contents of the awesome-oscal.md file
+2. THE MCP_Server SHALL read the awesome-oscal.md file from the local oscal_docs directory
+3. THE MCP_Server SHALL return the complete markdown content including all sections: Content, Tools, Articles and Blog Posts, Presentations and Talks, and Other Resources
+4. WHEN the awesome-oscal.md file cannot be found, THE MCP_Server SHALL return an appropriate error message
+5. WHEN file reading fails, THE MCP_Server SHALL log the error and raise an exception with descriptive information
+6. THE MCP_Server SHALL preserve the original markdown formatting in the returned content
+7. THE MCP_Server SHALL handle encoding issues gracefully when reading the file

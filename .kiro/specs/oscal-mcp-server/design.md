@@ -4,7 +4,7 @@
 
 The OSCAL MCP Server is a Model Context Protocol (MCP) server that provides AI assistants with specialized tools for working with NIST's Open Security Controls Assessment Language (OSCAL). The server acts as a bridge between AI assistants and OSCAL resources, enabling intelligent querying of OSCAL documentation, schema retrieval, and model information access.
 
-The system is built using Python with the FastMCP framework and integrates with AWS Bedrock Knowledge Base for documentation queries. It provides three primary tools: documentation querying, model listing, and schema retrieval.
+The system is built using Python with the FastMCP framework and integrates with AWS Bedrock Knowledge Base for documentation queries. It provides four primary tools: documentation querying, model listing, schema retrieval, and OSCAL community resources listing.
 
 ## Architecture
 
@@ -31,13 +31,15 @@ graph TB
         G[Query Documentation Tool]
         H[List Models Tool]
         I[Get Schema Tool]
+        J[List OSCAL Resources Tool]
     end
     
     subgraph "Data Layer"
-        J[AWS Bedrock Knowledge Base]
-        K[Local Schema Files]
-        L[OSCAL Model Definitions]
-        M[Local document index]
+        K[AWS Bedrock Knowledge Base]
+        L[Local Schema Files]
+        M[OSCAL Model Definitions]
+        N[Local document index]
+        O[OSCAL Community Resources File]
     end
     
     A <--> B
@@ -48,10 +50,12 @@ graph TB
     F --> G
     F --> H
     F --> I
-    G --> J
-    G --> M
-    H --> L
-    I --> K
+    F --> J
+    G --> K
+    G --> N
+    H --> M
+    I --> L
+    J --> O
 ```
 
 ### Key Architectural Principles
@@ -156,6 +160,24 @@ def get_oscal_schema(ctx: Context, model_name: str, schema_type: str) -> str
 
 def open_schema_file(file_name: str) -> Any
     # File system interface for schema access
+```
+
+### List OSCAL Resources Tool (`list_oscal_resources.py`)
+
+**Responsibilities:**
+- Read and return the contents of the awesome-oscal.md community resources file
+- Handle file system access for local documentation files
+- Preserve markdown formatting in returned content
+- Provide error handling for file access issues
+
+**Key Interfaces:**
+```python
+@tool
+def list_oscal_resources(ctx: Context) -> str
+    # Main tool function for returning OSCAL community resources
+
+def read_resources_file() -> str
+    # File system interface for reading awesome-oscal.md
 ```
 
 ### Utilities Module (`utils.py`)
@@ -315,6 +337,18 @@ Property 20: Transport Validation Before Startup\
 Property 21: Transport Method Logging\
 *For any* server startup, the selected transport method should be logged during the initialization process\
 **Validates: Requirements 7.7**
+
+Property 22: OSCAL Resources File Content Return\
+*For any* list_oscal_resources request, the server should return the complete contents of the awesome-oscal.md file from the oscal_docs directory with original markdown formatting preserved\
+**Validates: Requirements 9.1, 9.2, 9.3, 9.6**
+
+Property 23: OSCAL Resources Error Handling\
+*For any* file access error (file not found, read failure), the server should log the error and raise an exception with descriptive information\
+**Validates: Requirements 9.4, 9.5**
+
+Property 24: OSCAL Resources Encoding Handling\
+*For any* encoding issues when reading the awesome-oscal.md file, the server should handle them gracefully without crashing\
+**Validates: Requirements 9.7**
 
 ## Error Handling
 

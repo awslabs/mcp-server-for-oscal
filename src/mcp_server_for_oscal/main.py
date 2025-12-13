@@ -15,6 +15,7 @@ from mcp_server_for_oscal.config import config
 # Import tools
 from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
 from mcp_server_for_oscal.tools.list_models import list_oscal_models
+from mcp_server_for_oscal.tools.list_oscal_resources import list_oscal_resources
 from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,7 @@ mcp = FastMCP(
 mcp.add_tool(query_oscal_documentation)
 mcp.add_tool(list_oscal_models)
 mcp.add_tool(get_oscal_schema)
+mcp.add_tool(list_oscal_resources)
 
 
 def main():

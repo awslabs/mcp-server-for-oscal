@@ -1,0 +1,13 @@
+.github/
+*/build/
+**/build/
+**/*cache/
+.DS_Store
+**/.git/
+**/node_modules/
+**/build/
+.git/
+.vscode
+.coverage
+private/
+.hatch/
