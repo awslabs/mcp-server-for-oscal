@@ -96,7 +96,7 @@ update = [
   "uv pip compile pyproject.toml -o requirements.txt",
 ]
 
-release = ["typing", "hatch test --all --cover", "hatch build"]
+release = ["typing", "hatch test --all --cover --junitxml private/docs/pytest.xml", "hatch build"]
 
 server = ["python -m mcp_server_for_oscal.main"]
 
