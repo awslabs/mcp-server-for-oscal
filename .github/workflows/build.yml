@@ -48,14 +48,8 @@ jobs:
         # Use always() to always run this step to publish test results when there are test failures
         if: ${{ always() }}
 
-      - name: Upload src distro
+      - name: Upload python packages
         uses: actions/upload-artifact@v4
         with:
           name: python-packages
-          path: build/mcp_server_for_oscal-*.tar.gz       
-
-      - name: Upload whl distro
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-packages
-          path: build/mcp_server_for_oscal-*-py3-none-any.whl
+          path: build/
