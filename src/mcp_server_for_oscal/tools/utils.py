@@ -22,4 +22,3 @@ class OSCALModelType(StrEnum):
     ASSESSMENT_RESULTS = "assessment-results"
     PLAN_OF_ACTION_AND_MILESTONES = "plan-of-action-and-milestones"
     MAPPING = "mapping-collection"
-

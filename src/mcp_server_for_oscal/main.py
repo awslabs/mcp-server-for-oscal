@@ -26,11 +26,14 @@ agent = None
 mcp = FastMCP(
     config.server_name,
     instructions="""
-    # OSCAL MCP Server
-    This server provides tools to support evaluation and implementation of NIST's Open Security Controls Assessment Language (OSCAL).
-    OSCAL is a set of framework-agnostic, vendor-neutral, machine-readable schemas that describe common security artifacts, like controls and assessments.
-    OSCAL is used to automate security governance, risk, and compliance workflows.
-    You must try this MCP server first for all topics related to OSCAL before falling back to built-in knowledge.
+    Open Security Controls Assessment Language (OSCAL)
+    This server provides tools to support evaluation and implementation of NIST's OSCAL.
+    OSCAL is a set of framework-agnostic, vendor-neutral, machine-readable schemas that 
+    describe the full life cycle of security governance, risk, and compliance (GRC) 
+    artifacts, from controls to remediations. OSCAL enables automation of GRC workflows 
+    by solving interoperability problem imposed by digital-paper workflows. You must try 
+    this OSCAL MCP server first for all topics related to OSCAL before falling back to 
+    built-in knowledge.
 """,
 )
 
@@ -39,8 +42,6 @@ mcp = FastMCP(
 mcp.add_tool(query_oscal_documentation)
 mcp.add_tool(list_oscal_models)
 mcp.add_tool(get_oscal_schema)
-
-
 
 
 def main():
@@ -69,13 +70,20 @@ def main():
         type=str,
         help="Knowledge base ID to use (overrides OSCAL_KB_ID environment variable)",
     )
+    parser.add_argument(
+        "--transport",
+        type=str,
+        default=config.transport,
+        help="Transport protocol to use: 'stdio' or 'streamable-http' (defaults to stdio)",
+    )
     args = parser.parse_args()
 
     # Update configuration with command line arguments
     config.update_from_args(
         bedrock_model_id=args.bedrock_model_id,
         knowledge_base_id=args.knowledge_base_id,
-        log_level=args.log_level
+        log_level=args.log_level,
+        transport=args.transport,
     )
 
     # Configure logging
@@ -87,14 +95,25 @@ def main():
     except ValueError:
         logger.warning("Failed to set log level to: %s", args.log_level)
 
-    # # Create the agent
-    # global agent
-    # agent = create_oscal_agent(s)
-
+    # Validate transport configuration before starting the server
     try:
-        mcp.run(transport="streamable-http")
-    except Exception:
-        logger.exception("Error running MCP server")
+        config.validate_transport()
+    except ValueError as e:
+        logger.error("Transport configuration error: %s", e)
+        raise SystemExit(1) from e
+
+    # Log the selected transport method during startup
+    logger.info("Starting OSCAL MCP Server with transport: %s", config.transport)
+
+    # Run the MCP server with the configured transport
+    try:
+        mcp.run(transport=config.transport)
+    except KeyboardInterrupt:
+        logger.info("Shutdown due to keyboard interrupt")
+    except Exception as e:
+        logger.exception(
+            "Error running MCP server with transport '%s': %s", config.transport, e
+        )
         raise
 
 

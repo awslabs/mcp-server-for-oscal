@@ -14,8 +14,11 @@ from mcp_server_for_oscal.tools.utils import OSCALModelType
 
 logger = logging.getLogger(__name__)
 
+
 @tool
-def get_oscal_schema(ctx: Context, model_name: str = "complete", schema_type: str = "json") -> str:
+def get_oscal_schema(
+    ctx: Context, model_name: str = "complete", schema_type: str = "json"
+) -> str:
     """
     A tool that returns the schema for specified OSCAL model. Try this tool first for any questions about the structure of OSCAL models.
     By default we return a JSON schema, but `schema_type` parameter can change that behavior.
@@ -29,7 +32,10 @@ def get_oscal_schema(ctx: Context, model_name: str = "complete", schema_type: st
         str: The requested schema as JSON string
     """
     logger.debug(
-        "get_oscal_model_schema(model_name: %s, syntax: %s, session client params: %s)", model_name, schema_type, ctx.session.client_params
+        "get_oscal_model_schema(model_name: %s, syntax: %s, session client params: %s)",
+        model_name,
+        schema_type,
+        ctx.session.client_params,
     )
 
     if schema_type not in ["json", "xsd"]:
@@ -38,14 +44,19 @@ def get_oscal_schema(ctx: Context, model_name: str = "complete", schema_type: st
             garbage = ctx.error(msg)
         raise ValueError(msg)
 
-    if model_name not in OSCALModelType.__members__.values() and model_name != "complete":
+    if (
+        model_name not in OSCALModelType.__members__.values()
+        and model_name != "complete"
+    ):
         msg = f"Invalid model: {model_name}. Use the tool list_oscal_models to get valid model names."
         if ctx is not None:
             garbage = ctx.error(msg)
         raise ValueError(msg)
 
     model_name = model_name.replace(OSCALModelType.SYSTEM_SECURITY_PLAN, "ssp")
-    model_name = model_name.replace(OSCALModelType.PLAN_OF_ACTION_AND_MILESTONES, "poam")
+    model_name = model_name.replace(
+        OSCALModelType.PLAN_OF_ACTION_AND_MILESTONES, "poam"
+    )
 
     schema_file_name = f"oscal_{model_name}_schema.{schema_type}"
 

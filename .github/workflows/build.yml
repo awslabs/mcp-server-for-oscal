@@ -53,3 +53,4 @@ jobs:
         with:
           name: python-packages
           path: build/
+          if-no-files-found: error

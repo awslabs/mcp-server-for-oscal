@@ -14,3 +14,6 @@ export LOG_LEVEL=INFO
 
 # Server Configuration 
 # OSCAL_MCP_SERVER_NAME=OSCAL
+
+# MCP transport (defaults to stdio)
+# OSCAL_MCP_TRANSPORT=streamable-http

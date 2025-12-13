@@ -22,11 +22,10 @@ class TestIntegration:
         assert isinstance(mcp, FastMCP)
 
         # Verify server has the expected name
-        assert mcp.name == "OSCAL MCP Server"  # Default from config
+        assert mcp.name == "OSCAL"  # Default from config
 
         # Verify server has instructions
         assert mcp.instructions is not None
-        assert "OSCAL MCP Server" in mcp.instructions
         assert "OSCAL" in mcp.instructions
 
     def test_mcp_server_tools_registration(self):
@@ -43,11 +42,13 @@ class TestIntegration:
         expected_tools = [
             "query_oscal_documentation",
             "list_oscal_models",
-            "get_oscal_schema"
+            "get_oscal_schema",
         ]
 
         for expected_tool in expected_tools:
-            assert expected_tool in tool_names, f"Tool {expected_tool} not found in registered tools"
+            assert expected_tool in tool_names, (
+                f"Tool {expected_tool} not found in registered tools"
+            )
 
     def test_mcp_server_tool_schemas(self):
         """Test that registered tools have proper schemas."""
@@ -55,7 +56,7 @@ class TestIntegration:
 
         for tool_name, tool in tools.items():
             # Verify tool has a schema
-            assert hasattr(tool, 'schema'), f"Tool {tool_name} missing schema"
+            assert hasattr(tool, "schema"), f"Tool {tool_name} missing schema"
 
             # Verify schema has required fields
             # schema = tool.model_json_schema()
@@ -68,9 +69,11 @@ class TestIntegration:
             # # Verify description is not empty
             # assert schema['description'].strip(), f"Tool {tool_name} has empty description"
 
-    @patch('mcp_server_for_oscal.tools.query_documentation.Session')
-    @patch('mcp_server_for_oscal.tools.query_documentation.config')
-    def test_query_documentation_tool_integration(self, mock_config, mock_session_class):
+    @patch("mcp_server_for_oscal.tools.query_documentation.Session")
+    @patch("mcp_server_for_oscal.tools.query_documentation.config")
+    def test_query_documentation_tool_integration(
+        self, mock_config, mock_session_class
+    ):
         """Test integration of query_documentation tool."""
         # Setup mocks
         mock_config.aws_profile = None
@@ -80,11 +83,8 @@ class TestIntegration:
         mock_session = Mock()
         mock_client = Mock()
         mock_response = {
-            'retrievalResults': [
-                {
-                    'content': {'text': 'Test OSCAL content'},
-                    'score': 0.9
-                }
+            "retrievalResults": [
+                {"content": {"text": "Test OSCAL content"}, "score": 0.9}
             ]
         }
         mock_client.retrieve.return_value = mock_response
@@ -98,11 +98,11 @@ class TestIntegration:
 
         # Verify result
         assert result == mock_response
-        assert 'retrievalResults' in result
-        assert len(result['retrievalResults']) > 0
+        assert "retrievalResults" in result
+        assert len(result["retrievalResults"]) > 0
 
-    @patch('mcp_server_for_oscal.tools.get_schema.open_schema_file')
-    @patch('mcp_server_for_oscal.tools.get_schema.json.load')
+    @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
+    @patch("mcp_server_for_oscal.tools.get_schema.json.load")
     def test_get_schema_tool_integration(self, mock_json_load, mock_open_schema_file):
         """Test integration of get_schema tool."""
         # Setup mocks
@@ -116,10 +116,13 @@ class TestIntegration:
         mock_context.session.client_params = {}
 
         # Execute tool
-        result = get_oscal_schema(mock_context, model_name="catalog", schema_type="json")
+        result = get_oscal_schema(
+            mock_context, model_name="catalog", schema_type="json"
+        )
 
         # Verify result
         import json
+
         parsed_result = json.loads(result)
         assert parsed_result == mock_schema
         assert "$schema" in parsed_result
@@ -136,14 +139,14 @@ class TestIntegration:
         # Verify each model has expected structure
         for model_name, model_info in result.items():
             assert isinstance(model_info, dict)
-            assert 'description' in model_info
-            assert 'layer' in model_info
-            assert 'status' in model_info
+            assert "description" in model_info
+            assert "layer" in model_info
+            assert "status" in model_info
 
             # Verify values are not empty
-            assert model_info['description'].strip()
-            assert model_info['layer'].strip()
-            assert model_info['status'].strip()
+            assert model_info["description"].strip()
+            assert model_info["layer"].strip()
+            assert model_info["status"].strip()
 
     def test_mcp_server_instructions_content(self):
         """Test that MCP server instructions contain expected content."""
@@ -151,18 +154,20 @@ class TestIntegration:
 
         # Verify key content is present
         expected_content = [
-            "OSCAL MCP Server",
+            "OSCAL MCP server",
             "OSCAL",
             "Open Security Controls Assessment Language",
             "NIST",
             "security",
-            "controls"
+            "controls",
         ]
 
         for content in expected_content:
-            assert content in instructions, f"Expected content '{content}' not found in instructions"
+            assert content in instructions, (
+                f"Expected content '{content}' not found in instructions"
+            )
 
-    @patch('mcp_server_for_oscal.main.config')
+    @patch("mcp_server_for_oscal.main.config")
     def test_mcp_server_configuration_integration(self, mock_config):
         """Test that MCP server uses configuration properly."""
         # Test with custom server name
@@ -170,10 +175,8 @@ class TestIntegration:
 
         # Create new MCP instance with custom config
         from mcp_server_for_oscal.main import FastMCP
-        custom_mcp = FastMCP(
-            mock_config.server_name,
-            instructions="Test instructions"
-        )
+
+        custom_mcp = FastMCP(mock_config.server_name, instructions="Test instructions")
 
         # Verify custom name is used
         assert custom_mcp.name == "Custom OSCAL Server"
@@ -185,15 +188,15 @@ class TestIntegration:
         # Test query_documentation signature
         sig = inspect.signature(query_oscal_documentation)
         params = list(sig.parameters.keys())
-        assert 'query' in params
-        assert 'ctx' in params
+        assert "query" in params
+        assert "ctx" in params
 
         # Test get_schema signature
         sig = inspect.signature(get_oscal_schema)
         params = list(sig.parameters.keys())
-        assert 'ctx' in params
-        assert 'model_name' in params
-        assert 'schema_type' in params
+        assert "ctx" in params
+        assert "model_name" in params
+        assert "schema_type" in params
 
         # Test list_models signature
         sig = inspect.signature(list_oscal_models)
@@ -205,16 +208,22 @@ class TestIntegration:
 
         # Check query_documentation has @tool decorator
         # This is indicated by the presence of certain attributes added by the decorator
-        assert hasattr(query_oscal_documentation, '__wrapped__') or hasattr(query_oscal_documentation, '_tool_metadata')
+        assert hasattr(query_oscal_documentation, "__wrapped__") or hasattr(
+            query_oscal_documentation, "_tool_metadata"
+        )
 
         # Check get_schema has @tool decorator
-        assert hasattr(get_oscal_schema, '__wrapped__') or hasattr(get_oscal_schema, '_tool_metadata')
+        assert hasattr(get_oscal_schema, "__wrapped__") or hasattr(
+            get_oscal_schema, "_tool_metadata"
+        )
 
         # Check list_models has @tool decorator
-        assert hasattr(list_oscal_models, '__wrapped__') or hasattr(list_oscal_models, '_tool_metadata')
+        assert hasattr(list_oscal_models, "__wrapped__") or hasattr(
+            list_oscal_models, "_tool_metadata"
+        )
 
-    @patch('mcp_server_for_oscal.tools.query_documentation.Session')
-    @patch('mcp_server_for_oscal.tools.query_documentation.config')
+    @patch("mcp_server_for_oscal.tools.query_documentation.Session")
+    @patch("mcp_server_for_oscal.tools.query_documentation.config")
     def test_error_handling_integration(self, mock_config, mock_session_class):
         """Test error handling across integrated components."""
         # Setup mocks to simulate AWS error
@@ -223,16 +232,17 @@ class TestIntegration:
         mock_config.log_level = "INFO"
 
         from botocore.exceptions import ClientError
+
         error_response = {
-            'Error': {
-                'Code': 'ResourceNotFoundException',
-                'Message': 'Knowledge base not found'
+            "Error": {
+                "Code": "ResourceNotFoundException",
+                "Message": "Knowledge base not found",
             }
         }
 
         mock_session = Mock()
         mock_client = Mock()
-        mock_client.retrieve.side_effect = ClientError(error_response, 'Retrieve')
+        mock_client.retrieve.side_effect = ClientError(error_response, "Retrieve")
         mock_session.client.return_value = mock_client
         mock_session_class.return_value = mock_session
 
@@ -249,19 +259,19 @@ class TestIntegration:
         """Test that MCP server is compatible with expected transports."""
         # Verify server can be configured for streamable-http transport
         # This is tested by checking that the server has the necessary methods
-        assert hasattr(mcp, 'run'), "MCP server missing run method"
+        assert hasattr(mcp, "run"), "MCP server missing run method"
 
         # The actual transport compatibility is tested in the main function tests
         # Here we just verify the server structure supports it
 
-    @patch('mcp_server_for_oscal.tools.get_schema.open_schema_file')
+    @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     def test_schema_file_integration(self, mock_open_schema_file):
         """Test integration with schema file system."""
         # Test that schema files are accessed correctly
         mock_file = Mock()
         mock_open_schema_file.return_value = mock_file
 
-        with patch('mcp_server_for_oscal.tools.get_schema.json.load') as mock_json_load:
+        with patch("mcp_server_for_oscal.tools.get_schema.json.load") as mock_json_load:
             mock_json_load.return_value = {"test": "schema"}
 
             mock_context = Mock()
@@ -285,9 +295,11 @@ class TestIntegration:
         import logging
 
         # Verify loggers exist for key components
-        config_logger = logging.getLogger('mcp_server_for_oscal.config')
-        main_logger = logging.getLogger('mcp_server_for_oscal.main')
-        tools_logger = logging.getLogger('mcp_server_for_oscal.tools.query_documentation')
+        config_logger = logging.getLogger("mcp_server_for_oscal.config")
+        main_logger = logging.getLogger("mcp_server_for_oscal.main")
+        tools_logger = logging.getLogger(
+            "mcp_server_for_oscal.tools.query_documentation"
+        )
 
         # Verify loggers are properly configured (they should exist)
         assert config_logger is not None
@@ -308,10 +320,10 @@ class TestIntegration:
         )
 
         # Verify key components exist
-        assert hasattr(main, 'main')
-        assert hasattr(main, 'mcp')
-        assert hasattr(config, 'config')
-        assert hasattr(query_documentation, 'query_oscal_documentation')
-        assert hasattr(get_schema, 'get_oscal_schema')
-        assert hasattr(list_models, 'list_oscal_models')
-        assert hasattr(utils, 'OSCALModelType')
+        assert hasattr(main, "main")
+        assert hasattr(main, "mcp")
+        assert hasattr(config, "config")
+        assert hasattr(query_documentation, "query_oscal_documentation")
+        assert hasattr(get_schema, "get_oscal_schema")
+        assert hasattr(list_models, "list_oscal_models")
+        assert hasattr(utils, "OSCALModelType")

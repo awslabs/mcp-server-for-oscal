@@ -18,7 +18,7 @@ graph TB
     
     subgraph "MCP Protocol Layer"
         B[FastMCP Server]
-        C[MCP Transport - streamable-http]
+        C[MCP Transport - stdio/streamable-http]
     end
     
     subgraph "Application Layer"
@@ -69,9 +69,10 @@ graph TB
 **Responsibilities:**
 - Initialize and configure the FastMCP server
 - Register OSCAL tools with the MCP framework
-- Handle command line argument parsing
+- Handle command line argument parsing including transport selection
 - Configure logging and error handling
-- Manage server lifecycle
+- Manage server lifecycle with appropriate transport protocol
+- Validate and configure transport method (stdio or streamable-http)
 
 **Key Interfaces:**
 ```python
@@ -99,6 +100,7 @@ class Config:
     aws_region: str | None
     log_level: str
     server_name: str
+    transport: str  # "stdio" or "streamable-http"
     
     def update_from_args(self, **kwargs) -> None
 ```
@@ -182,6 +184,7 @@ class ServerConfig:
     aws_region: str | None = None
     log_level: str = "INFO"
     server_name: str = "OSCAL MCP Server"
+    transport: str = "stdio"  # Default to stdio transport
 ```
 
 ### OSCAL Model Information
@@ -279,15 +282,39 @@ Property 12: Input Validation Consistency\
 
 Property 13: Schema File System Consistency\
 *For any* supported model type and schema format, the corresponding schema file should exist in the expected location with the correct naming convention\
-**Validates: Requirements 7.2, 7.3, 7.4**
+**Validates: Requirements 8.2, 8.3, 8.4**
 
 Property 14: Schema JSON Format Validation\
 *For any* schema returned by get_oscal_schema, the response should be a valid JSON string that can be parsed without errors\
-**Validates: Requirements 7.6**
+**Validates: Requirements 8.6**
 
 Property 15: File Error Handling\
 *For any* file operation that fails (file not found, permission denied, etc.), the server should provide descriptive error messages\
+**Validates: Requirements 8.5**
+
+Property 16: Transport Protocol Support\
+*For any* supported transport type ("stdio" or "streamable-http"), the server should start successfully and use the specified transport protocol\
+**Validates: Requirements 5.4, 7.3, 7.4**
+
+Property 17: Transport Configuration Override\
+*For any* explicit transport configuration, the server should use that transport instead of the default stdio transport\
+**Validates: Requirements 5.6**
+
+Property 18: Command Line Transport Argument\
+*For any* valid transport type provided via --transport argument, the server should parse and apply that configuration correctly\
+**Validates: Requirements 7.1**
+
+Property 19: Invalid Transport Error Handling\
+*For any* invalid transport type specification, the server should return an error message listing the valid transport options\
 **Validates: Requirements 7.5**
+
+Property 20: Transport Validation Before Startup\
+*For any* transport configuration, the server should validate the transport type before attempting to start the server\
+**Validates: Requirements 7.6**
+
+Property 21: Transport Method Logging\
+*For any* server startup, the selected transport method should be logged during the initialization process\
+**Validates: Requirements 7.7**
 
 ## Error Handling
 

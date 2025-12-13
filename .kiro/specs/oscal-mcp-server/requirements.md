@@ -80,10 +80,12 @@ This document specifies the requirements for an MCP (Model Context Protocol) ser
 1. THE MCP_Server SHALL implement the FastMCP framework for MCP protocol compliance
 2. THE MCP_Server SHALL register all OSCAL tools with the MCP framework
 3. THE MCP_Server SHALL provide tool schemas that describe parameters and return types
-4. THE MCP_Server SHALL support streamable-http transport for communication
-5. THE MCP_Server SHALL include descriptive instructions about OSCAL and server capabilities
-6. WHEN tools are invoked, THE MCP_Server SHALL pass context information including session parameters
-7. THE MCP_Server SHALL handle MCP protocol errors and provide appropriate responses
+4. THE MCP_Server SHALL support both stdio and streamable-http transport protocols
+5. THE MCP_Server SHALL use stdio transport as the default communication method
+6. WHEN streamable-http transport is explicitly configured, THE MCP_Server SHALL use streamable-http instead of stdio
+7. THE MCP_Server SHALL include descriptive instructions about OSCAL and server capabilities
+8. WHEN tools are invoked, THE MCP_Server SHALL pass context information including session parameters
+9. THE MCP_Server SHALL handle MCP protocol errors and provide appropriate responses
 
 ### Requirement 6: Error Handling and Logging
 
@@ -99,7 +101,21 @@ This document specifies the requirements for an MCP (Model Context Protocol) ser
 6. THE MCP_Server SHALL support DEBUG, INFO, WARNING, and ERROR log levels
 7. WHEN invalid parameters are provided, THE MCP_Server SHALL validate inputs and return clear error messages
 
-### Requirement 7: Schema File Management
+### Requirement 7: Transport Configuration
+
+**User Story:** As a system administrator, I want to configure the MCP transport method, so that I can choose between stdio and HTTP-based communication based on my deployment needs.
+
+#### Acceptance Criteria
+
+1. THE MCP_Server SHALL accept a --transport command line argument to specify the transport type
+2. WHEN --transport is not specified, THE MCP_Server SHALL default to stdio transport
+3. WHEN --transport is set to "stdio", THE MCP_Server SHALL use standard input/output for communication
+4. WHEN --transport is set to "streamable-http", THE MCP_Server SHALL use HTTP-based transport
+5. WHEN an invalid transport type is specified, THE MCP_Server SHALL return an error with valid options
+6. THE MCP_Server SHALL validate transport configuration before starting the server
+7. THE MCP_Server SHALL log the selected transport method during startup
+
+### Requirement 8: Schema File Management
 
 **User Story:** As a developer, I want the server to manage OSCAL schema files locally, so that schema retrieval is fast and reliable without external dependencies.
 

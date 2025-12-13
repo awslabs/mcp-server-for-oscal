@@ -64,6 +64,7 @@ def query_kb(query: str, ctx: Context) -> Any:
             garbage = ctx.error(msg)
         raise
 
+
 def query_local(query: str, ctx: Context) -> Any:
     msg = "Not yet implemented"
     logger.error(msg)

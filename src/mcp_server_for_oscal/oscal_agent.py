@@ -1,4 +1,3 @@
-
 import boto3
 from strands import Agent
 from strands.models import BedrockModel
