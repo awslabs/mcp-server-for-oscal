@@ -3,6 +3,7 @@ Tool for listing OSCAL community resources.
 """
 
 import logging
+import asyncio
 from pathlib import Path
 from typing import Any
 
@@ -39,31 +40,19 @@ def list_oscal_resources(ctx: Context) -> str:
 
     try:
         content = read_resources_file()
-        logger.info("Successfully read OSCAL resources file")
+        logger.debug("Successfully read OSCAL resources file")
         return content
-    except FileNotFoundError as e:
-        msg = f"OSCAL resources file not found: {e}"
-        logger.error(msg)
-        if ctx is not None:
-            ctx.error(msg)
-        raise
-    except (IOError, OSError) as e:
-        msg = f"Failed to read OSCAL resources file: {e}"
-        logger.error(msg)
-        if ctx is not None:
-            ctx.error(msg)
-        raise
-    except UnicodeDecodeError as e:
-        msg = f"Encoding error reading OSCAL resources file: {e}"
-        logger.error(msg)
-        if ctx is not None:
-            ctx.error(msg)
-        raise
-    except Exception as e:
-        msg = f"Unexpected error reading OSCAL resources file: {e}"
+    except Exception:
+        msg = "Failed to read OSCAL resources file."
         logger.exception(msg)
         if ctx is not None:
-            ctx.error(msg)
+            try:
+                loop = asyncio.get_running_loop()
+                # Already in async context - can't use asyncio.run()
+                loop.run_until_complete(ctx.error(msg))
+            except RuntimeError:
+                # Not in async context - safe to use asyncio.run()
+                result = asyncio.run(ctx.error(msg))
         raise
 
 

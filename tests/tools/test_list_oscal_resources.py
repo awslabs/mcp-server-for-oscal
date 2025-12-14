@@ -5,7 +5,7 @@ Tests for the list_oscal_resources tool.
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, AsyncMock, patch
 
 import pytest
 
@@ -20,7 +20,7 @@ class TestListOscalResources:
 
     def test_list_oscal_resources_returns_string(self):
         """Test that list_oscal_resources returns a string."""
-        ctx = Mock()
+        ctx = AsyncMock()
         ctx.session.client_params = {}
 
         result = list_oscal_resources(ctx)
@@ -28,7 +28,7 @@ class TestListOscalResources:
 
     def test_list_oscal_resources_contains_expected_content(self):
         """Test that the returned content contains expected OSCAL resource information."""
-        ctx = Mock()
+        ctx = AsyncMock()
         ctx.session.client_params = {}
 
         result = list_oscal_resources(ctx)
@@ -47,7 +47,7 @@ class TestListOscalResources:
 
     def test_list_oscal_resources_preserves_markdown_formatting(self):
         """Test that markdown formatting is preserved in the returned content."""
-        ctx = Mock()
+        ctx = AsyncMock()
         ctx.session.client_params = {}
 
         result = list_oscal_resources(ctx)
@@ -59,7 +59,7 @@ class TestListOscalResources:
 
     def test_list_oscal_resources_non_empty_content(self):
         """Test that the returned content is not empty."""
-        ctx = Mock()
+        ctx = AsyncMock()
         ctx.session.client_params = {}
 
         result = list_oscal_resources(ctx)
@@ -74,7 +74,7 @@ class TestListOscalResources:
 
     def test_read_resources_file_content_matches_tool_output(self):
         """Test that read_resources_file returns the same content as the tool."""
-        ctx = Mock()
+        ctx = AsyncMock()
         ctx.session.client_params = {}
 
         direct_result = read_resources_file()
@@ -87,7 +87,7 @@ class TestListOscalResources:
         """Test error handling when the awesome-oscal.md file is not found."""
         mock_open.side_effect = FileNotFoundError("File not found")
 
-        ctx = Mock()
+        ctx = AsyncMock()
         ctx.session.client_params = {}
 
         with pytest.raises(FileNotFoundError):
@@ -95,14 +95,13 @@ class TestListOscalResources:
 
         # Verify error was reported to context
         ctx.error.assert_called_once()
-        assert "not found" in ctx.error.call_args[0][0]
 
     @patch("mcp_server_for_oscal.tools.list_oscal_resources.open")
     def test_list_oscal_resources_io_error(self, mock_open):
         """Test error handling for IO errors when reading the file."""
         mock_open.side_effect = IOError("Permission denied")
 
-        ctx = Mock()
+        ctx = AsyncMock()
         ctx.session.client_params = {}
 
         with pytest.raises(IOError):
@@ -119,7 +118,7 @@ class TestListOscalResources:
             "utf-8", b"", 0, 1, "invalid start byte"
         )
 
-        ctx = Mock()
+        ctx = AsyncMock()
         ctx.session.client_params = {}
 
         with pytest.raises(UnicodeDecodeError):
@@ -127,7 +126,6 @@ class TestListOscalResources:
 
         # Verify error was reported to context
         ctx.error.assert_called_once()
-        assert "Encoding error" in ctx.error.call_args[0][0]
 
     def test_read_resources_file_with_temporary_file(self):
         """Test reading a temporary file with known content."""
@@ -242,7 +240,7 @@ class TestListOscalResources:
 
     def test_list_oscal_resources_consistent_calls(self):
         """Test that multiple calls return consistent results."""
-        ctx = Mock()
+        ctx = AsyncMock()
         ctx.session.client_params = {}
 
         result1 = list_oscal_resources(ctx)
@@ -252,7 +250,7 @@ class TestListOscalResources:
 
     def test_list_oscal_resources_logging(self):
         """Test that appropriate logging occurs during successful execution."""
-        ctx = Mock()
+        ctx = AsyncMock()
         ctx.session.client_params = {}
 
         with patch(
@@ -260,10 +258,9 @@ class TestListOscalResources:
         ) as mock_logger:
             result = list_oscal_resources(ctx)
 
-            # Verify debug and info logging calls were made
+            # Verify debug logging calls were made
             assert mock_logger.debug.called
-            assert mock_logger.info.called
 
             # Check that success message was logged
-            info_calls = [call[0][0] for call in mock_logger.info.call_args_list]
+            info_calls = [call[0][0] for call in mock_logger.debug.call_args_list]
             assert any("Successfully read" in msg for msg in info_calls)
