@@ -107,7 +107,7 @@ update = [
   "uv pip compile pyproject.toml -o requirements.txt",
 ]
 
-bandit = [
+bandito = [
   "mkdir -p private/docs/bandit",
   "bandit -r src/mcp_server_for_oscal -f yaml -o private/docs/bandit/src.yaml",
   "bandit -s B101 -r tests  -f yaml -o private/docs/bandit/tests.yaml",
@@ -116,12 +116,13 @@ bandit = [
 tests = [
   "typing",
   "hatch test --all --cover",
-  "hatch run bandit",
+  "hatch run bandito",
 ]
 
 release = [
   "typing",
   "hatch test --all --cover --junitxml private/docs/pytest.xml",
+  "hatch run bandito",
   "hatch build",
 ]
 

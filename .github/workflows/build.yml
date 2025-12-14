@@ -32,19 +32,11 @@ jobs:
           pip install -U hatch
           hatch run release
 
-      - name: Upload coverage results
+      - name: Upload various test results
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: private/docs/coverage
-        # Use always() to always run this step to publish test results when there are test failures
-        if: ${{ always() }}
-
-      - name: Upload test results
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest
-          path: private/docs/pytest.xml
+          path: private/docs/
         # Use always() to always run this step to publish test results when there are test failures
         if: ${{ always() }}
 
