@@ -48,9 +48,10 @@ curl -L -o "$DOWNLOAD_DIR"/"$OSCAL_RELEASE_FILE_NAME" $OSCAL_RELEASE_URL
 # Extract only JSON and XSD files from the archive
 # -d specifies destination directory
 # -j flattens directory structure (junk paths)
+# -o overwrites existing files
 # "*.json" "*.xsd" filters to only extract schema files
 echo "Extracting schema files to: $SCHEMAS_DIR"
-unzip -j "${DOWNLOAD_DIR}/${OSCAL_RELEASE_FILE_NAME}" "*.json" "*.xsd" -d "$SCHEMAS_DIR" 
+unzip -j -o "${DOWNLOAD_DIR}/${OSCAL_RELEASE_FILE_NAME}" "*.json" "*.xsd" -d "$SCHEMAS_DIR" 
 
 # Clean up: remove the downloaded archive file
 echo "Cleaning up temporary files..."

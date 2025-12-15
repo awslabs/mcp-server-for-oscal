@@ -13,7 +13,7 @@ dependencies = [
   "strands-agents>=1.19.0",
 ]
 requires-python = ">=3.11"
-description = "OSCAL MCP server"
+description = "AI agent tools for Open Security Controls Assessment Language (OSCAL)."
 # dynamic = ["version"]
 
 # [tool.hatch.version]
@@ -29,11 +29,22 @@ description = "OSCAL MCP server"
 # when running any scripts or tools to do things like debug test failures
 # or do general development. 
 python = "3.12"
-dependencies = ["pytest", "mypy", "boto3-stubs"]
+dependencies = [
+  "pytest",
+  "mypy",
+  "boto3-stubs",
+  "bandit",
+  "pytest-asyncio",
+]
 
 [tool.pytest.ini_options]
 addopts = ["--durations=5", "--color=yes"]
 testpaths = ["tests"]
+filterwarnings = [
+    # filtering this because it's strands internal, not explicitly imported in our code
+    "ignore::DeprecationWarning:strands.experimental.hooks:3",
+]
+
 
 [tool.coverage.run]
 source_pkgs = ["mcp_server_for_oscal"]
@@ -79,9 +90,9 @@ directory = "./build"
 [tool.hatch.env]
 python = "3.12"
 
-[tool.hatch.envs.test]
-python = "3.12"
-dependencies = ["pytest", "mypy", "boto3-stubs"]
+# [tool.hatch.envs.test]
+# python = "3.12"
+# dependencies = ["pytest", "mypy", "boto3-stubs", ]
 
 [tool.hatch.envs.default.scripts]
 # These are scripts you can run using `hatch run <script-name>`
@@ -96,7 +107,33 @@ update = [
   "uv pip compile pyproject.toml -o requirements.txt",
 ]
 
-release = ["typing", "hatch test --all --cover --junitxml private/docs/pytest.xml", "hatch build"]
+bandito = [
+  "mkdir -p private/docs/bandit",
+  "bandit -r src/mcp_server_for_oscal -f yaml -o private/docs/bandit/src.yaml",
+  "bandit -s B101 -r tests  -f yaml -o private/docs/bandit/tests.yaml",
+]
+
+tests = [
+  "typing",
+  "hatch test --all --cover",
+  "hatch run bandito",
+]
+
+release = [
+  "typing",
+  "hatch test --all --cover --junitxml private/docs/pytest.xml",
+  "hatch run bandito",
+  "hatch build",
+]
+
+# TODO: monitor OSCAL GitHub project for changes and trigger PRs in our project
+# Updates contents of `src/mcp_server_for_oscal/oscal_schemas`, overwriting existing files
+update-oscal-schemas = ["bin/update-oscal-schemas.sh"]
+# TODO: monitor Awesome OSCAL GitHub project for changes and trigger PRs in our project
+update-awesome-oscal = [
+  '''curl -L -o src/mcp_server_for_oscal/oscal_docs/awesome-oscal.md \
+  https://raw.githubusercontent.com/oscal-club/awesome-oscal/refs/heads/main/README.md''',
+]
 
 server = ["python -m mcp_server_for_oscal.main"]
 
