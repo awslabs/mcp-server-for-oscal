@@ -31,7 +31,7 @@ SCHEMAS_DIR="$PROJECT_ROOT/src/mcp_server_for_oscal/oscal_schemas"
 
 # OSCAL release URL - points to official NIST OSCAL v1.1.3 release
 # Contains JSON schemas, XSD files, and other OSCAL model definitions
-OSCAL_RELEASE_URL="https://github.com/usnistgov/OSCAL/releases/download/v1.1.3/oscal-1.1.3.zip"
+OSCAL_RELEASE_URL="https://github.com/usnistgov/OSCAL/releases/download/v1.2.0/oscal-1.2.0.zip"
 
 # Determine temporary download directory
 # Uses system temp directory (TMPDIR, TMP, TEMP, or defaults to /tmp)
