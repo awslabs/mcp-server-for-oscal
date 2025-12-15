@@ -40,7 +40,11 @@ mcp = FastMCP(
 
 
 # Register tools with MCP server
-mcp.add_tool(query_oscal_documentation)
+# don't register the query_oscal_documentation tool unless we have a KB ID
+# TODO: get rid of this after we have working implementation of local index
+if config.knowledge_base_id is not None:
+    mcp.add_tool(query_oscal_documentation)
+
 mcp.add_tool(list_oscal_models)
 mcp.add_tool(get_oscal_schema)
 mcp.add_tool(list_oscal_resources)

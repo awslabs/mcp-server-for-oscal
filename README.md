@@ -42,17 +42,15 @@ This MCP server communicates via stdio (standard input/output) and can be integr
 
 #### Configuration Format
 
-Most MCP-compatible tools use a JSON configuration format. *Values in the `env` section are generally not needed*, but shown here as a how-to. Here's the basic structure:
+Most MCP-compatible tools use a JSON configuration format. *Values in the `"env":` section are generally not needed*, but shown here as a how-to. Here's the basic structure:
 
 ```json
 {
   "mcpServers": {
     "oscal": {
-      "command": "python",
-      "args": ["-m", "mcp_server_for_oscal"],
+      "command": "uvx",
+      "args": ["--from", "https://github.com/awslabs/mcp-server-for-oscal/releases/latest", "server"],
       "env": {
-        "AWS_PROFILE": "your-aws-profile",
-        "AWS_REGION": "us-east-1"
       }
     }
   }
@@ -68,8 +66,8 @@ Add to your `.kiro/settings/mcp.json`:
 {
   "mcpServers": {
     "oscal": {
-      "command": "python",
-      "args": ["-m", "mcp_server_for_oscal"],
+      "command": "uvx",
+      "args": ["--from", "https://github.com/awslabs/mcp-server-for-oscal/releases/latest", "server"],
       "env": {
         "AWS_PROFILE": "your-aws-profile"
       },
@@ -87,8 +85,8 @@ Add to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "oscal": {
-      "command": "python",
-      "args": ["-m", "mcp_server_for_oscal"]
+      "command": "uvx",
+      "args": ["--from", "https://github.com/awslabs/mcp-server-for-oscal/releases/latest", "server"]
     }
   }
 }
@@ -102,8 +100,8 @@ Configure in your workspace settings or user settings:
   "mcp.servers": [
     {
       "name": "oscal",
-      "command": "python",
-      "args": ["-m", "mcp_server_for_oscal"]
+      "command": "uvx",
+      "args": ["--from", "https://github.com/awslabs/mcp-server-for-oscal/releases/latest", "server"]
     }
   ]
 }

@@ -14,6 +14,8 @@ dependencies = [
 ]
 requires-python = ">=3.11"
 description = "AI agent tools for Open Security Controls Assessment Language (OSCAL)."
+[project.scripts]
+server = "mcp_server_for_oscal.main:main"
 # dynamic = ["version"]
 
 # [tool.hatch.version]
@@ -135,7 +137,7 @@ update-awesome-oscal = [
   https://raw.githubusercontent.com/oscal-club/awesome-oscal/refs/heads/main/README.md''',
 ]
 
-server = ["python -m mcp_server_for_oscal.main"]
+http-server = ["python -m mcp_server_for_oscal.main --transport streamable-http"]
 
 [tool.hatch.envs.hatch-test.scripts]
 run = "pytest{env:HATCH_TEST_ARGS:} {args}"
