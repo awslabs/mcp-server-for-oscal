@@ -16,6 +16,7 @@ __pycache__/
 #VSCode
 .vscode
 *.code-workspace
+.kiro/settings
 
 .env
 *.zip

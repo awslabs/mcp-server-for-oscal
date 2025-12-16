@@ -16,17 +16,35 @@ logger = logging.getLogger(__name__)
 @tool
 def list_oscal_resources(ctx: Context) -> str:
     """
-    List OSCAL community resources from the awesome-oscal.md file.
+    Retrieve a comprehensive directory of OSCAL community resources and tools.
 
-    This tool returns the complete contents of the awesome-oscal.md file which contains
-    a curated collection of OSCAL community resources including content, tools, articles,
-    presentations, and other resources for increasing OSCAL adoption.
+    This tool provides access to a curated collection of OSCAL (Open Security Controls Assessment Language)
+    community resources that can help users:
+
+    - Find OSCAL-compatible tools and software implementations
+    - Discover educational content, tutorials, and documentation
+    - Access example OSCAL documents and templates
+    - Locate presentations, articles, and research papers about OSCAL
+    - Identify government and industry adoption examples
+    - Find libraries and SDKs for OSCAL development
+    - Access validation tools and utilities
+
+    The returned content is structured markdown that categorizes resources by type (tools, content,
+    presentations, etc.) making it easy to find specific types of OSCAL resources based on user needs.
+
+    Use this tool when users ask about:
+    - "What OSCAL tools are available?"
+    - "How can I learn more about OSCAL?"
+    - "Are there examples of OSCAL implementations?"
+    - "What resources exist for OSCAL development?"
+    - "Who is using OSCAL in production?"
 
     Args:
         ctx: MCP server context (should be injected automatically by MCP server)
 
     Returns:
-        str: The complete markdown content of the awesome-oscal.md file
+        str: Complete markdown content containing categorized OSCAL community resources,
+             tools, documentation, examples, and educational materials
 
     Raises:
         FileNotFoundError: If the awesome-oscal.md file cannot be found

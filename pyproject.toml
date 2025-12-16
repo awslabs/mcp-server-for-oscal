@@ -4,7 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-server-for-oscal"
-version = "0.1.0"
+# version = "0.1.0"
+dynamic = ["version"]
 readme = "README.md"
 dependencies = [
   # Put your dependencies here!
@@ -16,15 +17,17 @@ requires-python = ">=3.11"
 description = "AI agent tools for Open Security Controls Assessment Language (OSCAL)."
 [project.scripts]
 server = "mcp_server_for_oscal.main:main"
-# dynamic = ["version"]
 
-# [tool.hatch.version]
-# source = "vcs"
-# [tool.hatch.version.raw-options]
-# version_scheme = "no-guess-dev"
-# # see also: tool.hatch.build.hooks.vcs below
-# [tool.hatch.build.hooks.vcs]
-# version-file = "_version.py"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
+version_scheme = "no-guess-dev"
+
+# see also: tool.hatch.build.hooks.vcs below
+[tool.hatch.build.hooks.vcs]
+version-file = "_version.py"
 
 [tool.hatch.envs.default]
 # This controls what version of Python you want to be the default
