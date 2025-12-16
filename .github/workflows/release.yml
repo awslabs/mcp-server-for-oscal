@@ -18,6 +18,8 @@ jobs:
             id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
         # retrieve your distributions here
         steps:
+        -   name: Check out the repository
+            uses: actions/checkout@v4        
         -   name: Download release assets
             env:
                 GH_TOKEN: ${{ github.token }}
