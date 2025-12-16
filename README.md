@@ -49,7 +49,7 @@ Most MCP-compatible tools use a JSON configuration format. *Values in the `"env"
   "mcpServers": {
     "oscal": {
       "command": "uvx",
-      "args": ["--from", "https://github.com/awslabs/mcp-server-for-oscal/releases/latest", "server"],
+      "args": ["mcp-server-for-oscal@latest", "server"],
       "env": {
       }
     }
@@ -67,7 +67,7 @@ Add to your `.kiro/settings/mcp.json`:
   "mcpServers": {
     "oscal": {
       "command": "uvx",
-      "args": ["--from", "https://github.com/awslabs/mcp-server-for-oscal/releases/latest", "server"],
+      "args": ["mcp-server-for-oscal@latest", "server"],
       "env": {
         "AWS_PROFILE": "your-aws-profile"
       },
@@ -86,7 +86,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "oscal": {
       "command": "uvx",
-      "args": ["--from", "https://github.com/awslabs/mcp-server-for-oscal/releases/latest", "server"]
+      "args": ["mcp-server-for-oscal@latest", "server"]
     }
   }
 }
@@ -101,7 +101,7 @@ Configure in your workspace settings or user settings:
     {
       "name": "oscal",
       "command": "uvx",
-      "args": ["--from", "https://github.com/awslabs/mcp-server-for-oscal/releases/latest", "server"]
+      "args": ["mcp-server-for-oscal@latest", "server"]
     }
   ]
 }
