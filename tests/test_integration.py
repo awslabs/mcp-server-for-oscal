@@ -40,7 +40,7 @@ class TestIntegration:
         tool_names = [tool.name for tool in tools.values()]
 
         expected_tools = [
-            "query_oscal_documentation",
+            "list_oscal_resources",
             "list_oscal_models",
             "get_oscal_schema",
         ]
