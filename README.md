@@ -34,7 +34,8 @@ This MCP server provides these [tools](src/mcp_server_for_oscal/tools/) for work
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- `uv` package manager for Python [(Installation instructions)](https://docs.astral.sh/uv/getting-started/installation/)
+- Python 3.11 or higher; [(`uv install python 3.12`)](https://docs.astral.sh/uv/guides/install-python/). The server may work with other versions of Python, but we only test 3.11 & 3.12 for now.
 
 ### Configuring IDEs and AI Tools
 
@@ -67,7 +68,7 @@ Add to your `.kiro/settings/mcp.json`:
   "mcpServers": {
     "oscal": {
       "command": "uvx",
-      "args": ["mcp-server-for-oscal@latest", "server"],
+      "args": ["--from", "mcp-server-for-oscal@latest", "server"],
       "env": {
         "AWS_PROFILE": "your-aws-profile"
       },

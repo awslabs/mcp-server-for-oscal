@@ -29,7 +29,7 @@ def list_oscal_models() -> dict:
         OSCALModelType.MAPPING: {
             "description": "Describes how a collection of security controls relates to another collection of controls",
             "layer": "Control",
-            "status": "PROTOTYPE",
+            "status": "GA",
         },
         OSCALModelType.COMPONENT_DEFINITION: {
             "description": "Describes how components implement controls",

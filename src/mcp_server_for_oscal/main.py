@@ -42,7 +42,7 @@ mcp = FastMCP(
 # Register tools with MCP server
 # don't register the query_oscal_documentation tool unless we have a KB ID
 # TODO: get rid of this after we have working implementation of local index
-if config.knowledge_base_id is not None:
+if config.knowledge_base_id:
     mcp.add_tool(query_oscal_documentation)
 
 mcp.add_tool(list_oscal_models)
@@ -109,7 +109,11 @@ def main():
         raise SystemExit(1) from e
 
     # Log the selected transport method during startup
-    logger.info("Starting OSCAL MCP Server with transport: %s", config.transport)
+    logger.info(
+        "Starting MCP Server `%s` with transport: %s",
+        config.server_name,
+        config.transport,
+    )
 
     # Run the MCP server with the configured transport
     try:
