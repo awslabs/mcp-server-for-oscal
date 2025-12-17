@@ -43,7 +43,7 @@ This MCP server communicates via stdio (standard input/output) and can be integr
 
 #### Configuration Format
 
-Most MCP-compatible tools use a JSON configuration format. *Values in the `"env":` section are generally not needed*, but shown here as a how-to. Here's the basic structure:
+Most MCP-compatible tools use a JSON configuration format described in the [FastMCP documentation](https://gofastmcp.com/integrations/mcp-json-configuration). Here's the basic structure:
 
 ```json
 {
@@ -61,7 +61,7 @@ Most MCP-compatible tools use a JSON configuration format. *Values in the `"env"
 #### IDE-Specific Configuration
 
 **Kiro IDE**
-Add to your `.kiro/settings/mcp.json`:
+See [Kiro's MCP documentation](https://kiro.dev/docs/mcp/configuration/) for additional options. Add to your `.kiro/settings/mcp.json`:
 
 ```json
 {
@@ -69,18 +69,21 @@ Add to your `.kiro/settings/mcp.json`:
     "oscal": {
       "command": "uvx",
       "args": ["--from", "mcp-server-for-oscal@latest", "server"],
-      "env": {
-        "AWS_PROFILE": "your-aws-profile"
-      },
+      "env": {},
       "disabled": false,
-      "autoApprove": ["query_oscal_documentation", "list_oscal_models"]
+      "autoApprove": [
+        "get_oscal_schema",
+        "list_oscal_resources",
+        "list_oscal_models",
+        "query_oscal_documentation"
+      ]
     }
   }
 }
 ```
 
 **Claude Desktop**
-Add to your `claude_desktop_config.json`:
+Add to your `~/.claude/claude_desktop_config.json`:
 
 ```json
 {
@@ -93,14 +96,13 @@ Add to your `claude_desktop_config.json`:
 }
 ```
 
-**VS Code with MCP Extension**
-Configure in your workspace settings or user settings:
+**VS Code**
+Run the `MCP: Open User Configuration` command, which opens the mcp.json file in your user profile. You can then manually add the server configuration to the file. See the [VSCode/Copilot docs](https://code.visualstudio.com/docs/copilot/customization/mcp-servers#_add-an-mcp-server) for addtional options and details.
 
 ```json
 {
-  "mcp.servers": [
-    {
-      "name": "oscal",
+  "servers": [
+    "oscal": {
       "command": "uvx",
       "args": ["--from", "mcp-server-for-oscal@latest", "server"]
     }
@@ -109,7 +111,7 @@ Configure in your workspace settings or user settings:
 ```
 
 #### Environment Variables
-Generally, configuration should not be required. See the file [dotenv.example](dotenv.example) for available options. Note that a dotenv file is only needed in a development environment. For typical, runtime use of the MCP server, environment variables should be configured as described above.
+Generally, configuration should not be required. See the file [dotenv.example](dotenv.example) for available options. Note that a dotenv file is only needed in a development environment. For typical, runtime use of the MCP server, environment variables should be configured as described in the [FastMCP documentation](https://gofastmcp.com/integrations/mcp-json-configuration#env-optional).
 
 ## Development
 See [DEVELOPING](DEVELOPING.md) to get started.
