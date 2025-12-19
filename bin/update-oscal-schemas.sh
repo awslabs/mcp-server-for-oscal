@@ -24,6 +24,7 @@
 # This ensures the script works regardless of where it's called from
 SCRIPT_DIR="$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+CURRENT_RELEASE_VERSION="1.2.0"
 
 # Define the target directory where OSCAL schemas will be stored
 # This is where the MCP server will look for schema definitions
@@ -31,7 +32,7 @@ SCHEMAS_DIR="$PROJECT_ROOT/src/mcp_server_for_oscal/oscal_schemas"
 
 # OSCAL release URL - points to official NIST OSCAL v1.1.3 release
 # Contains JSON schemas, XSD files, and other OSCAL model definitions
-OSCAL_RELEASE_URL="https://github.com/usnistgov/OSCAL/releases/download/v1.2.0/oscal-1.2.0.zip"
+OSCAL_RELEASE_URL="https://github.com/usnistgov/OSCAL/releases/download/v$CURRENT_RELEASE_VERSION/oscal-$CURRENT_RELEASE_VERSION.zip"
 
 # Determine temporary download directory
 # Uses system temp directory (TMPDIR, TMP, TEMP, or defaults to /tmp)
@@ -53,8 +54,14 @@ curl -L -o "$DOWNLOAD_DIR"/"$OSCAL_RELEASE_FILE_NAME" $OSCAL_RELEASE_URL
 echo "Extracting schema files to: $SCHEMAS_DIR"
 unzip -j -o "${DOWNLOAD_DIR}/${OSCAL_RELEASE_FILE_NAME}" "*.json" "*.xsd" -d "$SCHEMAS_DIR" 
 
+# Remove all white space from json files
+for json_file in "$SCHEMAS_DIR"/*.json; do
+    jq -c . "$json_file" > "$SCHEMAS_DIR"/tmpws.json && mv "$SCHEMAS_DIR"/tmpws.json "$json_file"
+done
+
 # Clean up: remove the downloaded archive file
 echo "Cleaning up temporary files..."
+rm -f "$SCHEMAS_DIR"/tmpws.json
 rm -f "${DOWNLOAD_DIR}/${OSCAL_RELEASE_FILE_NAME}"
 
 echo "OSCAL schema update completed successfully!"
