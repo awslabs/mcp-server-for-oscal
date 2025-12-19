@@ -52,7 +52,10 @@ def get_oscal_schema(
                 asyncio.run(ctx.error(msg))
         raise ValueError(msg)
 
-    if model_name not in OSCALModelType and model_name != "complete":
+    if (
+        model_name not in OSCALModelType.__members__.values()
+        and model_name != "complete"
+    ):
         msg = f"Invalid model: {model_name}. Use the tool list_oscal_models to get valid model names."
         if ctx is not None:
             try:
