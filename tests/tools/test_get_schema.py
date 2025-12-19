@@ -8,6 +8,7 @@ from unittest.mock import Mock, AsyncMock, mock_open, patch
 import pytest
 
 from mcp_server_for_oscal.tools.get_schema import get_oscal_schema, open_schema_file
+from mcp_server_for_oscal.tools.utils import OSCALModelType, schema_names
 
 
 class TestGetSchema:
@@ -289,20 +290,7 @@ class TestGetSchema:
         mock_open_schema_file.return_value = mock_file
         mock_json_load.return_value = sample_json_schema
 
-        # Test all valid model types
-        valid_models = [
-            "catalog",
-            "profile",
-            "component-definition",
-            "system-security-plan",
-            "assessment-plan",
-            "assessment-results",
-            "plan-of-action-and-milestones",
-            "mapping-collection",
-            "complete",
-        ]
-
-        for model in valid_models:
+        for model in OSCALModelType:
             # Reset mocks
             mock_open_schema_file.reset_mock()
             mock_json_load.reset_mock()
@@ -316,13 +304,5 @@ class TestGetSchema:
             expected_json = json.dumps(sample_json_schema)
             assert result == expected_json
 
-            # Verify correct file was requested
-            expected_filename = f"oscal_{model}_schema.json"
-            if model == "system-security-plan":
-                expected_filename = "oscal_ssp_schema.json"
-            elif model == "plan-of-action-and-milestones":
-                expected_filename = "oscal_poam_schema.json"
-            elif model == "mapping-collection":
-                expected_filename = "oscal_mapping_schema.json"
-
+            expected_filename = f"{schema_names.get(model)}.json"
             mock_open_schema_file.assert_called_once_with(expected_filename)

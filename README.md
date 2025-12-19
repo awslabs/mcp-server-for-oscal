@@ -4,10 +4,10 @@ A Model Context Protocol (MCP) server that provides AI assistants (Claude, Cline
 
 ## What is OSCAL?
 
-[OSCAL (Open Security Controls Assessment Language)](https://pages.nist.gov/OSCAL/) is a set of framework-agnostic, vendor-neutral, machine-readable schemas developed by NIST that describe common security artifacts like controls and assessments. OSCAL enables automation of security governance, risk, and compliance workflows.
+[OSCAL (Open Security Controls Assessment Language)](https://pages.nist.gov/OSCAL/) is a set of framework-agnostic, vendor-neutral, machine-readable schemas developed by NIST that describe the full life cycle of GRC (governance, risk, compliance) artifacts, from controls to remediation plans. OSCAL enables automation of GRC workflows by replacing digital paper (spreadsheets, PDFs, etc.) with a standard-based structured data format.
 ## Features
 
-This MCP server provides these [tools](src/mcp_server_for_oscal/tools/) for working with OSCAL:
+This MCP server provides [tools](src/mcp_server_for_oscal/tools/) for working with OSCAL:
 
 ### 1. List OSCAL Models  
 - **Tool**: `list_oscal_models`
@@ -31,7 +31,7 @@ This MCP server provides these [tools](src/mcp_server_for_oscal/tools/) for work
 - Get answers to questions about OSCAL concepts, best practices, and implementation guidance.
 
 ## Installation
-
+If you just want to use the MCP server with your IDE or preferred AI tool, then you don't need to clone the project or download source code. 
 ### Prerequisites
 
 - `uv` package manager for Python [(Installation instructions)](https://docs.astral.sh/uv/getting-started/installation/)

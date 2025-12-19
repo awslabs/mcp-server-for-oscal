@@ -11,6 +11,7 @@ from mcp_server_for_oscal.main import mcp
 from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
 from mcp_server_for_oscal.tools.list_models import list_oscal_models
 from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
+from mcp_server_for_oscal.tools.utils import OSCALModelType, schema_names
 
 
 class TestIntegration:
@@ -264,6 +265,7 @@ class TestIntegration:
         # The actual transport compatibility is tested in the main function tests
         # Here we just verify the server structure supports it
 
+    # TODO: this may be a redundant test; compare to test_get_schema.test_get_schema_all_valid_models
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     def test_schema_file_integration(self, mock_open_schema_file):
         """Test integration with schema file system."""
@@ -278,16 +280,13 @@ class TestIntegration:
             mock_context.session = Mock()
             mock_context.session.client_params = {}
 
-            # Test different model types
-            models_to_test = ["catalog", "profile", "component-definition"]
-
-            for model in models_to_test:
+            for model in OSCALModelType:
                 mock_open_schema_file.reset_mock()
 
                 get_oscal_schema(mock_context, model_name=model, schema_type="json")
 
                 # Verify correct file was requested
-                expected_filename = f"oscal_{model}_schema.json"
+                expected_filename = f"{schema_names.get(model)}.json"
                 mock_open_schema_file.assert_called_with(expected_filename)
 
     def test_logging_integration(self):
