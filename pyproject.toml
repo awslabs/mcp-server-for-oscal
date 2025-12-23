@@ -128,6 +128,8 @@ release = [
   "typing",
   "hatch test --all --cover --junitxml private/docs/pytest.xml",
   "hatch run bandito",
+  "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_schemas",
+  "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_docs",
   "hatch build",
 ]
 
