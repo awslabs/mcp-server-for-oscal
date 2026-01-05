@@ -61,7 +61,7 @@ Each OSCAL model is provided in two schema formats:
 The schema files in this directory are automatically downloaded and updated using the `bin/update-oscal-schemas.sh` script:
 
 1. **Source**: Schemas are downloaded from the official NIST OSCAL GitHub repository
-2. **Version**: Currently using OSCAL version 1.1.3
+2. **Version**: OSCAL version 1.2.0 as of the last update to this README. Determined by value of variable `CURRENT_RELEASE_VERSION` in the script. 
 3. **Update Process**: 
    ```bash
    # Run from project root
@@ -97,16 +97,10 @@ These schemas are used by the MCP server in several ways:
 
 To update to a newer version of OSCAL schemas:
 
-1. **Edit the update script**: Modify `OSCAL_RELEASE_URL` in `bin/update-oscal-schemas.sh` to point to the desired OSCAL version
+1. **Edit the update script**: Modify `CURRENT_RELEASE_VERSION` in `bin/update-oscal-schemas.sh` to point to the desired OSCAL version
 2. **Run the update**: Execute `./bin/update-oscal-schemas.sh` from the project root
 3. **Test compatibility**: Verify that existing functionality works with the new schemas
 4. **Update documentation**: Update version references in code and documentation as needed
-
-## Version Information
-
-- **Current OSCAL Version**: 1.1.3
-- **Last Updated**: [Automatically updated when schemas are refreshed]
-- **Source Repository**: https://github.com/usnistgov/OSCAL
 
 ## Related Documentation
 
