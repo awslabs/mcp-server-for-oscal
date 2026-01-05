@@ -59,6 +59,8 @@ def safe_log_mcp(msg: str, ctx: Context, level: Literal['debug', 'info', 'warnin
 
 def verify_package_integrity(directory: Path) -> None:
     """Verify all files match captured state from build time"""
+
+    logger.info(f"Verifying contents of package {directory.name}")
     with open(directory.joinpath('hashes.json'), 'r') as hashes:
         state = json.load(hashes)
     
@@ -72,10 +74,11 @@ def verify_package_integrity(directory: Path) -> None:
     # Validate that all files in directory are unmodified
     for fn in directory.iterdir():
         # Skip the hash file itself, which is not included in hashes.json
-        if fn.is_file() and fn.name != 'hashes.json':
-            with open(fn, 'rb') as f:
-                h = hashlib.sha256(f.read()).hexdigest()
-                if h != state['file_hashes'][fn.name]:
-                    raise RuntimeError(f"File {file_path} has been modified; expected hash {state['file_hashes'][fn.name]} != {h}")
-                logger.debug("Hash for file %s matches", fn.name)
+        if not fn.is_file() or fn.name == 'hashes.json':
+            continue
+        with open(fn, 'rb') as f:
+            h = hashlib.sha256(f.read()).hexdigest()
+            if h != state['file_hashes'][fn.name]:
+                raise RuntimeError(f"File {fn.name} has been modified; expected hash {state['file_hashes'][fn.name]} != {h}")
+            logger.debug("Hash for file %s matches", fn.name)
             
