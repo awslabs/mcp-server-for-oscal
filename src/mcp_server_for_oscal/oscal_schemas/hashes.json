@@ -1,7 +1,7 @@
 {
-  "commit": "4676ce90a3129aff790921af4b27e4f52fbda4c7",
+  "commit": "'d99c872d59391ebc35e538b3d27dbd68de4472e5'",
   "file_hashes": {
-    "README.md": "5ed18bdbcf18e2088e187014e2b056b6fd5d64f47ec7a49d00f75723c1fedb60",
+    "README.md": "2aa65eb8bb6b7866d5bc30c8976a717026ff0cb63c5a5096084f665608459cf3",
     "oscal_mapping_schema.xsd": "a5148675990927452ab5d8d08456c60d220c80096d7fcf1c341d56f2a8f675ab",
     "oscal_catalog_schema.xsd": "238d266328ab8f2971f580e976c22cfc4046d40a64a0ac266da7ad7f80cc72fd",
     "oscal_ssp_schema.xsd": "57327ce39f9912240a00f337f635eae698bf4ad82b5e9997eb0dbbce1a587f11",
