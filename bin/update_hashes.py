@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def capture_file_state(directory=".", outdir: str="."):
+def capture_file_state(directory=".", outdir: str = "."):
     """Capture current file state for verification
 
     Args:
@@ -28,7 +28,7 @@ def capture_file_state(directory=".", outdir: str="."):
         check=True,
         cwd=directory,
     ).stdout.strip()
-    
+
     files = Path(directory).iterdir()
     file_hashes = {}
     for f in files:
@@ -58,7 +58,9 @@ def main():
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose output"
     )
-    parser.add_argument("-o", "--outdir", help="Path to directory where output file will be written")
+    parser.add_argument(
+        "-o", "--outdir", help="Path to directory where output file will be written"
+    )
 
     args = parser.parse_args()
 
@@ -80,7 +82,7 @@ def main():
 
     if not os.path.isdir(args.outdir):
         logger.error(f"Error: Output directory '{args.outdir}' is not a directory.")
-        sys.exit(1)        
+        sys.exit(1)
 
     try:
         if args.verbose:
