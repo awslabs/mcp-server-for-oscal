@@ -17,6 +17,8 @@ from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
 from mcp_server_for_oscal.tools.list_models import list_oscal_models
 from mcp_server_for_oscal.tools.list_oscal_resources import list_oscal_resources
 from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
+from mcp_server_for_oscal.tools.utils import verify_package_integrity
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,8 @@ agent = None
 # Create MCP server using configuration
 mcp = FastMCP(
     config.server_name,
+    host="127.0.0.1",
+    website_url="https://github.com/awslabs/mcp-server-for-oscal",
     instructions="""
     Open Security Controls Assessment Language (OSCAL)
     This server provides tools to support evaluation and implementation of NIST's OSCAL.
@@ -114,6 +118,15 @@ def main():
         config.server_name,
         config.transport,
     )
+
+    # Attempt to verify integrity of bundled content
+    try:
+        my_dir = Path(__file__).parent
+        verify_package_integrity(my_dir.joinpath("oscal_schemas"))
+        verify_package_integrity(my_dir.joinpath("oscal_docs"))
+    except RuntimeError:
+        logger.exception("Bundled context files may have been tampered with; exiting.")
+        raise SystemExit(2)
 
     # Run the MCP server with the configured transport
     try:
