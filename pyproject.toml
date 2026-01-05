@@ -125,12 +125,17 @@ tests = [
 ]
 
 release = [
-  "typing",
-  "hatch test --all --cover --junitxml private/docs/pytest.xml",
+  "typing",  
   "hatch run bandito",
-  "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_schemas",
-  "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_docs",
+  "hatch test --all --cover --junitxml private/docs/pytest.xml",
   "hatch build",
+]
+
+rehash = [
+  "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_schemas",
+  "git add src/mcp_server_for_oscal/oscal_schemas/hashes.json",
+  "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_docs",
+  "git add src/mcp_server_for_oscal/oscal_docs/hashes.json",
 ]
 
 # TODO: monitor OSCAL GitHub project for changes and trigger PRs in our project

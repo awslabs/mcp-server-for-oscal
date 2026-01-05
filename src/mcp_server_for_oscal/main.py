@@ -119,11 +119,17 @@ def main():
         config.transport,
     )
 
-    # Run the MCP server with the configured transport
+    # Attempt to verify integrity of bundled content
     try:
         my_dir = Path(__file__).parent
         verify_package_integrity(my_dir.joinpath("oscal_schemas"))
         verify_package_integrity(my_dir.joinpath("oscal_docs"))
+    except RuntimeError:
+        logger.exception("Bundled context files may have been tampered with; exiting.")
+        raise SystemExit(2)
+
+    # Run the MCP server with the configured transport
+    try:
         mcp.run(transport=config.transport)
     except KeyboardInterrupt:
         logger.info("Shutdown due to keyboard interrupt")

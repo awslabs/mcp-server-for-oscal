@@ -12,23 +12,23 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def capture_file_state(directory="."):
+def capture_file_state(directory=".", outdir: str="."):
     """Capture current file state for verification
 
     Args:
         directory (str): Path to the directory containing the git repository
     """
     # Resolve the absolute path
-
+    directory = os.path.abspath(directory)
     """Capture current Git state for verification"""
     commit = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
+        ["git", "log", "-1", "--format='%H'", "--", directory],
         capture_output=True,
         text=True,
         check=True,
         cwd=directory,
     ).stdout.strip()
-    directory = os.path.abspath(directory)
+    
     files = Path(directory).iterdir()
     file_hashes = {}
     for f in files:
@@ -38,8 +38,8 @@ def capture_file_state(directory="."):
 
     state = {"commit": commit, "file_hashes": file_hashes}
 
-    # Save git_state.json in the specified directory
-    output_file = os.path.join(directory, "hashes.json")
+    # Save hashes.json in the specified directory
+    output_file = os.path.join(outdir, "hashes.json")
     with open(output_file, "w") as f:
         json.dump(state, f, indent=2)
 
@@ -58,10 +58,11 @@ def main():
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="Enable verbose output"
     )
+    parser.add_argument("-o", "--outdir", help="Path to directory where output file will be written")
 
     args = parser.parse_args()
 
-    # Validate that the directory exists
+    # Validate that the directories exist
     if not os.path.exists(args.directory):
         logger.error(f"Error: Directory '{args.directory}' does not exist.")
         sys.exit(1)
@@ -70,13 +71,24 @@ def main():
         logger.error(f"Error: '{args.directory}' is not a directory.")
         sys.exit(1)
 
+    if not args.outdir:
+        args.outdir = args.directory
+
+    if not os.path.exists(args.outdir):
+        logger.error(f"Error: Output directory '{args.outdir}' does not exist.")
+        sys.exit(1)
+
+    if not os.path.isdir(args.outdir):
+        logger.error(f"Error: Output directory '{args.outdir}' is not a directory.")
+        sys.exit(1)        
+
     try:
         if args.verbose:
             logger.info(
                 f"Processing git repository at: {os.path.abspath(args.directory)}"
             )
 
-        state, output_file = capture_file_state(args.directory)
+        state, output_file = capture_file_state(args.directory, args.outdir)
 
         if args.verbose:
             logger.info(f"Package state captured successfully!")
@@ -84,7 +96,7 @@ def main():
             logger.info(f"Files tracked: {len(state['file_hashes'])}")
             logger.info(f"Output saved to: {output_file}")
         else:
-            logger.info(f"Git state saved to: {output_file}")
+            logger.info(f"State saved to: {output_file}")
 
     except subprocess.CalledProcessError:
         logger.exception(f"Error running git command:")
