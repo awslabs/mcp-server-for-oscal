@@ -57,7 +57,7 @@ def safe_log_mcp(msg: str, ctx: Context, level: Literal['debug', 'info', 'warnin
         asyncio.run(ctx.log(level, msg))
 
 
-def verify_package_integrity(directory: str) -> None:
+def verify_package_integrity(directory: Path) -> None:
     """Verify all files match captured state from build time"""
     with open(directory.joinpath('hashes.json'), 'r') as hashes:
         state = json.load(hashes)
