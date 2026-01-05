@@ -74,7 +74,8 @@ def verify_package_integrity(directory: Path) -> None:
         # Skip the hash file itself, which is not included in hashes.json
         if fn.is_file() and fn.name != 'hashes.json':
             with open(fn, 'rb') as f:
-                if hashlib.sha256(f.read()).hexdigest() != state['file_hashes'][fn.name]:
-                    raise RuntimeError(f"File {file_path} has been modified")
+                h = hashlib.sha256(f.read()).hexdigest()
+                if h != state['file_hashes'][fn.name]:
+                    raise RuntimeError(f"File {file_path} has been modified; expected hash {state['file_hashes'][fn.name]} != {h}")
                 logger.debug("Hash for file %s matches", fn.name)
             
