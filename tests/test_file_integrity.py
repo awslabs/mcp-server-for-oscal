@@ -8,20 +8,21 @@ types of integrity violations.
 
 import json
 import logging
+import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import patch
+
 import pytest
-import shutil
 
 from mcp_server_for_oscal.tools.utils import verify_package_integrity
 from tests.test_file_integrity_utils import (
     TestPackageManager,
-    create_sample_oscal_files,
-    create_binary_test_files,
-    assert_integrity_passes,
-    assert_integrity_fails,
     assert_hash_manifest_valid,
+    assert_integrity_fails,
+    assert_integrity_passes,
+    create_binary_test_files,
+    create_sample_oscal_files,
 )
 
 
@@ -254,7 +255,7 @@ class TestLoggingBehavior:
         assert len(debug_messages) > 0, "Expected debug-level log messages"
 
         # Check that individual files are mentioned in debug logs
-        for filename in files.keys():
+        for filename in files:
             file_mentioned = any(filename in msg for msg in self.log_messages)
             assert file_mentioned, (
                 f"Expected file {filename} to be mentioned in debug logs"
@@ -428,7 +429,7 @@ class TestLoggingBehavior:
             file_specific_messages = [
                 msg
                 for msg in debug_message_texts
-                if any(filename in msg for filename in files.keys())
+                if any(filename in msg for filename in files)
             ]
             assert len(file_specific_messages) > 0, (
                 "Expected file-specific debug messages"

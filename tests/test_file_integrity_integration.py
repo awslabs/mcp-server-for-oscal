@@ -6,13 +6,8 @@ ensuring that the server properly validates package integrity during initializat
 and exits with appropriate status codes when integrity failures occur.
 """
 
-import logging
-import subprocess
-import sys
-import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
-from typing import Dict, Union
+from unittest.mock import patch
 
 import pytest
 

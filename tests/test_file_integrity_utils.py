@@ -5,15 +5,12 @@ This module provides utilities for creating and manipulating test packages
 to support comprehensive testing of the verify_package_integrity function.
 """
 
+import hashlib
 import json
-import os
+import logging
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Union
-import hashlib
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +19,7 @@ class TestPackageManager:
     """Manages creation and manipulation of test packages for integrity testing."""
 
     _temp_dir: Path = Path(tempfile.mkdtemp(prefix="oscal_integrity_test_"))
-    _created_packages: List[Path] = []
+    _created_packages: list[Path] = []
 
     def __enter__(self):
         """Context manager entry."""
@@ -38,7 +35,7 @@ class TestPackageManager:
         return self._temp_dir
 
     def create_test_package(
-        self, package_name: str, files: Dict[str, Union[str, bytes]]
+        self, package_name: str, files: dict[str, str | bytes]
     ) -> Path:
         """Create a test package with specified files and generate hash manifest.
 
@@ -52,7 +49,7 @@ class TestPackageManager:
         Requirements: 7.1, 7.6
         """
         if self._created_packages is None:
-            List[Path] = []
+            list[Path] = []
 
         package_dir = self._temp_dir / package_name
         package_dir.mkdir(parents=True, exist_ok=True)
@@ -153,7 +150,7 @@ class TestPackageManager:
         self,
         package_dir: Path,
         filename: str,
-        content: Union[str, bytes] = "orphaned content",
+        content: str | bytes = "orphaned content",
     ) -> None:
         """Add a file that's not in the hash manifest (orphaned file).
 
@@ -195,7 +192,7 @@ class TestPackageManager:
         else:
             raise ValueError(f"Unknown error type: {error_type}")
 
-    def get_valid_hash_manifest(self, package_dir: Path) -> Dict:
+    def get_valid_hash_manifest(self, package_dir: Path) -> dict:
         """Get the current valid hash manifest from a package.
 
         Args:
@@ -208,7 +205,7 @@ class TestPackageManager:
         if not manifest_path.exists():
             raise FileNotFoundError(f"Hash manifest not found at {manifest_path}")
 
-        with open(manifest_path, "r", encoding="utf-8") as f:
+        with open(manifest_path, encoding="utf-8") as f:
             return json.load(f)
 
     def compute_file_hash(self, file_path: Path) -> str:
@@ -233,7 +230,7 @@ class TestPackageManager:
         self._created_packages.clear()
 
 
-def create_sample_oscal_files() -> Dict[str, str]:
+def create_sample_oscal_files() -> dict[str, str]:
     """Create sample OSCAL-like files for testing.
 
     Returns:
@@ -273,7 +270,7 @@ def create_sample_oscal_files() -> Dict[str, str]:
     }
 
 
-def create_binary_test_files() -> Dict[str, bytes]:
+def create_binary_test_files() -> dict[str, bytes]:
     """Create sample binary files for testing.
 
     Returns:
@@ -382,7 +379,7 @@ def assert_hash_manifest_valid(package_dir: Path) -> None:
         raise AssertionError(f"Hash manifest not found at {manifest_path}")
 
     try:
-        with open(manifest_path, "r", encoding="utf-8") as f:
+        with open(manifest_path, encoding="utf-8") as f:
             manifest = json.load(f)
     except json.JSONDecodeError as e:
         raise AssertionError(f"Hash manifest is not valid JSON: {e}")
