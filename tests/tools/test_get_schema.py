@@ -3,7 +3,7 @@ Tests for the get_schema tool.
 """
 
 import json
-from unittest.mock import Mock, AsyncMock, mock_open, patch
+from unittest.mock import AsyncMock, Mock, mock_open, patch
 
 import pytest
 
@@ -160,7 +160,7 @@ class TestGetSchema:
             get_oscal_schema(mock_context, model_name="catalog", schema_type="invalid")
 
         # Verify error context call
-        mock_context.error.assert_called_once_with("Invalid schema type: invalid.")
+        mock_context.log.assert_called_once_with("error", "Invalid schema type: invalid.")
 
     # @pytest.mark.asyncio
     def test_get_schema_invalid_model_name(self, mock_context):
@@ -172,8 +172,8 @@ class TestGetSchema:
             )
 
         # Verify error context call
-        mock_context.error.assert_called_once()
-        error_call_args = mock_context.error.call_args[0][0]
+        mock_context.log.assert_called_once()
+        error_call_args = mock_context.log.call_args[0][1]
         assert "Invalid model: invalid-model" in error_call_args
         assert (
             "Use the tool list_oscal_models to get valid model names" in error_call_args
@@ -191,9 +191,7 @@ class TestGetSchema:
             get_oscal_schema(mock_context, model_name="catalog", schema_type="json")
 
         # Verify error handling
-        mock_context.error.assert_called_once()
-        error_call_args = mock_context.error.call_args[0][0]
-        assert "failed to open schema oscal_catalog_schema.json" in error_call_args
+        mock_context.log.assert_called_once_with("error", "failed to open schema oscal_catalog_schema.json")
 
     # @pytest.mark.asyncio
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
@@ -212,7 +210,10 @@ class TestGetSchema:
             get_oscal_schema(mock_context, model_name="catalog", schema_type="json")
 
         # Verify error handling
-        mock_context.error.assert_called_once()
+        # mock_context.error.assert_called_once()
+        mock_context.log.assert_called_once()
+        level = mock_context.log.call_args[0]
+        assert "error" in level
 
     # @pytest.mark.asyncio
     @patch("mcp_server_for_oscal.tools.get_schema.logger")
@@ -220,23 +221,22 @@ class TestGetSchema:
         """Test that appropriate logging occurs."""
         with patch(
             "mcp_server_for_oscal.tools.get_schema.open_schema_file"
-        ) as mock_open_schema_file:
-            with patch(
-                "mcp_server_for_oscal.tools.get_schema.json.load"
-            ) as mock_json_load:
-                mock_file = Mock()
-                mock_open_schema_file.return_value = mock_file
-                mock_json_load.return_value = {"test": "schema"}
+        ) as mock_open_schema_file, patch(
+            "mcp_server_for_oscal.tools.get_schema.json.load"
+        ) as mock_json_load:
+            mock_file = Mock()
+            mock_open_schema_file.return_value = mock_file
+            mock_json_load.return_value = {"test": "schema"}
 
-                # Execute test
-                get_oscal_schema(mock_context, model_name="catalog", schema_type="json")
+            # Execute test
+            get_oscal_schema(mock_context, model_name="catalog", schema_type="json")
 
-                # Verify logging
-                mock_logger.debug.assert_called_once()
-                debug_call_args = mock_logger.debug.call_args[0]
-                assert "get_oscal_model_schema" in debug_call_args[0]
-                assert "catalog" in debug_call_args[1]
-                assert "json" in debug_call_args[2]
+            # Verify logging
+            mock_logger.debug.assert_called_once()
+            debug_call_args = mock_logger.debug.call_args[0]
+            assert "get_oscal_model_schema" in debug_call_args[0]
+            assert "catalog" in debug_call_args[1]
+            assert "json" in debug_call_args[2]
 
     def test_open_schema_file_success(self):
         """Test successful schema file opening."""

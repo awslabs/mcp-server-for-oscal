@@ -5,7 +5,7 @@ Tests for the list_oscal_resources tool.
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -99,7 +99,7 @@ class TestListOscalResources:
     @patch("mcp_server_for_oscal.tools.list_oscal_resources.open")
     def test_list_oscal_resources_io_error(self, mock_open):
         """Test error handling for IO errors when reading the file."""
-        mock_open.side_effect = IOError("Permission denied")
+        mock_open.side_effect = OSError("Permission denied")
 
         ctx = AsyncMock()
         ctx.session.client_params = {}
@@ -160,23 +160,22 @@ class TestListOscalResources:
                 mock_path.return_value = mock_path_instance
 
                 # Mock the final path resolution
-                with patch("builtins.open", open):
-                    with patch(
-                        "mcp_server_for_oscal.tools.list_oscal_resources.Path"
-                    ) as mock_path2:
-                        mock_docs_path = Mock()
-                        mock_docs_path.__truediv__ = Mock(
-                            return_value=Path(temp_file_path)
-                        )
-                        mock_path2.return_value.parent.parent.__truediv__ = Mock(
-                            return_value=mock_docs_path
-                        )
+                with patch("builtins.open", open), patch(
+                    "mcp_server_for_oscal.tools.list_oscal_resources.Path"
+                ) as mock_path2:
+                    mock_docs_path = Mock()
+                    mock_docs_path.__truediv__ = Mock(
+                        return_value=Path(temp_file_path)
+                    )
+                    mock_path2.return_value.parent.parent.__truediv__ = Mock(
+                        return_value=mock_docs_path
+                    )
 
-                        # Direct test with the actual file
-                        with open(temp_file_path, "r", encoding="utf-8") as f:
-                            result = f.read()
+                    # Direct test with the actual file
+                    with open(temp_file_path, encoding="utf-8") as f:
+                        result = f.read()
 
-                        assert result == test_content
+                    assert result == test_content
         finally:
             os.unlink(temp_file_path)
 
@@ -198,15 +197,14 @@ class TestListOscalResources:
                 mock_path_instance.parent.parent = Mock()
 
                 # Mock the final path to point to our empty temp file
-                with patch("builtins.open", open):
-                    with patch(
-                        "mcp_server_for_oscal.tools.list_oscal_resources.logger"
-                    ) as mock_logger:
-                        # Direct file read test
-                        with open(temp_file_path, "r", encoding="utf-8") as f:
-                            content = f.read()
+                with patch("builtins.open", open), patch(
+                    "mcp_server_for_oscal.tools.list_oscal_resources.logger"
+                ) as mock_logger:
+                    # Direct file read test
+                    with open(temp_file_path, encoding="utf-8") as f:
+                        content = f.read()
 
-                        assert content == ""
+                    assert content == ""
         finally:
             os.unlink(temp_file_path)
 
@@ -230,7 +228,7 @@ class TestListOscalResources:
 
         try:
             # Test that the file can be read with fallback encoding
-            with open(temp_file_path, "r", encoding="latin-1", errors="replace") as f:
+            with open(temp_file_path, encoding="latin-1", errors="replace") as f:
                 content = f.read()
 
             assert "Test content" in content

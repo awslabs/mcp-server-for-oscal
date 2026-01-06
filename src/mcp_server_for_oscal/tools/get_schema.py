@@ -2,7 +2,6 @@
 Tool for retrieving OSCAL schemas.
 """
 
-import asyncio
 import json
 import logging
 from pathlib import Path
@@ -11,7 +10,11 @@ from typing import Any
 from mcp.server.fastmcp.server import Context
 from strands import tool
 
-from mcp_server_for_oscal.tools.utils import OSCALModelType, schema_names
+from mcp_server_for_oscal.tools.utils import (
+    OSCALModelType,
+    schema_names,
+    try_notify_client_error,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -42,14 +45,7 @@ def get_oscal_schema(
 
     if schema_type not in ["json", "xsd"]:
         msg = f"Invalid schema type: {schema_type}."
-        if ctx is not None:
-            try:
-                loop = asyncio.get_running_loop()
-                # Already in async context - can't use asyncio.run()
-                loop.run_until_complete(ctx.error(msg))
-            except RuntimeError:
-                # Not in async context - safe to use asyncio.run()
-                asyncio.run(ctx.error(msg))
+        try_notify_client_error(msg, ctx)
         raise ValueError(msg)
 
     if (
@@ -57,14 +53,7 @@ def get_oscal_schema(
         and model_name != "complete"
     ):
         msg = f"Invalid model: {model_name}. Use the tool list_oscal_models to get valid model names."
-        if ctx is not None:
-            try:
-                loop = asyncio.get_running_loop()
-                # Already in async context - can't use asyncio.run()
-                loop.run_until_complete(ctx.error(msg))
-            except RuntimeError:
-                # Not in async context - safe to use asyncio.run()
-                asyncio.run(ctx.error(msg))
+        try_notify_client_error(msg, ctx)
         raise ValueError(msg)
 
     schema_file_name = f"{schema_names.get(model_name)}.{schema_type}"
@@ -74,14 +63,7 @@ def get_oscal_schema(
     except Exception:
         msg = f"failed to open schema {schema_file_name}"
         logger.exception(msg)
-        if ctx is not None:
-            try:
-                loop = asyncio.get_running_loop()
-                # Already in async context - can't use asyncio.run()
-                loop.run_until_complete(ctx.error(msg))
-            except RuntimeError:
-                # Not in async context - safe to use asyncio.run()
-                asyncio.run(ctx.error(msg))
+        try_notify_client_error(msg, ctx)
         raise
 
     return json.dumps(schema)

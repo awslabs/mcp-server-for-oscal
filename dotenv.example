@@ -1,5 +1,7 @@
 # OSCAL MCP Server Environment Configuration
-# Copy this file to .env and set your actual values
+# To configure the MCP server in your local development environment, 
+# copy this file to .env and set appropriate values. See README.md
+# for runtime (non-dev) configuration instructions.
 
 # AWS Bedrock Configuration (can be overridden by command line arguments)
 # export BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-20250514-v1:0

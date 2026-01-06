@@ -4,7 +4,6 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mcp-server-for-oscal"
-# version = "0.1.0"
 dynamic = ["version"]
 readme = "README.md"
 dependencies = [
@@ -95,24 +94,26 @@ directory = "./build"
 [tool.hatch.env]
 python = "3.12"
 
-# [tool.hatch.envs.test]
-# python = "3.12"
-# dependencies = ["pytest", "mypy", "boto3-stubs", ]
-
 [tool.hatch.envs.default.scripts]
 # These are scripts you can run using `hatch run <script-name>`
+
 typing = [
+  # Type checking using mypy
   "mkdir -p .mypy_cache",
   "mypy --install-types --non-interactive src/mcp_server_for_oscal tests",
 ]
 
 
 update = [
+  # Update project dependencies in this file, then compile to requirements.txt
+  # to ensure deterministic/reproducible builds.
   "uv pip install -U -r pyproject.toml",
   "uv pip compile pyproject.toml -o requirements.txt",
 ]
 
 bandito = [
+  # Run bandit security scanner against src, then tests. This cannot be 
+  # named `bandit` because it creates a circular reference that hatch can't resolve.
   "mkdir -p private/docs/bandit",
   "bandit -r src/mcp_server_for_oscal -f screen | tee private/docs/bandit/src.txt",
   "bandit -s B101 -r tests -f screen | tee private/docs/bandit/tests.txt",
@@ -132,6 +133,7 @@ release = [
 ]
 
 rehash = [
+  # Regenerate hash files for bundled content
   "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_schemas",
   "git add src/mcp_server_for_oscal/oscal_schemas/hashes.json",
   "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_docs",
@@ -142,11 +144,13 @@ rehash = [
 # Updates contents of `src/mcp_server_for_oscal/oscal_schemas`, overwriting existing files
 update-oscal-schemas = ["bin/update-oscal-schemas.sh"]
 # TODO: monitor Awesome OSCAL GitHub project for changes and trigger PRs in our project
+# https://github.com/awslabs/mcp-server-for-oscal/issues/20
 update-awesome-oscal = [
   '''curl -L -o src/mcp_server_for_oscal/oscal_docs/awesome-oscal.md \
   https://raw.githubusercontent.com/oscal-club/awesome-oscal/refs/heads/main/README.md''',
 ]
 
+# Start the MCP server for remote testing/development
 http-server = ["python -m mcp_server_for_oscal.main --transport streamable-http"]
 
 [tool.hatch.envs.hatch-test.scripts]

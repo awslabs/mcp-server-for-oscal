@@ -1,5 +1,4 @@
 # Developing MCP Server for OSCAL
-# TODO: REPLACE ALL REFS TO INTERAL TOOLCHAIN
 
 
 ### Install from Source
@@ -10,9 +9,13 @@ git clone https://github.com/awslabs/mcp-server-for-oscal.git
 cd mcp-server-for-oscal
 ```
 
-2. Install the package:
+2. [Install Hatch](https://hatch.pypa.io/latest/install/). (e.g., `pipx install hatch`)
+
+3. [Install uv](https://docs.astral.sh/uv/getting-started/installation/) (e.g., `pipx install uv`)
+
+4. Setup the default environment and install project in dev mode
 ```bash
-pip install -e .
+hatch env create
 ```
 
 ## Configuration
@@ -21,26 +24,9 @@ The server can be configured through environment variables or command-line argum
 
 ### Environment Variables
 
-Create a `.env` file or set these environment variables:
-
-```bash
-# Optional: AWS Profile for Bedrock access
-AWS_PROFILE=your-aws-profile
-
-# Optional: AWS Region 
-AWS_REGION=us-west-2
-
-# Optional: Bedrock Model ID (defaults to Claude Sonnet)
-BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-20250514-v1:0
-
-# Optional: Knowledge Base ID for OSCAL documentation queries
-OSCAL_KB_ID=your-knowledge-base-id
-
-# Optional: Logging level
-LOG_LEVEL=INFO
-
-# Optional: Server name
-OSCAL_MCP_SERVER_NAME="OSCAL MCP Server"
+Create a `.env` file from the template and set the relevant values:
+```
+cp dotenv.example .env
 ```
 
 ### AWS Setup
@@ -58,11 +44,8 @@ To use the documentation query feature, you need:
 Start the MCP server:
 
 ```bash
-# Using the installed package
-python -m mcp_server_for_oscal.main
-
 # Or using hatch (for development)
-hatch run server
+hatch run http-server
 
 # With custom configuration
 python -m mcp_server_for_oscal.main --aws-profile myprofile --log-level DEBUG
@@ -83,8 +66,6 @@ Available options:
 ### Setup Development Environment
 
 ```bash
-# Install development dependencies
-pip install -e ".[dev]"
 
 # Or using hatch
 hatch shell
@@ -93,15 +74,8 @@ hatch shell
 ### Running Tests
 
 ```bash
-# Run tests
-pytest
-
-# Or using hatch
-hatch test
-
-# Run with coverage
-hatch run test:run-cov
-hatch run test:cov-report
+# Run full test suite (invokes type checking, security scan, pytest, code coverage, etc.)
+hatch run tests
 ```
 
 ### Code Quality
@@ -110,7 +84,7 @@ hatch run test:cov-report
 # Type checking
 hatch run typing
 
-# Linting and formatting
+# Opinionated linting and formatting using Ruff
 hatch fmt
 ```
 
@@ -142,7 +116,7 @@ mcp-server-for-oscal/
 
 ## Build system (Hatch)
 
-This uses the [hatch](https://hatch.pypa.io/latest/) build system and running
+This uses the [hatch](https://hatch.pypa.io/latest/) build system.
 
 A number of scripts and commands exist in `pyproject.toml` under the `scripts`
 configurations with more documentation in the comments of `pyproject.toml`.

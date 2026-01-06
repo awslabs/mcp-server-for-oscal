@@ -2,10 +2,9 @@
 Tool for listing OSCAL community resources.
 """
 
-import logging
 import asyncio
+import logging
 from pathlib import Path
-from typing import Any
 
 from mcp.server.fastmcp.server import Context
 from strands import tool
@@ -95,7 +94,7 @@ def read_resources_file() -> str:
 
     try:
         # Read with explicit UTF-8 encoding and error handling
-        with open(resources_file_path, "r", encoding="utf-8", errors="strict") as file:
+        with open(resources_file_path, encoding="utf-8", errors="strict") as file:
             content = file.read()
 
         if not content.strip():
@@ -110,7 +109,7 @@ def read_resources_file() -> str:
         # Try with different encoding as fallback
         try:
             with open(
-                resources_file_path, "r", encoding="latin-1", errors="replace"
+                resources_file_path, encoding="latin-1", errors="replace"
             ) as file:
                 content = file.read()
             logger.warning("Successfully read file with latin-1 encoding fallback")
@@ -118,6 +117,6 @@ def read_resources_file() -> str:
         except Exception as fallback_error:
             logger.error("Fallback encoding also failed: %s", fallback_error)
             raise e  # Raise the original UnicodeDecodeError
-    except (IOError, OSError) as e:
+    except OSError as e:
         logger.error("IO error reading file %s: %s", resources_file_path, e)
         raise
