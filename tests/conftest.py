@@ -29,7 +29,6 @@ def mock_config():
     config.log_level = "INFO"
     config.server_name = "OSCAL MCP Server"
     config.update_from_args = Mock()
-    # config.validate = Mock()
     return config
 
 

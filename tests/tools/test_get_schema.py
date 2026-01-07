@@ -41,7 +41,7 @@ class TestGetSchema:
             },
         }
 
-    # @pytest.mark.asyncio
+
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     @patch("mcp_server_for_oscal.tools.get_schema.json.load")
     def test_get_schema_success_default_params(
@@ -62,7 +62,7 @@ class TestGetSchema:
         mock_open_schema_file.assert_called_once_with("oscal_complete_schema.json")
         mock_json_load.assert_called_once_with(mock_file)
 
-    # @pytest.mark.asyncio
+
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     @patch("mcp_server_for_oscal.tools.get_schema.json.load")
     def test_get_schema_success_catalog_model(
@@ -84,7 +84,7 @@ class TestGetSchema:
         assert result == expected_json
         mock_open_schema_file.assert_called_once_with("oscal_catalog_schema.json")
 
-    # @pytest.mark.asyncio
+
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     @patch("mcp_server_for_oscal.tools.get_schema.json.load")
     def test_get_schema_success_ssp_model(
@@ -106,7 +106,7 @@ class TestGetSchema:
         assert result == expected_json
         mock_open_schema_file.assert_called_once_with("oscal_ssp_schema.json")
 
-    # @pytest.mark.asyncio
+
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     @patch("mcp_server_for_oscal.tools.get_schema.json.load")
     def test_get_schema_success_poam_model(
@@ -128,7 +128,7 @@ class TestGetSchema:
         assert result == expected_json
         mock_open_schema_file.assert_called_once_with("oscal_poam_schema.json")
 
-    # @pytest.mark.asyncio
+
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     def test_get_schema_success_xsd_schema(self, mock_open_schema_file, mock_context):
         """Test successful XSD schema retrieval."""
@@ -152,7 +152,7 @@ class TestGetSchema:
             assert result == expected_json
             mock_open_schema_file.assert_called_once_with("oscal_catalog_schema.xsd")
 
-    # @pytest.mark.asyncio
+
     def test_get_schema_invalid_schema_type(self, mock_context):
         """Test error handling for invalid schema type."""
         # Execute test and verify exception
@@ -162,7 +162,7 @@ class TestGetSchema:
         # Verify error context call
         mock_context.log.assert_called_once_with("error", "Invalid schema type: invalid.")
 
-    # @pytest.mark.asyncio
+
     def test_get_schema_invalid_model_name(self, mock_context):
         """Test error handling for invalid model name."""
         # Execute test and verify exception
@@ -179,7 +179,7 @@ class TestGetSchema:
             "Use the tool list_oscal_models to get valid model names" in error_call_args
         )
 
-    # @pytest.mark.asyncio
+
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     def test_get_schema_file_not_found(self, mock_open_schema_file, mock_context):
         """Test error handling when schema file is not found."""
@@ -193,7 +193,7 @@ class TestGetSchema:
         # Verify error handling
         mock_context.log.assert_called_once_with("error", "failed to open schema oscal_catalog_schema.json")
 
-    # @pytest.mark.asyncio
+
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     @patch("mcp_server_for_oscal.tools.get_schema.json.load")
     def test_get_schema_json_parse_error(
@@ -215,7 +215,7 @@ class TestGetSchema:
         level = mock_context.log.call_args[0]
         assert "error" in level
 
-    # @pytest.mark.asyncio
+
     @patch("mcp_server_for_oscal.tools.get_schema.logger")
     def test_get_schema_logging(self, mock_logger, mock_context):
         """Test that appropriate logging occurs."""
@@ -278,7 +278,7 @@ class TestGetSchema:
             with pytest.raises(FileNotFoundError):
                 open_schema_file("nonexistent.json")
 
-    # @pytest.mark.asyncio
+
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     @patch("mcp_server_for_oscal.tools.get_schema.json.load")
     def test_get_schema_all_valid_models(

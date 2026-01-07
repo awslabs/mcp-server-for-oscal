@@ -14,9 +14,31 @@ dependencies = [
 ]
 requires-python = ">=3.11"
 description = "AI agent tools for Open Security Controls Assessment Language (OSCAL)."
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+keywords = [
+  "OSCAL",
+  "compliance-as-code",
+  "security-as-code",
+  "compliance-automation",
+  "continuous-compliance",
+  "security-assurance",
+  "mcp-server",
+  "strands-agents",
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+
 [project.scripts]
 server = "mcp_server_for_oscal.main:main"
 
+[project.urls]
+GitHub = "https://github.com/awslabs/mcp-server-for-oscal/"
+PyPI = "https://pypi.org/project/mcp-server-for-oscal/"
 
 [tool.hatch.version]
 source = "vcs"
@@ -33,21 +55,12 @@ version-file = "_version.py"
 # when running any scripts or tools to do things like debug test failures
 # or do general development. 
 python = "3.12"
-dependencies = [
-  "pytest",
-  "mypy",
-  "boto3-stubs",
-  "bandit",
-  "pytest-asyncio",
-]
+dependencies = ["pytest", "mypy", "boto3-stubs", "bandit", "pytest-asyncio"]
 
 [tool.pytest.ini_options]
 addopts = ["--durations=5", "--color=yes"]
 testpaths = ["tests"]
-filterwarnings = [
-    # filtering this because it's strands internal, not explicitly imported in our code
-    "ignore::DeprecationWarning:strands.experimental.hooks:3",
-]
+filterwarnings = []
 
 
 [tool.coverage.run]
@@ -115,18 +128,14 @@ bandito = [
   # Run bandit security scanner against src, then tests. This cannot be 
   # named `bandit` because it creates a circular reference that hatch can't resolve.
   "mkdir -p private/docs/bandit",
-  "bandit -r src/mcp_server_for_oscal -f screen | tee private/docs/bandit/src.txt",
-  "bandit -s B101 -r tests -f screen | tee private/docs/bandit/tests.txt",
+  "bandit -r src/mcp_server_for_oscal | tee private/docs/bandit/src.txt",
+  "bandit -s B101 -r tests | tee private/docs/bandit/tests.txt",
 ]
 
-tests = [
-  "typing",
-  "hatch test --all --cover",
-  "hatch run bandito",
-]
+tests = ["typing", "hatch test --all --cover", "hatch run bandito"]
 
 release = [
-  "typing",  
+  "typing",
   "hatch run bandito",
   "hatch test --all --cover --junitxml private/docs/pytest.xml",
   "hatch build",
@@ -151,7 +160,9 @@ update-awesome-oscal = [
 ]
 
 # Start the MCP server for remote testing/development
-http-server = ["python -m mcp_server_for_oscal.main --transport streamable-http"]
+http-server = [
+  "python -m mcp_server_for_oscal.main --transport streamable-http",
+]
 
 [tool.hatch.envs.hatch-test.scripts]
 run = "pytest{env:HATCH_TEST_ARGS:} {args}"

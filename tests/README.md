@@ -7,6 +7,7 @@ This directory contains a comprehensive functional test suite for the OSCAL MCP 
 The test suite provides thorough coverage of all major components of the OSCAL MCP Server:
 
 - **Configuration management** (`test_config.py`)
+- **File integrity checking** (`test_file_integrity*.py`)
 - **MCP tools** (`tools/test_*.py`)
 - **Main application logic** (`test_main.py`)
 - **Utility functions** (`test_utils.py`)
@@ -16,29 +17,35 @@ The test suite provides thorough coverage of all major components of the OSCAL M
 
 ```
 tests/
-├── conftest.py              # Pytest configuration and shared fixtures
-├── test_config.py           # Configuration module tests
-├── test_main.py             # Main application tests
-├── test_utils.py            # Utility function tests
-├── test_integration.py      # Integration tests
-├── tools/                   # Tool-specific tests
+├── conftest.py                        # Pytest configuration and shared fixtures
+├── test_config.py                     # Configuration module tests
+├── test_file_integrity.py             # File integrity checking unit tests
+├── test_file_integrity_integration.py # File integrity integration tests
+├── test_file_integrity_utils.py       # File integrity test utilities
+├── test_main.py                       # Main application tests
+├── test_utils.py                      # Utility function tests
+├── test_integration.py                # Integration tests
+├── tools/                             # Tool-specific tests
 │   ├── __init__.py
-│   ├── test_query_documentation.py
 │   ├── test_get_schema.py
-│   └── test_list_models.py
-└── README.md               # This file
+│   ├── test_list_models.py
+│   ├── test_list_oscal_resources.py
+│   └── test_query_documentation.py
+└── README.md                         # This file
 ```
 
 ## Test Categories
 
 ### Unit Tests
 - **Configuration Tests**: Environment variable loading, validation, argument parsing
+- **File Integrity Tests**: Package integrity validation, hash verification, corruption detection
 - **Tool Tests**: Individual MCP tool functionality with mocked dependencies
 - **Utility Tests**: OSCAL model type enumerations and helper functions
 - **Main Module Tests**: CLI argument parsing, logging setup, server initialization
 
 ### Integration Tests
 - **MCP Server Integration**: Tool registration, schema validation, server setup
+- **File Integrity Integration**: Server startup behavior with integrity checking
 - **End-to-End Workflows**: Complete tool execution paths
 - **Error Handling**: Cross-component error propagation and handling
 
@@ -57,12 +64,24 @@ tests/
 ### Test Markers
 - `@pytest.mark.unit`: Unit tests (automatically applied)
 - `@pytest.mark.integration`: Integration tests (automatically applied)
-- `@pytest.mark.asyncio`: Async tests (automatically detected)
 - `@pytest.mark.slow`: Long-running tests
 
 ## Running Tests
 
-### Basic Test Execution
+### Using Hatch (Recommended)
+```bash
+# Run full test suite with coverage and security scanning
+hatch run tests
+
+# Run only the test execution (without type checking and security scanning)
+hatch test --all --cover
+
+# Run tests for specific Python version
+hatch test --python 3.11
+hatch test --python 3.12
+```
+
+### Using Pytest Directly
 ```bash
 # Run all tests
 python -m pytest tests/
@@ -73,25 +92,45 @@ python -m pytest tests/ -v
 # Run specific test categories
 python -m pytest tests/ -m unit
 python -m pytest tests/ -m integration
+
+# Run specific test files
+python -m pytest tests/test_file_integrity.py
+python -m pytest tests/tools/
 ```
 
 ### Coverage Analysis
 ```bash
-# Run tests with coverage
-python -m pytest tests/ --cov=mcp_server_for_oscal
+# Run tests with coverage (using hatch)
+hatch test --all --cover
 
-# Generate HTML coverage report
-python -m pytest tests/ --cov=mcp_server_for_oscal --cov-report=html
+# View coverage reports
+# HTML: private/docs/coverage/index.html
+# XML: private/docs/coverage/coverage.xml
 ```
 
-### Parallel Execution
+### Security Scanning
 ```bash
-# Run tests in parallel (requires pytest-xdist)
-python -m pytest tests/ -n auto
+# Run security analysis (using hatch)
+hatch run bandito
+
+# Run bandit directly
+bandit -r src/mcp_server_for_oscal
+bandit -s B101 -r tests  # Skip assert_used (B101) for tests
 ```
+
+### Type Checking
+```bash
+# Run type checking (using hatch)
+hatch run typing
+
+# Run mypy directly
+mypy --install-types --non-interactive src/mcp_server_for_oscal tests
+```
+
+## Test Statistics
+Test artifacts are written to `private/docs`.
 
 ## Test Configuration
-
 ### Environment Variables
 Tests automatically handle environment variable isolation using the `clean_environment` fixture. The following variables are managed:
 
@@ -99,10 +138,17 @@ Tests automatically handle environment variable isolation using the `clean_envir
 - `AWS_PROFILE`, `AWS_REGION`
 - `LOG_LEVEL`, `OSCAL_MCP_SERVER_NAME`
 
-### Async Test Support
-Async tests are automatically detected and marked with `@pytest.mark.asyncio`. The pytest-asyncio plugin handles async test execution.
+### Pytest Configuration
+The test suite is configured via `pyproject.toml`:
+- Test discovery: `testpaths = ["tests"]`
+- Execution options: `--durations=5 --color=yes`
+- Coverage tracking: Source package and branch coverage enabled
+- Multi-environment testing: Python 3.11 and 3.12 via hatch matrix
 
-## Test Data and Fixtures
+### Async Test Support
+The pytest-asyncio plugin handles async test execution.
+
+### Test Data and Fixtures
 
 ### Shared Fixtures (`conftest.py`)
 - `mock_context`: MCP context mock
@@ -112,6 +158,12 @@ Async tests are automatically detected and marked with `@pytest.mark.asyncio`. T
 - `sample_xsd_schema`: OSCAL XSD schema content
 - `clean_environment`: Isolated environment variables
 
+### File Integrity Test Utilities (`test_file_integrity_utils.py`)
+- `TestPackageManager`: Context manager for creating and managing test packages
+- Package creation utilities: `create_sample_oscal_files`, `create_binary_test_files`
+- Integrity validation helpers: `assert_integrity_passes`, `assert_integrity_fails`
+- Hash manifest utilities: `assert_hash_manifest_valid`
+
 ### Tool-Specific Fixtures
 Each tool test module includes specialized fixtures for that tool's requirements.
 
@@ -119,16 +171,22 @@ Each tool test module includes specialized fixtures for that tool's requirements
 
 ### External Dependencies
 - **AWS Boto3**: Session and client mocking with realistic responses
-- **File System**: Schema file access mocking
+- **File System**: Schema file access mocking and temporary directory management
 - **Logging**: Logger configuration and output capture
 - **MCP Framework**: Context and server mocking
+
+### File Integrity Testing
+- **Package Creation**: Temporary test packages with controlled content
+- **Hash Manipulation**: Controlled corruption of hash manifests and files
+- **Server Integration**: Mocked server startup with integrity checking
 
 ### Error Simulation
 Tests include comprehensive error scenarios:
 - AWS service errors (credentials, permissions, resource not found)
-- File system errors (missing files, permission issues)
+- File system errors (missing files, permission issues, corruption)
 - Configuration errors (missing required values, invalid formats)
 - Network errors (connection failures, timeouts)
+- Package integrity violations (missing files, hash mismatches, corrupted manifests)
 
 ## Test Patterns
 
@@ -146,13 +204,15 @@ def test_tool_success(mock_session, mock_context):
     assert result == expected_result
 ```
 
-### Async Tool Testing
+### File Integrity Testing
 ```python
-@pytest.mark.asyncio
-async def test_async_tool(mock_context):
-    """Test async tool functionality."""
-    result = await async_tool_function(mock_context)
-    assert result is not None
+def test_integrity_with_corrupted_file():
+    """Test integrity checking with file corruption."""
+    with TestPackageManager() as manager:
+        package_dir = manager.create_test_package()
+        manager.corrupt_file(package_dir / "file.json")
+        
+        assert_integrity_fails(package_dir, "Hash mismatch")
 ```
 
 ## Error Handling Tests
@@ -169,13 +229,15 @@ def test_aws_error_handling(mock_session, mock_context):
     mock_context.error.assert_called_once()
 ```
 
-### Configuration Validation
+### Package Integrity Validation
 ```python
-def test_config_validation_failure():
-    """Test configuration validation with missing required values."""
-    config = Config()
-    with pytest.raises(ValueError, match="required"):
-        config.validate()
+def test_package_integrity_failure():
+    """Test handling of package integrity failures."""
+    with TestPackageManager() as manager:
+        corrupted_package = manager.create_corrupted_package()
+        
+        with pytest.raises(SystemExit):
+            verify_package_integrity(corrupted_package)
 ```
 
 ## Best Practices
@@ -227,8 +289,11 @@ When adding new tests:
 
 The test suite requires:
 - `pytest`: Test framework
-- `pytest-asyncio`: Async test support
+- `pytest-asyncio`: Async test support  
 - `unittest.mock`: Mocking framework (built-in)
-- Package dependencies: `boto3`, `mcp`, etc.
+- `mypy`: Type checking
+- `bandit`: Security scanning
+- `boto3-stubs`: Type stubs for AWS SDK
+- Package dependencies: `boto3`, `mcp`, `strands-agents`
 
-All test dependencies are managed through the project's `pyproject.toml` configuration.
+All test dependencies are managed through the project's `pyproject.toml` configuration and hatch environments.

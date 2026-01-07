@@ -17,7 +17,10 @@
 Instant OSCAL expertise for your favorite AI agent
 </strong>
 
-A Model Context Protocol (MCP) server that provides AI assistants (Claude, Cline, Kiro, Claude Code, etc.) with tools to work with NIST's Open Security Controls Assessment Language (OSCAL). Like many early adopters, we needed help implementing OSCAL proofs-of-concept to demonstrate value to business stakeholders. Perhaps due to limited availability of examples in the public domain, we found that most AI agents/LLMs alone produced inconsistent results related to OSCAL. The tools in this MCP server minimzed that problem for our use-case and we hope they do the same for you. To get started, see [Installation](#installation) below.
+A Model Context Protocol (MCP) server that provides AI assistants (Claude, Cline, Kiro, Claude Code, etc.) with tools to work with NIST's Open Security Controls Assessment Language (OSCAL). Like many early adopters, we needed help implementing OSCAL proofs-of-concept to demonstrate value to business stakeholders. Perhaps due to limited availability of examples in the public domain, we found that most AI agents/LLMs alone produced inconsistent results related to OSCAL. The tools in this MCP server minimzed that problem for our use-case and we hope they do the same for you. 
+
+> [!TIP]
+> To get started, see [Installation](#installation) below.
 
 ## What is OSCAL?
 
@@ -29,7 +32,7 @@ This MCP server provides a set of [tools](src/mcp_server_for_oscal/tools/) for w
 ## Examples
 Examples below were created with kiro-cli, but should work with any AI assistant that supports MCP servers.
 
-### Example 1: available OSCAL models
+### Example 1: Learn about available OSCAL models
 ```
  % kiro-cli
 
@@ -67,7 +70,7 @@ All of these models have "GA" (Generally Available) status, meaning they are sta
  ▸ Time: 8s
 ```
 
-### Example 2: template generation
+### Example 2: OSCAL template generation
 ```
 > generate a minimum, valid, OSCAL mapping in JSON for use as a template.
 
@@ -166,7 +169,7 @@ You can customize this template by:
 
 ```
 
-### Example 3: open source OSCAL catalogs
+### Example 3: Discover open source OSCAL catalogs
 ```
 > What are some open source OSCAL catalogs?
 
@@ -223,8 +226,13 @@ These catalogs provide ready-to-use OSCAL content for various compliance framewo
  ▸ Time: 15s
  ```
 
+
 ## Installation
-If you just want to use the MCP server with your IDE or preferred AI tool, then you don't need to clone the project or download source code. 
+Follow these instructions to setup the MCP server for use with your IDE or preferred AI tool. 
+
+> [!NOTE] 
+> To setup for development instead, see [DEVELOPING.md](DEVELOPING.md)
+
 ### Prerequisites
 
 - `uv` package manager for Python ([Installation instructions](https://docs.astral.sh/uv/getting-started/installation/))
@@ -251,9 +259,13 @@ Most MCP-compatible tools use a JSON configuration format described in the [Fast
 }
 ```
 
-#### IDE-Specific Configuration
+ For typical, runtime use of the MCP server, additional configuration should not be required. If needed, runtime environment variables can be configured in the `"env": {}` object (shown above, empty) as described in the [FastMCP documentation](https://gofastmcp.com/integrations/mcp-json-configuration#env-optional). See the file [dotenv.example](dotenv.example) for available options. 
 
-**Kiro IDE**
+> [!Note]
+> A dotenv file is only needed in a development environment. 
+
+#### Kiro Configuration
+
 See [Kiro's MCP documentation](https://kiro.dev/docs/mcp/configuration/) for additional options. Add to your `.kiro/settings/mcp.json`:
 
 ```json
@@ -275,7 +287,7 @@ See [Kiro's MCP documentation](https://kiro.dev/docs/mcp/configuration/) for add
 }
 ```
 
-**Claude Desktop**
+#### Claude Desktop
 Add to your `~/.claude/claude_desktop_config.json`:
 
 ```json
@@ -289,7 +301,7 @@ Add to your `~/.claude/claude_desktop_config.json`:
 }
 ```
 
-**VS Code**
+#### VS Code
 Run the `MCP: Open User Configuration` command, which opens the mcp.json file in your user profile. You can then manually add the server configuration to the file. See the [VSCode/Copilot docs](https://code.visualstudio.com/docs/copilot/customization/mcp-servers#_add-an-mcp-server) for addtional options and details.
 
 ```json
@@ -302,9 +314,6 @@ Run the `MCP: Open User Configuration` command, which opens the mcp.json file in
   ]
 }
 ```
-
-#### Environment Variables
-Generally, configuration should not be required. See the file [dotenv.example](dotenv.example) for available options. Note that a dotenv file is only needed in a development environment. For typical, runtime use of the MCP server, environment variables should be configured as described in the [FastMCP documentation](https://gofastmcp.com/integrations/mcp-json-configuration#env-optional).
 
 ## Development
 See [DEVELOPING](DEVELOPING.md) to get started.
