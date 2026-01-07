@@ -47,7 +47,7 @@ idna==3.11
     # via
     #   anyio
     #   httpx
-importlib-metadata==8.7.0
+importlib-metadata==8.7.1
     # via opentelemetry-api
 jmespath==1.0.1
     # via
