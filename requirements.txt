@@ -139,7 +139,7 @@ typing-inspection==0.4.2
     #   pydantic-settings
 urllib3==2.6.2
     # via botocore
-uvicorn==0.38.0
+uvicorn==0.40.0
     # via mcp
 watchdog==6.0.0
     # via strands-agents
