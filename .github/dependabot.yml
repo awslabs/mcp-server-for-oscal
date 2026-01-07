@@ -9,3 +9,16 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 3
+      semver-major-days: 30
+    groups:
+      minor-updates:
+        update-types: ["minor", "patch"]
+      major-updates-prod:
+        update-types: ["major"]
+        dependency-type: "production"
+      major-updates-dev:
+        update-types: ["major"]
+        dependency-type: "development"        
+      
