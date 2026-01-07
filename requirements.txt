@@ -12,7 +12,7 @@ attrs==25.4.0
     # via
     #   jsonschema
     #   referencing
-boto3==1.42.7
+boto3==1.42.23
     # via
     #   mcp-server-for-oscal (pyproject.toml)
     #   strands-agents
