@@ -2,34 +2,46 @@
 
 ![Build Status](https://github.com/awslabs/mcp-server-for-oscal/workflows/CI/badge.svg)
 ![Version](https://img.shields.io/github/v/release/awslabs/mcp-server-for-oscal)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/mcp-server-for-oscal)
 [![PyPI][pypi-badge]][pypi-url]
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/mcp-server-for-oscal)][pypi-url]
 [![OSCAL](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fraw.githubusercontent.com%2Fawslabs%2Fmcp-server-for-oscal%2Frefs%2Fheads%2Fmain%2Fbin%2Fupdate-oscal-schemas.sh&search=CURRENT_RELEASE_VERSION%3D%22(%5Cd.%5Cd.%5Cd)%22&replace=%241&label=OSCAL)][nist-oscal-url]
 ![GitHub License](https://img.shields.io/github/license/awslabs/mcp-server-for-oscal)
+
 </div>
 
 [pypi-badge]: https://img.shields.io/pypi/v/mcp-server-for-oscal.svg
 [pypi-url]: https://pypi.org/project/mcp-server-for-oscal/
-[oscal-badge]: https://img.shields.io/badge/OSCAL-1.2.0-blue
 [nist-oscal-url]: https://pages.nist.gov/OSCAL/
+[mcp-spec-url]: https://modelcontextprotocol.io/docs/getting-started/intro
+[issues-url]: https://github.com/awslabs/mcp-server-for-oscal/issues/
+[new-issue-url]: https://github.com/awslabs/mcp-server-for-oscal/issues/new
+
 # MCP Server for OSCAL
 <strong>
 Instant OSCAL expertise for your favorite AI agent
 </strong>
 
-A Model Context Protocol (MCP) server that provides AI assistants (Claude, Cline, Kiro, Claude Code, etc.) with tools to work with NIST's Open Security Controls Assessment Language (OSCAL). Like many early adopters, we needed help implementing OSCAL proofs-of-concept to demonstrate value to business stakeholders. Perhaps due to limited availability of examples in the public domain, we found that most AI agents/LLMs alone produced inconsistent results related to OSCAL. The tools in this MCP server minimzed that problem for our use-case and we hope they do the same for you. 
+A Model Context Protocol (MCP) server that provides AI assistants (Claude, Cline, Kiro, Claude Code, etc.) with tools to work with NIST's Open Security Controls Assessment Language (OSCAL). Like many early adopters, we needed help implementing OSCAL proofs-of-concept to demonstrate value to business stakeholders. Perhaps due to limited availability of examples in the public domain, we found that most AI agents/LLMs alone produced inconsistent results related to OSCAL. The tools in this MCP server minimized that problem for our use-case and we hope it does the same for you. 
 
 > [!TIP]
 > To get started, see [Installation](#installation) below.
 
+## Features
+This MCP server provides a set of tools for working with OSCAL. Together, the tools are meant to enable your preferred AI assitant to provide accurate, authoritative gudiance about OSCAL architecture, models, use-cases, requirements, and implementation. You don't need to understand the tools to use them, but details are in the [tools](src/mcp_server_for_oscal/tools/) directory. 
+
+The server is lightwieght and meant to run locally without additional setup. The default tools should not connect to any remote services or resources. By default, the server runs `stdio` protocol for MCP transport. Do not attempt to run the server with `streamble-http` transport, as we've not yet implemented transport security or authentication. 
+
+Existing tools cover a variety of use-cases but are _far from_ comprehensive. Please share your feedback, feature requests, questions, or bug reports in a [GitHub issue][new-issue-url]. Direct [contributions](CONTRIBUTING.md) are wanted and welcome. 
+
 ## What is OSCAL?
 
-[OSCAL (Open Security Controls Assessment Language)][nist-oscal-url] is a set of framework-agnostic, vendor-neutral, machine-readable schemas developed by NIST that describe the full life cycle of GRC (governance, risk, compliance) artifacts, from controls to remediation plans. OSCAL enables automation of GRC workflows by replacing digital paper (spreadsheets, PDFs, etc.) with a standard-based structured data format.
-## Features
+OSCAL (Open Security Controls Assessment Language) is a set of framework-agnostic, vendor-neutral, machine-readable schemas developed by NIST that describe the full life cycle of GRC (governance, risk, compliance) artifacts, from controls to remediation plans. OSCAL enables automation of GRC workflows by replacing digital paper (spreadsheets, PDFs, etc.) with a standard-based structured data format. To learn more about OSCAL, [install this MCP server](#installation) then ask your AI. Or see the [official OSCAL website][nist-oscal-url].
 
-This MCP server provides a set of [tools](src/mcp_server_for_oscal/tools/) for working with OSCAL. Together, the tools are meant to enable your preferred AI assitant to provide accurate, authoritative gudiance about OSCAL architecture, models, use-cases, requirements, and implementation.
+## What is MCP?
+MCP (Model Context Protocol) is an [open-source standard][mcp-spec-url] for connecting AI applications to external systems. Think of MCP like a USB-C port for AI applications. Just as USB-C provides a standardized way to connect electronic devices, MCP provides a standardized way to connect AI applications to external systems. 
 
-## Examples
+## How to use / Examples
 Examples below were created with kiro-cli, but should work with any AI assistant that supports MCP servers.
 
 ### Example 1: Learn about available OSCAL models
@@ -228,7 +240,7 @@ These catalogs provide ready-to-use OSCAL content for various compliance framewo
 
 
 ## Installation
-Follow these instructions to setup the MCP server for use with your IDE or preferred AI tool. 
+Follow these instructions to setup the MCP server for use with your preferred IDE, AI agent, chatbot, etc. The server is published as Python package on PyPI. The `uvx` command (shown below) automatically downloads the latest version of the server from PyPI on startup. 
 
 > [!NOTE] 
 > To setup for development instead, see [DEVELOPING.md](DEVELOPING.md)
@@ -236,11 +248,11 @@ Follow these instructions to setup the MCP server for use with your IDE or prefe
 ### Prerequisites
 
 - `uv` package manager for Python ([Installation instructions](https://docs.astral.sh/uv/getting-started/installation/))
-- Python 3.11 or higher ([`uv install python 3.12`](https://docs.astral.sh/uv/guides/install-python/)). The server may work with other versions of Python, but we only test 3.11 & 3.12 for now.
+- Python 3.11 or higher ([`uv install python 3.12`](https://docs.astral.sh/uv/guides/install-python/)). The server may work with later versions of Python, but we only test 3.11 & 3.12 for now.
 
 ### Configuring IDEs and AI Tools
 
-This MCP server communicates via stdio (standard input/output) and can be integrated with various IDEs and agentic tools that support the Model Context Protocol.
+This server communicates via stdio (standard input/output) and can be integrated with various IDEs and agentic tools that support the Model Context Protocol. The configuration examples shown below are for your preferred IDE / chatbot / agent.
 
 #### Configuration Format
 
