@@ -1,22 +1,80 @@
 #!/usr/bin/env python3
-import subprocess
-import json
+"""
+File Integrity Hash Generation Script
+
+This script captures the current state of files in a directory by generating SHA-256 hashes
+and recording the current Git commit hash. It creates a hashes.json file that can be used
+later to verify file integrity using the verify_package_integrity() function in utils.py.
+
+The script is designed to be run during build/packaging time to create a baseline for
+security verification. The generated hashes.json file contains:
+- Git commit hash of the current repository state
+- SHA-256 hashes of all files in the specified directory (excluding hashes.json itself)
+
+This implements the file integrity verification system specified in:
+.kiro/specs/file-integrity-testing/requirements.md
+
+Usage:
+    `hatch run rehash` (preferred within the project; script defined in pyproject.toml)
+    `./update_hashes.py <directory> [-o <output_directory>] [-v]`
+
+Example:
+    ./bin/update_hashes.py src/mcp_server_for_oscal/oscal_schemas
+    ./bin/update_hashes.py docs/schemas -o build/integrity -v
+
+The generated hashes.json can then be verified at runtime using:
+    from mcp_server_for_oscal.tools.utils import verify_package_integrity
+    verify_package_integrity(Path("src/mcp_server_for_oscal/oscal_schemas"))
+"""
 import argparse
-import os
-import sys
-import logging
-from pathlib import Path
 import hashlib
+import json
+import logging
+import os
+import subprocess
+import sys
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 def capture_file_state(directory=".", outdir: str = "."):
-    """Capture current file state for verification
+    """Capture current file state for verification by generating SHA-256 hashes.
+
+    This function creates a comprehensive snapshot of all files in the specified directory
+    by computing SHA-256 hashes and recording the current Git commit. The resulting
+    hashes.json file serves as a tamper-evident baseline for later integrity verification.
+
+    The function implements the hash manifest generation requirements from:
+    .kiro/specs/file-integrity-testing/requirements.md - Requirement 7 (Test Data Management)
 
     Args:
-        directory (str): Path to the directory containing the git repository
+        directory (str): Path to the directory containing files to hash. Must be within
+                        a Git repository for commit hash capture.
+        outdir (str): Directory where the hashes.json file will be written. Defaults
+                     to the same directory as the input directory.
+
+    Returns:
+        tuple: A tuple containing:
+            - dict: The captured state with 'commit' and 'file_hashes' keys
+            - str: Path to the generated hashes.json file
+
+    Raises:
+        subprocess.CalledProcessError: If Git command fails (e.g., not a Git repository)
+        OSError: If file I/O operations fail
+        PermissionError: If insufficient permissions to read files or write output
+
+    Example:
+        >>> state, output_file = capture_file_state("src/schemas", "build/integrity")
+        >>> print(f"Captured {len(state['file_hashes'])} files to {output_file}")
+        Captured 15 files to build/integrity/hashes.json
+
+    Note:
+        - The hashes.json file itself is excluded from hash calculation
+        - Only regular files are processed (directories and special files are ignored)
+        - Files are read in binary mode to ensure accurate hash computation
+        - Git commit hash includes single quotes as returned by git log --format
     """
     # Resolve the absolute path
     directory = os.path.abspath(directory)
@@ -47,7 +105,32 @@ def capture_file_state(directory=".", outdir: str = "."):
 
 
 def main():
-    """Main function to handle command-line arguments and execute git state capture"""
+    """Main function to handle command-line arguments and execute file state capture.
+    
+    This function provides the command-line interface for the file integrity hash
+    generation script. It validates input arguments, processes the specified directory,
+    and generates a hashes.json file for later integrity verification.
+    
+    The function implements comprehensive error handling and validation as specified in:
+    .kiro/specs/file-integrity-testing/requirements.md - Requirement 5 (Error Handling)
+    
+    Command-line Arguments:
+        directory: Required positional argument specifying the directory to process
+        -v, --verbose: Optional flag to enable detailed output logging
+        -o, --outdir: Optional directory where hashes.json will be written
+    
+    Exit Codes:
+        0: Success - hashes.json generated successfully
+        1: Error - Invalid arguments, missing directories, or processing failure
+    
+    Example Usage:
+        python bin/update_hashes.py src/schemas
+        python bin/update_hashes.py docs -o build/integrity -v
+    
+    The generated hashes.json file can be used with verify_package_integrity():
+        from mcp_server_for_oscal.tools.utils import verify_package_integrity
+        verify_package_integrity(Path("src/schemas"))
+    """
     parser = argparse.ArgumentParser(
         description="Capture current state (commit hash and file hashes) for a specified directory"
     )
@@ -93,7 +176,7 @@ def main():
         state, output_file = capture_file_state(args.directory, args.outdir)
 
         if args.verbose:
-            logger.info(f"Package state captured successfully!")
+            logger.info("Package state captured successfully!")
             logger.info(f"Commit: {state['commit']}")
             logger.info(f"Files tracked: {len(state['file_hashes'])}")
             logger.info(f"Output saved to: {output_file}")
@@ -101,7 +184,7 @@ def main():
             logger.info(f"State saved to: {output_file}")
 
     except subprocess.CalledProcessError:
-        logger.exception(f"Error running git command:")
+        logger.exception("Error running git command:")
         logger.error(f"Make sure '{args.directory}' is a valid git repository.")
         sys.exit(1)
     except Exception as e:

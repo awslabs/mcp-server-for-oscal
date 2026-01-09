@@ -28,11 +28,15 @@ A Model Context Protocol (MCP) server that provides AI assistants (Claude, Cline
 > To get started, see [Installation](#installation) below.
 
 ## Features
-This MCP server provides a set of tools for working with OSCAL. Together, the tools are meant to enable your preferred AI assitant to provide accurate, authoritative gudiance about OSCAL architecture, models, use-cases, requirements, and implementation. You don't need to understand the tools to use them, but details are in the [tools](src/mcp_server_for_oscal/tools/) directory. 
+Together, the tools provided by this MCP server are meant to enable your preferred AI assitant to provide accurate, authoritative gudiance about OSCAL architecture, models, use-cases, requirements, and implementation. You don't need to understand the tools to use them, but details are in the [tools](src/mcp_server_for_oscal/tools/) directory. 
 
-The server is lightwieght and meant to run locally without additional setup. The default tools should not connect to any remote services or resources. By default, the server runs `stdio` protocol for MCP transport. Do not attempt to run the server with `streamble-http` transport, as we've not yet implemented transport security or authentication. 
+The server includes a comprehensive file integrity verification system that ensures bundled OSCAL schemas and documentation haven't been tampered with. Using SHA-256 cryptographic hashes, the system validates all critical files during server startup and prevents operation with compromised data. Hash manifests are generated at build time using `bin/update_hashes.py` and verified at runtime using `utils.verify_package_integrity()`, providing defense against file tampering attacks and ensuring the authenticity of OSCAL compliance data.
 
-Existing tools cover a variety of use-cases but are _far from_ comprehensive. Please share your feedback, feature requests, questions, or bug reports in a [GitHub issue][new-issue-url]. Direct [contributions](CONTRIBUTING.md) are wanted and welcome. 
+The server is lightwieght and meant to run locally without additional setup. By default, the server runs `stdio` protocol for MCP transport. Do not attempt to use the server with `streamble-http` transport, as we've not yet implemented transport security or authentication. 
+
+The default tools should not connect to any remote services or resources - all required content is bundled with the server. As a security measure, we've implemented basic file integrity verification for bundled content. At build-time we generate manifests including SHA-256 hashes of all content files. Each time the server starts, all content files are verified against the hash manifests. Any mismatch should produce an error and prevent startup.
+
+Existing tools and features cover a variety of use-cases but are _far from_ comprehensive. Please share your feedback, feature requests, questions, or bug reports in a [GitHub issue][new-issue-url]. Direct [contributions](CONTRIBUTING.md) are wanted and welcome. 
 
 ## What is OSCAL?
 

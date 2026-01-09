@@ -415,9 +415,9 @@ class TestMain:
         for call in info_calls:
             if (
                 len(call[0]) >= 2
-                and "Starting MCP Server `%s` with transport:" in call[0][0]
+                and "Starting MCP Server `%s` v%s with transport:" in call[0][0]
             ):
-                assert call[0][2] == "streamable-http"
+                assert call[0][3] == "streamable-http"
                 transport_log_found = True
                 break
 

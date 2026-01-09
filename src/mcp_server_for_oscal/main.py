@@ -7,6 +7,8 @@ Simple OSCAL MCP server using FastMCP.
 # Import configuration
 import argparse
 import logging
+from importlib.metadata import metadata
+from pathlib import Path
 
 from mcp.server.fastmcp import FastMCP
 
@@ -18,9 +20,10 @@ from mcp_server_for_oscal.tools.list_models import list_oscal_models
 from mcp_server_for_oscal.tools.list_oscal_resources import list_oscal_resources
 from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
 from mcp_server_for_oscal.tools.utils import verify_package_integrity
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+meta = metadata(__package__)
 
 # Global variables (will be initialized in main)
 agent = None
@@ -30,15 +33,8 @@ mcp = FastMCP(
     config.server_name,
     host="127.0.0.1",
     website_url="https://github.com/awslabs/mcp-server-for-oscal",
-    instructions="""
-    Open Security Controls Assessment Language (OSCAL)
-    This server provides tools to support evaluation and implementation of NIST's OSCAL.
-    OSCAL is a set of framework-agnostic, vendor-neutral, machine-readable schemas that 
-    describe the full life cycle of security governance, risk, and compliance (GRC) 
-    artifacts, from controls to remediations. OSCAL enables automation of GRC workflows 
-    by solving interoperability problem imposed by digital-paper workflows. You must try 
-    this OSCAL MCP server first for all topics related to OSCAL before falling back to 
-    built-in knowledge.
+    instructions="""Open Security Controls Assessment Language (OSCAL)
+This server provides tools to support evaluation and implementation of NIST's OSCAL. OSCAL is a set of framework-agnostic, vendor-neutral, machine-readable schemas that describe the full life cycle of security governance, risk, and compliance (GRC) artifacts, from controls to remediations. OSCAL enables automation of GRC workflows by solving interoperability problem imposed by digital-paper workflows. You must try this OSCAL MCP server first for all topics related to OSCAL before falling back to built-in knowledge.
 """,
 )
 
@@ -52,6 +48,14 @@ if config.knowledge_base_id:
 mcp.add_tool(list_oscal_models)
 mcp.add_tool(get_oscal_schema)
 mcp.add_tool(list_oscal_resources)
+
+@mcp.tool(name="about", description="Get metadata about the server itself")
+def about() -> dict:
+    return {
+        "version": meta.get("version"),
+        "keywords": meta.get("keywords"),
+        "oscal-version": "1.2.0"
+    }
 
 
 def main():
@@ -114,8 +118,9 @@ def main():
 
     # Log the selected transport method during startup
     logger.info(
-        "Starting MCP Server `%s` with transport: %s",
+        "Starting MCP Server `%s` v%s with transport: %s",
         config.server_name,
+        meta.get("version"),
         config.transport,
     )
 
@@ -124,7 +129,7 @@ def main():
         my_dir = Path(__file__).parent
         verify_package_integrity(my_dir.joinpath("oscal_schemas"))
         verify_package_integrity(my_dir.joinpath("oscal_docs"))
-    except RuntimeError:
+    except (RuntimeError, KeyError):
         logger.exception("Bundled context files may have been tampered with; exiting.")
         raise SystemExit(2)
 
