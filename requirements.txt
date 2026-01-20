@@ -116,7 +116,9 @@ six==1.17.0
 sse-starlette==3.1.2
     # via mcp
 starlette==0.51.0
-    # via mcp
+    # via
+    #   mcp
+    #   sse-starlette
 strands-agents==1.22.0
     # via mcp-server-for-oscal (pyproject.toml)
 typing-extensions==4.15.0
@@ -143,7 +145,7 @@ uvicorn==0.40.0
     # via mcp
 watchdog==6.0.0
     # via strands-agents
-wrapt==2.0.1
+wrapt==1.17.3
     # via
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-threading

@@ -9,6 +9,7 @@ types of integrity violations.
 import json
 import logging
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
@@ -204,7 +205,7 @@ class TestLoggingBehavior:
         # Verify package integrity should fail
         try:
             verify_package_integrity(package_dir)
-            assert False, "Expected verification to fail"
+            assert pytest.fail("Expected verification to fail")
         except RuntimeError:
             # Expected to fail
             pass
@@ -345,7 +346,7 @@ class TestLoggingBehavior:
         # Verify package integrity should fail
         try:
             verify_package_integrity(package_dir)
-            assert False, "Expected verification to fail"
+            assert pytest.fail("Expected verification to fail")
         except RuntimeError:
             # Expected to fail
             pass
@@ -379,7 +380,7 @@ class TestLoggingBehavior:
         # Verify package integrity should fail
         try:
             verify_package_integrity(package_dir)
-            assert False, "Expected verification to fail"
+            assert pytest.fail("Expected verification to fail")
         except (RuntimeError, KeyError):
             # Expected to fail
             pass
@@ -830,6 +831,7 @@ class TestMissingFileDetection:
             package_dir, "File important_file.json missing from package."
         )
 
+    @pytest.mark.skipif(sys.platform != "linux", reason="Case-sensitive file system required")
     def test_exact_filename_matching_behavior(self):
         """Test that file existence checking uses exact filename matching.
 
@@ -1050,7 +1052,7 @@ class TestFileTamperingDetection:
         # Verification should fail with both hashes in the error message
         try:
             verify_package_integrity(package_dir)
-            assert False, "Expected verification to fail"
+            assert pytest.fail("Expected verification to fail")
         except RuntimeError as e:
             error_msg = str(e)
             assert "has been modified" in error_msg
@@ -1661,7 +1663,7 @@ class TestIOErrorHandling:
             # Verification should fail with descriptive error
             try:
                 verify_package_integrity(package_dir)
-                assert False, "Expected verification to fail"
+                assert pytest.fail("Expected verification to fail")
             except (RuntimeError, PermissionError, OSError) as e:
                 # Error message should be descriptive and mention the file or permission issue
                 error_msg = str(e).lower()
@@ -1798,7 +1800,7 @@ class TestIOErrorHandling:
             # Verification should fail with descriptive error
             try:
                 verify_package_integrity(package_dir)
-                assert False, "Expected verification to fail"
+                assert pytest.fail("Expected verification to fail")
             except (RuntimeError, OSError) as e:
                 # Error should be descriptive
                 error_msg = str(e)
