@@ -242,22 +242,22 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
 - [x] 17.2 Verify compliance-trestle installation and imports
   - _Requirements: 10.1, 10.2_
 
-- [ ] 18. Implement Component Definition loading and validation
+- [x] 18. Implement Component Definition loading and validation
   - _Requirements: 10.1, 10.2, 10.16_
 
-- [ ] 18.1 Create load_component_definition function using compliance-trestle
+- [x] 18.1 Create load_component_definition function using compliance-trestle
   - _Requirements: 10.1, 10.2_
   - Use `trestle.oscal.component.ComponentDefinition`
   - Support local file paths
   - Automatic validation via Pydantic models
 
-- [ ] 18.2 Add remote URI loading support (when configured)
+- [x] 18.2 Add remote URI loading support (when configured)
   - _Requirements: 10.3, 10.17_
   - Check `allow_remote_uris` configuration flag
   - Implement HTTP fetching with timeout
   - Handle network errors gracefully
 
-- [ ] 18.3 Write unit tests for component definition loading
+- [x] 18.3 Write unit tests for component definition loading
   - _Requirements: 10.1, 10.2, 10.14, 10.16_
 
 - [ ]* 18.4 Write property tests for component definition validation
