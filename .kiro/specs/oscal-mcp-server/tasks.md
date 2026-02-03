@@ -374,19 +374,19 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
 - [x] 24.2 Update server instructions to include component definition querying
   - _Requirements: 5.7_
 
-- [ ] 25. Integration testing for Component Definition Query
+- [x] 25. Integration testing for Component Definition Query
   - _Requirements: 10.1-10.18_
 
-- [ ] 25.1 Test with sample OSCAL Component Definition files
+- [x] 25.1 Test with sample OSCAL Component Definition files
   - _Requirements: 10.1, 10.2_
 
-- [ ] 25.2 Test all query modes (all, by_uuid, by_title, by_type)
+- [x] 25.2 Test all query modes (all, by_uuid, by_title, by_type)
   - _Requirements: 10.6, 10.8, 10.18_
 
-- [ ] 25.3 Test summary vs raw return formats
+- [x] 25.3 Test summary vs raw return formats
   - _Requirements: 10.6, 10.7_
 
-- [ ] 25.4 Test error conditions (invalid files, not found, network errors)
+- [x] 25.4 Test error conditions (invalid files, not found, network errors)
   - _Requirements: 10.14, 10.15, 10.17_
 
 - [ ] 26. Final integration verification
