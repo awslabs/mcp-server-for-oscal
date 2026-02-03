@@ -356,6 +356,79 @@ def resolve_links_and_props(component: Any, ctx: Context, resolve_uris: bool = F
             result["links"].append(link_data)
 
     return result
+def extract_control_implementations(component: Any) -> list[dict[str, Any]]:
+    """
+    Extract control implementation information from a DefinedComponent.
+
+    Extracts control implementations including implemented requirements with their
+    UUIDs, control IDs, descriptions, and implementation statements from a
+    compliance-trestle DefinedComponent Pydantic model.
+
+    Args:
+        component: DefinedComponent Pydantic model instance
+
+    Returns:
+        list: List of control implementation dictionaries, each containing:
+            - uuid: Control implementation UUID
+            - source: Source reference for the control implementation
+            - description: Description of the control implementation (required)
+            - implemented_requirements: List of implemented requirement dictionaries with:
+                - uuid: Requirement UUID
+                - control_id: Control identifier
+                - description: Requirement description (required)
+                - statements: List of implementation statement dictionaries with:
+                    - statement_id: Statement identifier
+                    - uuid: Statement UUID
+                    - description: Statement description (required)
+    """
+    control_implementations = []
+
+    # Check if component has control implementations
+    if not hasattr(component, 'control_implementations') or not component.control_implementations:
+        return control_implementations
+
+    # Process each control implementation
+    for ctrl_impl in component.control_implementations:
+        impl_data = {
+            "uuid": str(ctrl_impl.uuid),
+            "source": ctrl_impl.source,
+            "description": ctrl_impl.description,  # Required field
+        }
+
+        # Process implemented requirements
+        implemented_requirements = []
+        if hasattr(ctrl_impl, 'implemented_requirements') and ctrl_impl.implemented_requirements:
+            for req in ctrl_impl.implemented_requirements:
+                req_data = {
+                    "uuid": str(req.uuid),
+                    "control_id": req.control_id,
+                    "description": req.description,  # Required field
+                }
+
+                # Process implementation statements
+                statements = []
+                if hasattr(req, 'statements') and req.statements:
+                    for stmt in req.statements:
+                        stmt_data = {
+                            "statement_id": stmt.statement_id,
+                            "uuid": str(stmt.uuid),
+                            "description": stmt.description,  # Required field
+                        }
+                        statements.append(stmt_data)
+
+                if statements:
+                    req_data["statements"] = statements
+
+                implemented_requirements.append(req_data)
+
+        if implemented_requirements:
+            impl_data["implemented_requirements"] = implemented_requirements
+
+        control_implementations.append(impl_data)
+
+    return control_implementations
+
+
 def _resolve_uri_reference(uri: str, ctx: Context, visited_uris: set[str], current_depth: int) -> dict[str, Any] | None:
     """
     Fetch and process a URI reference.

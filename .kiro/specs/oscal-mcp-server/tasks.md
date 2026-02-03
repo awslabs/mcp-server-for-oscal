@@ -329,16 +329,16 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - **Property 18: Link and Prop Resolution Consistency**
   - **Validates: Requirements 10.5**
 
-- [ ] 22. Implement control implementation extraction
+- [x] 22. Implement control implementation extraction
   - _Requirements: 10.12_
 
-- [ ] 22.1 Extract control implementations from components
+- [x] 22.1 Extract control implementations from components
   - _Requirements: 10.12_
   - Access component.control_implementations
   - Extract implemented requirements with UUIDs, control IDs, descriptions
   - Extract implementation statements
 
-- [ ] 22.2 Write unit tests for control implementation extraction
+- [x] 22.2 Write unit tests for control implementation extraction
   - _Requirements: 10.12_
 
 - [ ] 23. Implement query_component_definition MCP tool

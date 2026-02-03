@@ -439,6 +439,229 @@ class TestExtractComponentSummary:
 
 
 
+class TestExtractControlImplementations:
+    """Test cases for extract_control_implementations function."""
+
+    def test_extract_control_implementations_none(self):
+        """Test extracting control implementations from component with none."""
+        from trestle.oscal.component import DefinedComponent
+        from mcp_server_for_oscal.tools.query_component_definition import extract_control_implementations
+
+        # Create a component without control implementations
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901234",
+            type="software",
+            title="Test Component",
+            description="A test component",
+            purpose="Testing",
+        )
+
+        # Extract control implementations
+        result = extract_control_implementations(component)
+
+        # Verify empty list is returned
+        assert result == []
+
+    def test_extract_control_implementations_basic(self):
+        """Test extracting basic control implementations with required fields only."""
+        from trestle.oscal.component import DefinedComponent, ControlImplementation, ImplementedRequirement
+        from mcp_server_for_oscal.tools.query_component_definition import extract_control_implementations
+
+        # Create component with basic control implementation
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901234",
+            type="software",
+            title="Test Component",
+            description="A test component",
+            purpose="Testing",
+            control_implementations=[
+                ControlImplementation(
+                    uuid="d2e3f4a5-8901-4def-9abc-456789012345",
+                    source="https://example.com/catalog",
+                    description="Implementation of security controls",
+                    implemented_requirements=[
+                        ImplementedRequirement(
+                            uuid="e3f4a5b6-9012-4efa-9bcd-567890123456",
+                            control_id="AC-1",
+                            description="Access Control Policy and Procedures",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        # Extract control implementations
+        result = extract_control_implementations(component)
+
+        # Verify structure
+        assert len(result) == 1
+        assert result[0]["uuid"] == "d2e3f4a5-8901-4def-9abc-456789012345"
+        assert result[0]["source"] == "https://example.com/catalog"
+        assert result[0]["description"] == "Implementation of security controls"
+        assert len(result[0]["implemented_requirements"]) == 1
+        assert result[0]["implemented_requirements"][0]["uuid"] == "e3f4a5b6-9012-4efa-9bcd-567890123456"
+        assert result[0]["implemented_requirements"][0]["control_id"] == "AC-1"
+        assert result[0]["implemented_requirements"][0]["description"] == "Access Control Policy and Procedures"
+
+    def test_extract_control_implementations_with_statements(self):
+        """Test extracting control implementations with implementation statements."""
+        from trestle.oscal.component import DefinedComponent, ControlImplementation, ImplementedRequirement, Statement
+        from mcp_server_for_oscal.tools.query_component_definition import extract_control_implementations
+
+        # Create component with control implementation including statements
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901234",
+            type="software",
+            title="Test Component",
+            description="A test component",
+            purpose="Testing",
+            control_implementations=[
+                ControlImplementation(
+                    uuid="d2e3f4a5-8901-4def-9abc-456789012345",
+                    source="https://example.com/catalog",
+                    description="Implementation of security controls",
+                    implemented_requirements=[
+                        ImplementedRequirement(
+                            uuid="e3f4a5b6-9012-4efa-9bcd-567890123456",
+                            control_id="AC-2",
+                            description="Account Management",
+                            statements=[
+                                Statement(
+                                    statement_id="AC-2_stmt.a",
+                                    uuid="f4a5b6c7-0123-4fab-9cde-678901234567",
+                                    description="The organization manages information system accounts",
+                                ),
+                                Statement(
+                                    statement_id="AC-2_stmt.b",
+                                    uuid="a5b6c7d8-1234-4abc-9def-789012345678",
+                                    description="The organization identifies account types",
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        # Extract control implementations
+        result = extract_control_implementations(component)
+
+        # Verify structure with statements
+        assert len(result) == 1
+        assert result[0]["uuid"] == "d2e3f4a5-8901-4def-9abc-456789012345"
+        assert len(result[0]["implemented_requirements"]) == 1
+        
+        req = result[0]["implemented_requirements"][0]
+        assert req["control_id"] == "AC-2"
+        assert "statements" in req
+        assert len(req["statements"]) == 2
+        
+        # Verify first statement
+        assert req["statements"][0]["statement_id"] == "AC-2_stmt.a"
+        assert req["statements"][0]["uuid"] == "f4a5b6c7-0123-4fab-9cde-678901234567"
+        assert req["statements"][0]["description"] == "The organization manages information system accounts"
+        
+        # Verify second statement
+        assert req["statements"][1]["statement_id"] == "AC-2_stmt.b"
+        assert req["statements"][1]["uuid"] == "a5b6c7d8-1234-4abc-9def-789012345678"
+        assert req["statements"][1]["description"] == "The organization identifies account types"
+
+    def test_extract_control_implementations_multiple(self):
+        """Test extracting multiple control implementations."""
+        from trestle.oscal.component import DefinedComponent, ControlImplementation, ImplementedRequirement
+        from mcp_server_for_oscal.tools.query_component_definition import extract_control_implementations
+
+        # Create component with multiple control implementations
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901234",
+            type="software",
+            title="Test Component",
+            description="A test component",
+            purpose="Testing",
+            control_implementations=[
+                ControlImplementation(
+                    uuid="d2e3f4a5-8901-4def-9abc-456789012345",
+                    source="https://example.com/catalog1",
+                    description="First control implementation",
+                    implemented_requirements=[
+                        ImplementedRequirement(
+                            uuid="e3f4a5b6-9012-4efa-9bcd-567890123456",
+                            control_id="AC-1",
+                            description="Access Control Policy",
+                        ),
+                    ],
+                ),
+                ControlImplementation(
+                    uuid="f4a5b6c7-0123-4fab-9cde-678901234567",
+                    source="https://example.com/catalog2",
+                    description="Second control implementation",
+                    implemented_requirements=[
+                        ImplementedRequirement(
+                            uuid="a5b6c7d8-1234-4abc-9def-789012345678",
+                            control_id="AU-1",
+                            description="Audit and Accountability Policy",
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        # Extract control implementations
+        result = extract_control_implementations(component)
+
+        # Verify multiple implementations
+        assert len(result) == 2
+        assert result[0]["uuid"] == "d2e3f4a5-8901-4def-9abc-456789012345"
+        assert result[0]["source"] == "https://example.com/catalog1"
+        assert result[1]["uuid"] == "f4a5b6c7-0123-4fab-9cde-678901234567"
+        assert result[1]["source"] == "https://example.com/catalog2"
+
+    def test_extract_control_implementations_complete(self):
+        """Test extracting control implementations with all fields."""
+        from trestle.oscal.component import DefinedComponent, ControlImplementation, ImplementedRequirement, Statement
+        from mcp_server_for_oscal.tools.query_component_definition import extract_control_implementations
+
+        # Create component with complete control implementation
+        # All description fields are required by the OSCAL models
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901234",
+            type="software",
+            title="Test Component",
+            description="A test component",
+            purpose="Testing",
+            control_implementations=[
+                ControlImplementation(
+                    uuid="d2e3f4a5-8901-4def-9abc-456789012345",
+                    source="https://example.com/catalog",
+                    description="Control implementation description",
+                    implemented_requirements=[
+                        ImplementedRequirement(
+                            uuid="e3f4a5b6-9012-4efa-9bcd-567890123456",
+                            control_id="AC-1",
+                            description="Implemented requirement description",
+                            statements=[
+                                Statement(
+                                    statement_id="AC-1_stmt.a",
+                                    uuid="f4a5b6c7-0123-4fab-9cde-678901234567",
+                                    description="Statement description",
+                                ),
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        )
+
+        # Extract control implementations
+        result = extract_control_implementations(component)
+
+        # Verify complete structure
+        assert len(result) == 1
+        assert result[0]["description"] == "Control implementation description"
+        assert result[0]["implemented_requirements"][0]["description"] == "Implemented requirement description"
+        assert result[0]["implemented_requirements"][0]["statements"][0]["description"] == "Statement description"
+
+
 class TestComponentQuerying:
     """Test cases for component querying and filtering functions."""
 
