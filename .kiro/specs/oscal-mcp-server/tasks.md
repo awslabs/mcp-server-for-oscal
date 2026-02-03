@@ -279,24 +279,24 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - **Property 14: Component Summary Field Completeness**
   - **Validates: Requirements 10.4**
 
-- [ ] 20. Implement component querying and filtering
+- [x] 20. Implement component querying and filtering
   - _Requirements: 10.6, 10.7, 10.8, 10.9, 10.18_
 
-- [ ] 20.1 Implement query by UUID
+- [x] 20.1 Implement query by UUID
   - _Requirements: 10.8, 10.15_
   - Exact match on component.uuid
   - Return error if not found
 
-- [ ] 20.2 Implement query by title with prop fallback
+- [x] 20.2 Implement query by title with prop fallback
   - _Requirements: 10.8, 10.9, 10.15_
   - Exact match on component.title
   - Fallback to searching prop values using ModelUtils.find_values_by_name()
 
-- [ ] 20.3 Implement query by type filtering
+- [x] 20.3 Implement query by type filtering
   - _Requirements: 10.18_
   - Filter components where type matches query value
 
-- [ ] 20.4 Write unit tests for component querying
+- [x] 20.4 Write unit tests for component querying
   - _Requirements: 10.8, 10.9, 10.15, 10.18_
 
 - [ ]* 20.5 Write property tests for query type consistency

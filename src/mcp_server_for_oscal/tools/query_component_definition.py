@@ -219,4 +219,75 @@ def extract_component_summary(component: Any) -> dict[str, Any]:
         summary["protocols"] = [str(protocol.uuid) for protocol in component.protocols]
 
     return summary
+def find_component_by_uuid(components: list[Any], uuid: str) -> Any | None:
+    """
+    Find a component by its UUID.
+
+    Performs an exact match on the component's UUID field.
+
+    Args:
+        components: List of DefinedComponent Pydantic model instances
+        uuid: UUID string to search for
+
+    Returns:
+        DefinedComponent if found, None otherwise
+    """
+    for component in components:
+        if str(component.uuid) == uuid:
+            return component
+    return None
+def find_component_by_title(components: list[Any], title: str) -> Any | None:
+    """
+    Find a component by its title.
+
+    Performs an exact match on the component's title field.
+
+    Args:
+        components: List of DefinedComponent Pydantic model instances
+        title: Title string to search for
+
+    Returns:
+        DefinedComponent if found, None otherwise
+    """
+    for component in components:
+        if component.title == title:
+            return component
+    return None
+
+
+def find_component_by_prop_value(components: list[Any], value: str) -> Any | None:
+    """
+    Find a component by searching prop values.
+
+    Searches through all prop values for an exact match. This is a fallback
+    when title search fails.
+
+    Args:
+        components: List of DefinedComponent Pydantic model instances
+        value: Value string to search for in props
+
+    Returns:
+        DefinedComponent if found, None otherwise
+    """
+    for component in components:
+        if hasattr(component, 'props') and component.props:
+            # Search through all prop values for this component
+            for prop in component.props:
+                if prop.value == value:
+                    return component
+    return None
+def filter_components_by_type(components: list[Any], component_type: str) -> list[Any]:
+    """
+    Filter components by type.
+
+    Returns all components where the type field matches the query value.
+
+    Args:
+        components: List of DefinedComponent Pydantic model instances
+        component_type: Type string to filter by
+
+    Returns:
+        List of DefinedComponent instances matching the type
+    """
+    return [component for component in components if component.type == component_type]
 

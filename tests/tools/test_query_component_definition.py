@@ -436,3 +436,171 @@ class TestExtractComponentSummary:
         assert result["description"] == "A sample component for testing"
         assert result["type"] == "software"
         assert result["purpose"] == "Testing component definition loading"
+
+
+
+class TestComponentQuerying:
+    """Test cases for component querying and filtering functions."""
+
+    @pytest.fixture
+    def sample_components(self):
+        """Create sample components for testing."""
+        from trestle.oscal.component import DefinedComponent
+        from trestle.oscal.common import Property
+
+        components = [
+            DefinedComponent(
+                uuid="a1b2c3d4-5678-4abc-8def-111111111111",
+                type="software",
+                title="Component One",
+                description="First test component",
+                purpose="Testing",
+                props=[
+                    Property(name="version", value="1.0.0"),
+                    Property(name="vendor", value="ACME Corp"),
+                ],
+            ),
+            DefinedComponent(
+                uuid="b2c3d4e5-6789-4bcd-9efa-222222222222",
+                type="hardware",
+                title="Component Two",
+                description="Second test component",
+                purpose="Testing",
+                props=[
+                    Property(name="version", value="2.0.0"),
+                    Property(name="model", value="XYZ-123"),
+                ],
+            ),
+            DefinedComponent(
+                uuid="c3d4e5f6-7890-4cde-9fab-333333333333",
+                type="software",
+                title="Component Three",
+                description="Third test component",
+                purpose="Testing",
+            ),
+        ]
+        return components
+
+    def test_find_component_by_uuid_found(self, sample_components):
+        """Test finding a component by UUID when it exists."""
+        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_uuid
+
+        result = find_component_by_uuid(sample_components, "b2c3d4e5-6789-4bcd-9efa-222222222222")
+
+        assert result is not None
+        assert str(result.uuid) == "b2c3d4e5-6789-4bcd-9efa-222222222222"
+        assert result.title == "Component Two"
+
+    def test_find_component_by_uuid_not_found(self, sample_components):
+        """Test finding a component by UUID when it doesn't exist."""
+        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_uuid
+
+        result = find_component_by_uuid(sample_components, "99999999-9999-9999-9999-999999999999")
+
+        assert result is None
+
+    def test_find_component_by_uuid_empty_list(self):
+        """Test finding a component by UUID in an empty list."""
+        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_uuid
+
+        result = find_component_by_uuid([], "a1b2c3d4-5678-4abc-8def-111111111111")
+
+        assert result is None
+
+    def test_find_component_by_title_found(self, sample_components):
+        """Test finding a component by title when it exists."""
+        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_title
+
+        result = find_component_by_title(sample_components, "Component One")
+
+        assert result is not None
+        assert result.title == "Component One"
+        assert str(result.uuid) == "a1b2c3d4-5678-4abc-8def-111111111111"
+
+    def test_find_component_by_title_not_found(self, sample_components):
+        """Test finding a component by title when it doesn't exist."""
+        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_title
+
+        result = find_component_by_title(sample_components, "Nonexistent Component")
+
+        assert result is None
+
+    def test_find_component_by_title_case_sensitive(self, sample_components):
+        """Test that title search is case-sensitive."""
+        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_title
+
+        result = find_component_by_title(sample_components, "component one")
+
+        assert result is None
+
+    def test_find_component_by_prop_value_found(self, sample_components):
+        """Test finding a component by prop value when it exists."""
+        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_prop_value
+
+        result = find_component_by_prop_value(sample_components, "ACME Corp")
+
+        assert result is not None
+        assert result.title == "Component One"
+
+    def test_find_component_by_prop_value_version(self, sample_components):
+        """Test finding a component by version prop value."""
+        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_prop_value
+
+        result = find_component_by_prop_value(sample_components, "2.0.0")
+
+        assert result is not None
+        assert result.title == "Component Two"
+
+    def test_find_component_by_prop_value_not_found(self, sample_components):
+        """Test finding a component by prop value when it doesn't exist."""
+        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_prop_value
+
+        result = find_component_by_prop_value(sample_components, "nonexistent-value")
+
+        assert result is None
+
+    def test_find_component_by_prop_value_no_props(self, sample_components):
+        """Test finding a component by prop value when component has no props."""
+        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_prop_value
+
+        # Component Three has no props, so searching for any value should not match it
+        result = find_component_by_prop_value([sample_components[2]], "any-value")
+
+        assert result is None
+
+    def test_filter_components_by_type_software(self, sample_components):
+        """Test filtering components by software type."""
+        from mcp_server_for_oscal.tools.query_component_definition import filter_components_by_type
+
+        result = filter_components_by_type(sample_components, "software")
+
+        assert len(result) == 2
+        assert all(comp.type == "software" for comp in result)
+        assert result[0].title == "Component One"
+        assert result[1].title == "Component Three"
+
+    def test_filter_components_by_type_hardware(self, sample_components):
+        """Test filtering components by hardware type."""
+        from mcp_server_for_oscal.tools.query_component_definition import filter_components_by_type
+
+        result = filter_components_by_type(sample_components, "hardware")
+
+        assert len(result) == 1
+        assert result[0].type == "hardware"
+        assert result[0].title == "Component Two"
+
+    def test_filter_components_by_type_no_matches(self, sample_components):
+        """Test filtering components by type with no matches."""
+        from mcp_server_for_oscal.tools.query_component_definition import filter_components_by_type
+
+        result = filter_components_by_type(sample_components, "service")
+
+        assert len(result) == 0
+
+    def test_filter_components_by_type_empty_list(self):
+        """Test filtering an empty component list."""
+        from mcp_server_for_oscal.tools.query_component_definition import filter_components_by_type
+
+        result = filter_components_by_type([], "software")
+
+        assert len(result) == 0
