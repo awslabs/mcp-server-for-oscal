@@ -10,7 +10,7 @@ from typing import Any, Literal
 import requests
 from mcp.server.fastmcp.server import Context
 from strands import tool
-from trestle.oscal.component import ComponentDefinition
+from trestle.oscal.component import ComponentDefinition, DefinedComponent
 
 from mcp_server_for_oscal.config import config
 from mcp_server_for_oscal.tools.utils import try_notify_client_error
@@ -18,13 +18,13 @@ from mcp_server_for_oscal.tools.utils import try_notify_client_error
 logger = logging.getLogger(__name__)
 
 
+
 def load_component_definition(source: str, ctx: Context) -> ComponentDefinition:
     """
     Load and validate an OSCAL Component Definition from a local file path or remote URI.
 
-    Uses compliance-trestle's load_validate_model_path for automatic validation
-    via Pydantic models. Remote URI loading is only supported when explicitly
-    configured via allow_remote_uris setting.
+    Uses Pydantic's built-in parsing methods for automatic validation.
+    Remote URI loading is only supported when explicitly configured via allow_remote_uris setting.
 
     Args:
         source: Local file path or remote URI to the Component Definition JSON file
@@ -66,35 +66,31 @@ def _load_local_component_definition(source: str, ctx: Context) -> ComponentDefi
     """
     source_path = Path(source)
 
-    # Check if file exists
-    if not source_path.exists():
-        msg = f"Component Definition file not found: {source}"
-        logger.error(msg)
-        try_notify_client_error(msg, ctx)
-        raise FileNotFoundError(msg)
-
-    # Check if it's a file (not a directory)
-    if not source_path.is_file():
-        msg = f"Source path is not a file: {source}"
-        logger.error(msg)
-        try_notify_client_error(msg, ctx)
-        raise ValueError(msg)
-
     try:
-        # Load and parse the JSON file
+        # Load and parse JSON, then extract the component-definition wrapper
         with open(source_path) as f:
             data = json.load(f)
 
-        # Validate and instantiate ComponentDefinition using Pydantic
-        # The data should have a 'component-definition' key at the root
+        # Extract the component-definition wrapper if present
         if "component-definition" in data:
             component_def = ComponentDefinition(**data["component-definition"])
         else:
-            # Try direct instantiation if the root is already the component definition
             component_def = ComponentDefinition(**data)
 
         logger.info("Successfully loaded and validated component definition from: %s", source)
         return component_def
+
+    except FileNotFoundError as e:
+        msg = f"Component Definition file not found: {source}"
+        logger.error(msg)
+        try_notify_client_error(msg, ctx)
+        raise FileNotFoundError(msg) from e
+
+    except IsADirectoryError as e:
+        msg = f"Source path is not a file: {source}"
+        logger.error(msg)
+        try_notify_client_error(msg, ctx)
+        raise ValueError(msg) from e
 
     except json.JSONDecodeError as e:
         msg = f"Failed to parse Component Definition JSON: {e}"
@@ -114,7 +110,7 @@ def _load_remote_component_definition(source: str, ctx: Context) -> ComponentDef
     Load and validate an OSCAL Component Definition from a remote URI.
 
     Only works when allow_remote_uris is configured to True. Fetches the JSON
-    content via HTTP and validates it using compliance-trestle.
+    content via HTTP and validates it using Pydantic.
 
     Args:
         source: Remote URI to the Component Definition JSON file
@@ -144,15 +140,11 @@ def _load_remote_component_definition(source: str, ctx: Context) -> ComponentDef
         response = requests.get(source, timeout=config.request_timeout)
         response.raise_for_status()
 
-        # Parse JSON content
+        # Parse JSON and extract the component-definition wrapper if present
         data = response.json()
-
-        # Validate and instantiate ComponentDefinition using Pydantic
-        # The data should have a 'component-definition' key at the root
         if "component-definition" in data:
             component_def = ComponentDefinition(**data["component-definition"])
         else:
-            # Try direct instantiation if the root is already the component definition
             component_def = ComponentDefinition(**data)
 
         logger.info("Successfully loaded and validated remote component definition from: %s", source)
@@ -183,7 +175,7 @@ def _load_remote_component_definition(source: str, ctx: Context) -> ComponentDef
         raise ValueError(msg) from e
 
 
-def extract_component_summary(component: Any) -> dict[str, Any]:
+def extract_component_summary(component: DefinedComponent) -> dict[str, Any]:
     """
     Extract summary information from a DefinedComponent.
 
@@ -213,13 +205,15 @@ def extract_component_summary(component: Any) -> dict[str, Any]:
     }
 
     # Handle optional fields
-    if hasattr(component, "responsible_roles") and component.responsible_roles:
+    if component.responsible_roles:
         summary["responsible_roles"] = [role.role_id for role in component.responsible_roles]
 
-    if hasattr(component, "protocols") and component.protocols:
+    if component.protocols:
         summary["protocols"] = [str(protocol.uuid) for protocol in component.protocols]
 
     return summary
+
+
 def find_component_by_uuid(components: list[Any], uuid: str) -> Any | None:
     """
     Find a component by its UUID.
@@ -237,6 +231,8 @@ def find_component_by_uuid(components: list[Any], uuid: str) -> Any | None:
         if str(component.uuid) == uuid:
             return component
     return None
+
+
 def find_component_by_title(components: list[Any], title: str) -> Any | None:
     """
     Find a component by its title.
@@ -256,7 +252,7 @@ def find_component_by_title(components: list[Any], title: str) -> Any | None:
     return None
 
 
-def find_component_by_prop_value(components: list[Any], value: str) -> Any | None:
+def find_component_by_prop_value(components: list[DefinedComponent], value: str) -> Any | None:
     """
     Find a component by searching prop values.
 
@@ -271,13 +267,15 @@ def find_component_by_prop_value(components: list[Any], value: str) -> Any | Non
         DefinedComponent if found, None otherwise
     """
     for component in components:
-        if hasattr(component, 'props') and component.props:
+        if component.props:
             # Search through all prop values for this component
             for prop in component.props:
                 if prop.value == value:
                     return component
     return None
-def filter_components_by_type(components: list[Any], component_type: str) -> list[Any]:
+
+
+def filter_components_by_type(components: list[DefinedComponent], component_type: str) -> list[Any]:
     """
     Filter components by type.
 
@@ -291,7 +289,9 @@ def filter_components_by_type(components: list[Any], component_type: str) -> lis
         List of DefinedComponent instances matching the type
     """
     return [component for component in components if component.type == component_type]
-def resolve_links_and_props(component: Any, ctx: Context, resolve_uris: bool = False, visited_uris: set[str] | None = None, current_depth: int = 0) -> dict[str, Any]:
+
+
+def resolve_links_and_props(component: DefinedComponent, ctx: Context, resolve_uris: bool = False, visited_uris: set[str] | None = None, current_depth: int = 0) -> dict[str, Any]:
     """
     Resolve and process Link and Prop objects from a component.
 
@@ -315,32 +315,32 @@ def resolve_links_and_props(component: Any, ctx: Context, resolve_uris: bool = F
     }
 
     # Extract props (name-value pairs)
-    if hasattr(component, 'props') and component.props:
+    if component.props:
         for prop in component.props:
             prop_data = {
                 "name": prop.name,
                 "value": prop.value
             }
             # Include optional fields if present
-            if hasattr(prop, 'ns') and prop.ns:
+            if prop.ns:
                 prop_data["ns"] = prop.ns
-            if hasattr(prop, 'class_') and prop.class_:
+            if prop.class_:
                 prop_data["class"] = prop.class_
-            if hasattr(prop, 'remarks') and prop.remarks:
+            if prop.remarks:
                 prop_data["remarks"] = prop.remarks
 
             result["props"].append(prop_data)
 
     # Extract links (href references)
-    if hasattr(component, 'links') and component.links:
+    if component.links:
         for link in component.links:
-            link_data = {
+            link_data: dict[str, Any] = {
                 "href": link.href
             }
             # Include optional fields if present
-            if hasattr(link, 'rel') and link.rel:
-                link_data["rel"] = link.rel
-            if hasattr(link, 'text') and link.text:
+            if link.rel:
+                link_data["rel"] = str(link.rel)
+            if link.text:
                 link_data["text"] = link.text
 
             # Optionally resolve URI references
@@ -357,7 +357,9 @@ def resolve_links_and_props(component: Any, ctx: Context, resolve_uris: bool = F
             result["links"].append(link_data)
 
     return result
-def extract_control_implementations(component: Any) -> list[dict[str, Any]]:
+
+
+def extract_control_implementations(component: DefinedComponent) -> list[dict[str, Any]]:
     """
     Extract control implementation information from a DefinedComponent.
 
@@ -390,7 +392,7 @@ def extract_control_implementations(component: Any) -> list[dict[str, Any]]:
 
     # Process each control implementation
     for ctrl_impl in component.control_implementations:
-        impl_data = {
+        impl_data: dict[str, Any] = {
             "uuid": str(ctrl_impl.uuid),
             "source": ctrl_impl.source,
             "description": ctrl_impl.description,  # Required field
@@ -634,7 +636,10 @@ def query_component_definition(
     if query_type == "all":
         selected_components = components
     elif query_type == "by_uuid":
-        assert query_value is not None  # Validated earlier
+        if query_value is None:
+            msg = "query_value is required for by_uuid query type"
+            try_notify_client_error(msg, ctx)
+            raise ValueError(msg)
         component = find_component_by_uuid(components, query_value)
         if not component:
             msg = f"Component with UUID '{query_value}' not found in {source}"
@@ -642,7 +647,10 @@ def query_component_definition(
             raise ValueError(msg)
         selected_components = [component]
     elif query_type == "by_title":
-        assert query_value is not None  # Validated earlier
+        if query_value is None:
+            msg = "query_value is required for by_title query type"
+            try_notify_client_error(msg, ctx)
+            raise ValueError(msg)
         # Try exact title match first
         component = find_component_by_title(components, query_value)
         # Fallback to prop value search if title not found
@@ -654,7 +662,10 @@ def query_component_definition(
             raise ValueError(msg)
         selected_components = [component]
     elif query_type == "by_type":
-        assert query_value is not None  # Validated earlier
+        if query_value is None:
+            msg = "query_value is required for by_type query type"
+            try_notify_client_error(msg, ctx)
+            raise ValueError(msg)
         selected_components = filter_components_by_type(components, query_value)
         if not selected_components:
             msg = f"No components with type '{query_value}' found in {source}"

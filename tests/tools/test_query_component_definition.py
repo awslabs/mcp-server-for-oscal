@@ -11,9 +11,9 @@ import requests
 from trestle.oscal.component import ComponentDefinition
 
 from mcp_server_for_oscal.tools.query_component_definition import (
-    load_component_definition,
     _load_local_component_definition,
     _load_remote_component_definition,
+    load_component_definition,
 )
 
 
@@ -292,7 +292,10 @@ class TestExtractComponentSummary:
     def test_extract_summary_with_required_fields_only(self):
         """Test extracting summary from component with only required fields."""
         from trestle.oscal.component import DefinedComponent
-        from mcp_server_for_oscal.tools.query_component_definition import extract_component_summary
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            extract_component_summary,
+        )
 
         # Create a minimal component with only required fields
         component = DefinedComponent(
@@ -312,16 +315,19 @@ class TestExtractComponentSummary:
         assert result["description"] == "A test component description"
         assert result["type"] == "software"
         assert result["purpose"] == "Testing summary extraction"
-        
+
         # Verify optional fields are not present
         assert "responsible_roles" not in result
         assert "protocols" not in result
 
     def test_extract_summary_with_responsible_roles(self):
         """Test extracting summary from component with responsible roles."""
-        from trestle.oscal.component import DefinedComponent
         from trestle.oscal.common import ResponsibleRole
-        from mcp_server_for_oscal.tools.query_component_definition import extract_component_summary
+        from trestle.oscal.component import DefinedComponent
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            extract_component_summary,
+        )
 
         # Create component with responsible roles
         component = DefinedComponent(
@@ -343,16 +349,19 @@ class TestExtractComponentSummary:
         assert result["uuid"] == "c1d2e3f4-7890-4cde-9fab-345678901234"
         assert result["title"] == "Test Service Component"
         assert result["type"] == "service"
-        
+
         # Verify responsible roles are included
         assert "responsible_roles" in result
         assert result["responsible_roles"] == ["admin", "developer"]
 
     def test_extract_summary_with_protocols(self):
         """Test extracting summary from component with protocols."""
-        from trestle.oscal.component import DefinedComponent
         from trestle.oscal.common import Protocol
-        from mcp_server_for_oscal.tools.query_component_definition import extract_component_summary
+        from trestle.oscal.component import DefinedComponent
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            extract_component_summary,
+        )
 
         # Create component with protocols
         component = DefinedComponent(
@@ -373,7 +382,7 @@ class TestExtractComponentSummary:
         # Verify required fields
         assert result["uuid"] == "c1d2e3f4-7890-4cde-9fab-345678901234"
         assert result["title"] == "Test Protocol Component"
-        
+
         # Verify protocols are included
         assert "protocols" in result
         assert result["protocols"] == [
@@ -383,9 +392,12 @@ class TestExtractComponentSummary:
 
     def test_extract_summary_with_all_optional_fields(self):
         """Test extracting summary from component with all optional fields."""
+        from trestle.oscal.common import Protocol, ResponsibleRole
         from trestle.oscal.component import DefinedComponent
-        from trestle.oscal.common import ResponsibleRole, Protocol
-        from mcp_server_for_oscal.tools.query_component_definition import extract_component_summary
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            extract_component_summary,
+        )
 
         # Create component with all optional fields
         component = DefinedComponent(
@@ -416,16 +428,17 @@ class TestExtractComponentSummary:
 
     def test_extract_summary_from_loaded_component(self, sample_component_def_path):
         """Test extracting summary from a component loaded from fixture file."""
-        from mcp_server_for_oscal.tools.query_component_definition import (
-            extract_component_summary,
-            _load_local_component_definition,
-        )
         from unittest.mock import AsyncMock
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            _load_local_component_definition,
+            extract_component_summary,
+        )
 
         # Load component definition from fixture
         mock_context = AsyncMock()
         comp_def = _load_local_component_definition(str(sample_component_def_path), mock_context)
-        
+
         # Extract summary from first component
         component = comp_def.components[0]
         result = extract_component_summary(component)
@@ -445,7 +458,10 @@ class TestExtractControlImplementations:
     def test_extract_control_implementations_none(self):
         """Test extracting control implementations from component with none."""
         from trestle.oscal.component import DefinedComponent
-        from mcp_server_for_oscal.tools.query_component_definition import extract_control_implementations
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            extract_control_implementations,
+        )
 
         # Create a component without control implementations
         component = DefinedComponent(
@@ -464,8 +480,15 @@ class TestExtractControlImplementations:
 
     def test_extract_control_implementations_basic(self):
         """Test extracting basic control implementations with required fields only."""
-        from trestle.oscal.component import DefinedComponent, ControlImplementation, ImplementedRequirement
-        from mcp_server_for_oscal.tools.query_component_definition import extract_control_implementations
+        from trestle.oscal.component import (
+            ControlImplementation,
+            DefinedComponent,
+            ImplementedRequirement,
+        )
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            extract_control_implementations,
+        )
 
         # Create component with basic control implementation
         component = DefinedComponent(
@@ -505,8 +528,16 @@ class TestExtractControlImplementations:
 
     def test_extract_control_implementations_with_statements(self):
         """Test extracting control implementations with implementation statements."""
-        from trestle.oscal.component import DefinedComponent, ControlImplementation, ImplementedRequirement, Statement
-        from mcp_server_for_oscal.tools.query_component_definition import extract_control_implementations
+        from trestle.oscal.component import (
+            ControlImplementation,
+            DefinedComponent,
+            ImplementedRequirement,
+            Statement,
+        )
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            extract_control_implementations,
+        )
 
         # Create component with control implementation including statements
         component = DefinedComponent(
@@ -550,17 +581,17 @@ class TestExtractControlImplementations:
         assert len(result) == 1
         assert result[0]["uuid"] == "d2e3f4a5-8901-4def-9abc-456789012345"
         assert len(result[0]["implemented_requirements"]) == 1
-        
+
         req = result[0]["implemented_requirements"][0]
         assert req["control_id"] == "AC-2"
         assert "statements" in req
         assert len(req["statements"]) == 2
-        
+
         # Verify first statement
         assert req["statements"][0]["statement_id"] == "AC-2_stmt.a"
         assert req["statements"][0]["uuid"] == "f4a5b6c7-0123-4fab-9cde-678901234567"
         assert req["statements"][0]["description"] == "The organization manages information system accounts"
-        
+
         # Verify second statement
         assert req["statements"][1]["statement_id"] == "AC-2_stmt.b"
         assert req["statements"][1]["uuid"] == "a5b6c7d8-1234-4abc-9def-789012345678"
@@ -568,8 +599,15 @@ class TestExtractControlImplementations:
 
     def test_extract_control_implementations_multiple(self):
         """Test extracting multiple control implementations."""
-        from trestle.oscal.component import DefinedComponent, ControlImplementation, ImplementedRequirement
-        from mcp_server_for_oscal.tools.query_component_definition import extract_control_implementations
+        from trestle.oscal.component import (
+            ControlImplementation,
+            DefinedComponent,
+            ImplementedRequirement,
+        )
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            extract_control_implementations,
+        )
 
         # Create component with multiple control implementations
         component = DefinedComponent(
@@ -618,8 +656,16 @@ class TestExtractControlImplementations:
 
     def test_extract_control_implementations_complete(self):
         """Test extracting control implementations with all fields."""
-        from trestle.oscal.component import DefinedComponent, ControlImplementation, ImplementedRequirement, Statement
-        from mcp_server_for_oscal.tools.query_component_definition import extract_control_implementations
+        from trestle.oscal.component import (
+            ControlImplementation,
+            DefinedComponent,
+            ImplementedRequirement,
+            Statement,
+        )
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            extract_control_implementations,
+        )
 
         # Create component with complete control implementation
         # All description fields are required by the OSCAL models
@@ -668,8 +714,8 @@ class TestComponentQuerying:
     @pytest.fixture
     def sample_components(self):
         """Create sample components for testing."""
-        from trestle.oscal.component import DefinedComponent
         from trestle.oscal.common import Property
+        from trestle.oscal.component import DefinedComponent
 
         components = [
             DefinedComponent(
@@ -706,7 +752,9 @@ class TestComponentQuerying:
 
     def test_find_component_by_uuid_found(self, sample_components):
         """Test finding a component by UUID when it exists."""
-        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_uuid
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            find_component_by_uuid,
+        )
 
         result = find_component_by_uuid(sample_components, "b2c3d4e5-6789-4bcd-9efa-222222222222")
 
@@ -716,7 +764,9 @@ class TestComponentQuerying:
 
     def test_find_component_by_uuid_not_found(self, sample_components):
         """Test finding a component by UUID when it doesn't exist."""
-        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_uuid
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            find_component_by_uuid,
+        )
 
         result = find_component_by_uuid(sample_components, "99999999-9999-9999-9999-999999999999")
 
@@ -724,7 +774,9 @@ class TestComponentQuerying:
 
     def test_find_component_by_uuid_empty_list(self):
         """Test finding a component by UUID in an empty list."""
-        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_uuid
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            find_component_by_uuid,
+        )
 
         result = find_component_by_uuid([], "a1b2c3d4-5678-4abc-8def-111111111111")
 
@@ -732,7 +784,9 @@ class TestComponentQuerying:
 
     def test_find_component_by_title_found(self, sample_components):
         """Test finding a component by title when it exists."""
-        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_title
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            find_component_by_title,
+        )
 
         result = find_component_by_title(sample_components, "Component One")
 
@@ -742,7 +796,9 @@ class TestComponentQuerying:
 
     def test_find_component_by_title_not_found(self, sample_components):
         """Test finding a component by title when it doesn't exist."""
-        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_title
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            find_component_by_title,
+        )
 
         result = find_component_by_title(sample_components, "Nonexistent Component")
 
@@ -750,7 +806,9 @@ class TestComponentQuerying:
 
     def test_find_component_by_title_case_sensitive(self, sample_components):
         """Test that title search is case-sensitive."""
-        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_title
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            find_component_by_title,
+        )
 
         result = find_component_by_title(sample_components, "component one")
 
@@ -758,7 +816,9 @@ class TestComponentQuerying:
 
     def test_find_component_by_prop_value_found(self, sample_components):
         """Test finding a component by prop value when it exists."""
-        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_prop_value
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            find_component_by_prop_value,
+        )
 
         result = find_component_by_prop_value(sample_components, "ACME Corp")
 
@@ -767,7 +827,9 @@ class TestComponentQuerying:
 
     def test_find_component_by_prop_value_version(self, sample_components):
         """Test finding a component by version prop value."""
-        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_prop_value
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            find_component_by_prop_value,
+        )
 
         result = find_component_by_prop_value(sample_components, "2.0.0")
 
@@ -776,7 +838,9 @@ class TestComponentQuerying:
 
     def test_find_component_by_prop_value_not_found(self, sample_components):
         """Test finding a component by prop value when it doesn't exist."""
-        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_prop_value
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            find_component_by_prop_value,
+        )
 
         result = find_component_by_prop_value(sample_components, "nonexistent-value")
 
@@ -784,7 +848,9 @@ class TestComponentQuerying:
 
     def test_find_component_by_prop_value_no_props(self, sample_components):
         """Test finding a component by prop value when component has no props."""
-        from mcp_server_for_oscal.tools.query_component_definition import find_component_by_prop_value
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            find_component_by_prop_value,
+        )
 
         # Component Three has no props, so searching for any value should not match it
         result = find_component_by_prop_value([sample_components[2]], "any-value")
@@ -793,7 +859,9 @@ class TestComponentQuerying:
 
     def test_filter_components_by_type_software(self, sample_components):
         """Test filtering components by software type."""
-        from mcp_server_for_oscal.tools.query_component_definition import filter_components_by_type
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            filter_components_by_type,
+        )
 
         result = filter_components_by_type(sample_components, "software")
 
@@ -804,7 +872,9 @@ class TestComponentQuerying:
 
     def test_filter_components_by_type_hardware(self, sample_components):
         """Test filtering components by hardware type."""
-        from mcp_server_for_oscal.tools.query_component_definition import filter_components_by_type
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            filter_components_by_type,
+        )
 
         result = filter_components_by_type(sample_components, "hardware")
 
@@ -814,7 +884,9 @@ class TestComponentQuerying:
 
     def test_filter_components_by_type_no_matches(self, sample_components):
         """Test filtering components by type with no matches."""
-        from mcp_server_for_oscal.tools.query_component_definition import filter_components_by_type
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            filter_components_by_type,
+        )
 
         result = filter_components_by_type(sample_components, "service")
 
@@ -822,7 +894,9 @@ class TestComponentQuerying:
 
     def test_filter_components_by_type_empty_list(self):
         """Test filtering an empty component list."""
-        from mcp_server_for_oscal.tools.query_component_definition import filter_components_by_type
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            filter_components_by_type,
+        )
 
         result = filter_components_by_type([], "software")
 
@@ -843,9 +917,12 @@ class TestResolveLinksAndProps:
 
     def test_resolve_props_basic(self, mock_context):
             """Test resolving basic props from a component."""
-            from trestle.oscal.component import DefinedComponent
             from trestle.oscal.common import Property
-            from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+            from trestle.oscal.component import DefinedComponent
+
+            from mcp_server_for_oscal.tools.query_component_definition import (
+                resolve_links_and_props,
+            )
 
             # Create component with props
             component = DefinedComponent(
@@ -873,9 +950,12 @@ class TestResolveLinksAndProps:
 
     def test_resolve_props_with_optional_fields(self, mock_context):
         """Test resolving props with optional fields like ns, class, and remarks."""
-        from trestle.oscal.component import DefinedComponent
         from trestle.oscal.common import Property
-        from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+        from trestle.oscal.component import DefinedComponent
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            resolve_links_and_props,
+        )
 
         # Create component with props including optional fields
         component = DefinedComponent(
@@ -909,9 +989,12 @@ class TestResolveLinksAndProps:
 
     def test_resolve_links_basic(self, mock_context):
         """Test resolving basic links from a component."""
-        from trestle.oscal.component import DefinedComponent
         from trestle.oscal.common import Link
-        from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+        from trestle.oscal.component import DefinedComponent
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            resolve_links_and_props,
+        )
 
         # Create component with links
         component = DefinedComponent(
@@ -939,9 +1022,12 @@ class TestResolveLinksAndProps:
 
     def test_resolve_links_with_text(self, mock_context):
         """Test resolving links with optional text field."""
-        from trestle.oscal.component import DefinedComponent
         from trestle.oscal.common import Link
-        from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+        from trestle.oscal.component import DefinedComponent
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            resolve_links_and_props,
+        )
 
         # Create component with links including text
         component = DefinedComponent(
@@ -968,7 +1054,10 @@ class TestResolveLinksAndProps:
     def test_resolve_component_without_props_or_links(self, mock_context):
         """Test resolving a component with no props or links."""
         from trestle.oscal.component import DefinedComponent
-        from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            resolve_links_and_props,
+        )
 
         # Create component without props or links
         component = DefinedComponent(
@@ -988,9 +1077,12 @@ class TestResolveLinksAndProps:
 
     def test_resolve_props_and_links_together(self, mock_context):
         """Test resolving both props and links from the same component."""
+        from trestle.oscal.common import Link, Property
         from trestle.oscal.component import DefinedComponent
-        from trestle.oscal.common import Property, Link
-        from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            resolve_links_and_props,
+        )
 
         # Create component with both props and links
         component = DefinedComponent(
@@ -1033,7 +1125,9 @@ class TestResolveURIReference:
     @patch("mcp_server_for_oscal.tools.query_component_definition.requests.get")
     def test_resolve_remote_uri_json(self, mock_requests_get, mock_config, mock_context):
         """Test resolving a remote URI that returns JSON."""
-        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            _resolve_uri_reference,
+        )
 
         # Setup mocks
         mock_config.allow_remote_uris = True
@@ -1060,7 +1154,9 @@ class TestResolveURIReference:
     @patch("mcp_server_for_oscal.tools.query_component_definition.requests.get")
     def test_resolve_remote_uri_text(self, mock_requests_get, mock_config, mock_context):
         """Test resolving a remote URI that returns text."""
-        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            _resolve_uri_reference,
+        )
 
         # Setup mocks
         mock_config.allow_remote_uris = True
@@ -1086,7 +1182,9 @@ class TestResolveURIReference:
     @patch("mcp_server_for_oscal.tools.query_component_definition.config")
     def test_resolve_uri_remote_not_allowed(self, mock_config, mock_context):
         """Test that remote URI resolution fails when not allowed."""
-        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            _resolve_uri_reference,
+        )
 
         # Setup mocks
         mock_config.allow_remote_uris = False
@@ -1104,7 +1202,9 @@ class TestResolveURIReference:
     @patch("mcp_server_for_oscal.tools.query_component_definition.config")
     def test_resolve_uri_max_depth_exceeded(self, mock_config, mock_context):
         """Test that URI resolution stops at max depth."""
-        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            _resolve_uri_reference,
+        )
 
         # Setup mocks
         mock_config.max_uri_depth = 2
@@ -1121,7 +1221,9 @@ class TestResolveURIReference:
     @patch("mcp_server_for_oscal.tools.query_component_definition.config")
     def test_resolve_uri_circular_reference(self, mock_config, mock_context):
         """Test that circular references are detected."""
-        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            _resolve_uri_reference,
+        )
 
         # Setup mocks
         mock_config.max_uri_depth = 3
@@ -1142,7 +1244,9 @@ class TestResolveURIReference:
     @patch("mcp_server_for_oscal.tools.query_component_definition.requests.get")
     def test_resolve_uri_network_error(self, mock_requests_get, mock_config, mock_context):
         """Test handling of network errors during URI resolution."""
-        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            _resolve_uri_reference,
+        )
 
         # Setup mocks
         mock_config.allow_remote_uris = True
@@ -1163,7 +1267,9 @@ class TestResolveURIReference:
     @patch("mcp_server_for_oscal.tools.query_component_definition.config")
     def test_resolve_local_uri_json(self, mock_config, mock_context, tmp_path):
         """Test resolving a local file URI with JSON content."""
-        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            _resolve_uri_reference,
+        )
 
         # Setup mocks
         mock_config.max_uri_depth = 3
@@ -1185,7 +1291,9 @@ class TestResolveURIReference:
     @patch("mcp_server_for_oscal.tools.query_component_definition.config")
     def test_resolve_local_uri_text(self, mock_config, mock_context, tmp_path):
         """Test resolving a local file URI with text content."""
-        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            _resolve_uri_reference,
+        )
 
         # Setup mocks
         mock_config.max_uri_depth = 3
@@ -1207,7 +1315,9 @@ class TestResolveURIReference:
     @patch("mcp_server_for_oscal.tools.query_component_definition.config")
     def test_resolve_local_uri_not_found(self, mock_config, mock_context):
         """Test handling of local file not found."""
-        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            _resolve_uri_reference,
+        )
 
         # Setup mocks
         mock_config.max_uri_depth = 3
@@ -1242,7 +1352,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_all_components_summary_format(self, mock_context, sample_component_def_path):
         """Test querying all components with summary format."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query
         result = query_component_definition(
@@ -1275,7 +1387,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_all_components_raw_format(self, mock_context, sample_component_def_path):
         """Test querying all components with raw format."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query
         result = query_component_definition(
@@ -1299,7 +1413,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_by_uuid_success(self, mock_context, sample_component_def_path):
         """Test querying component by UUID successfully."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query
         result = query_component_definition(
@@ -1317,7 +1433,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_by_uuid_not_found(self, mock_context, sample_component_def_path):
         """Test querying component by UUID that doesn't exist."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query and expect error
         with pytest.raises(ValueError) as exc_info:
@@ -1333,7 +1451,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_by_title_success(self, mock_context, sample_component_def_path):
         """Test querying component by title successfully."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query
         result = query_component_definition(
@@ -1351,7 +1471,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_by_title_not_found(self, mock_context, sample_component_def_path):
         """Test querying component by title that doesn't exist."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query and expect error
         with pytest.raises(ValueError) as exc_info:
@@ -1367,7 +1489,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_by_type_success(self, mock_context, sample_component_def_path):
         """Test querying components by type successfully."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query
         result = query_component_definition(
@@ -1387,7 +1511,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_by_type_not_found(self, mock_context, sample_component_def_path):
         """Test querying components by type that doesn't exist."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query and expect error
         with pytest.raises(ValueError) as exc_info:
@@ -1403,7 +1529,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_missing_query_value(self, mock_context, sample_component_def_path):
         """Test that query_value is required for specific query types."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Test by_uuid without query_value
         with pytest.raises(ValueError) as exc_info:
@@ -1419,7 +1547,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_invalid_query_type(self, mock_context, sample_component_def_path):
         """Test that invalid query_type raises error."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query with invalid type
         with pytest.raises(ValueError) as exc_info:
@@ -1434,7 +1564,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_invalid_source_file(self, mock_context):
         """Test querying with invalid source file path."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query with nonexistent file
         with pytest.raises(Exception):
@@ -1447,7 +1579,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_with_resolve_uris_false(self, mock_context, sample_component_def_path):
         """Test querying with resolve_uris set to False."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query
         result = query_component_definition(
@@ -1464,7 +1598,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_includes_control_implementations(self, mock_context, sample_component_def_path):
         """Test that query includes control implementations in summary format."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query
         result = query_component_definition(
@@ -1482,7 +1618,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_includes_links_and_props(self, mock_context, sample_component_def_path):
         """Test that query includes links and props in summary format."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Execute query
         result = query_component_definition(
@@ -1502,7 +1640,9 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_empty_component_definition(self, mock_context, tmp_path):
         """Test querying a component definition with no components."""
-        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            query_component_definition,
+        )
 
         # Create a minimal component definition with no components
         empty_comp_def = {

@@ -365,13 +365,13 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - **Property 20: Component Definition Parse Error Handling**
   - **Validates: Requirements 10.14**
 
-- [ ] 24. Register query_component_definition tool with MCP server
+- [x] 24. Register query_component_definition tool with MCP server
   - _Requirements: 5.1, 5.2_
 
-- [ ] 24.1 Add tool registration in main.py
+- [x] 24.1 Add tool registration in main.py
   - _Requirements: 5.1, 5.2_
 
-- [ ] 24.2 Update server instructions to include component definition querying
+- [x] 24.2 Update server instructions to include component definition querying
   - _Requirements: 5.7_
 
 - [ ] 25. Integration testing for Component Definition Query
