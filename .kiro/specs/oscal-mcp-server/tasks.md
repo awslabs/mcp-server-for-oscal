@@ -341,20 +341,20 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
 - [x] 22.2 Write unit tests for control implementation extraction
   - _Requirements: 10.12_
 
-- [ ] 23. Implement query_component_definition MCP tool
+- [x] 23. Implement query_component_definition MCP tool
   - _Requirements: 10.1-10.18_
 
-- [ ] 23.1 Create query_component_definition tool function
+- [x] 23.1 Create query_component_definition tool function
   - _Requirements: 10.1, 10.6, 10.7, 10.8_
   - Accept source, query_type, query_value, return_format, resolve_uris parameters
   - Integrate all component query functions
   - Return ComponentQueryResponse with components and metadata
 
-- [ ] 23.2 Add configuration for remote URI processing
+- [x] 23.2 Add configuration for remote URI processing
   - _Requirements: 10.3, 10.17_
   - Add allow_remote_uris, request_timeout, max_uri_depth to config.py
 
-- [ ] 23.3 Write unit tests for the complete tool
+- [x] 23.3 Write unit tests for the complete tool
   - _Requirements: 10.1-10.18_
 
 - [ ]* 23.4 Write property tests for component not found error handling

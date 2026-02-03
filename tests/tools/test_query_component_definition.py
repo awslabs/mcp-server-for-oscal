@@ -1220,3 +1220,317 @@ class TestResolveURIReference:
         assert "error" in result
         assert "File not found" in result["error"]
         assert result["uri"] == "/nonexistent/file.json"
+
+
+
+class TestQueryComponentDefinitionTool:
+    """Test cases for the main query_component_definition tool function."""
+
+    @pytest.fixture
+    def mock_context(self):
+        """Create a mock MCP context."""
+        context = AsyncMock()
+        context.log = AsyncMock()
+        context.session = AsyncMock()
+        context.session.client_params = {}
+        return context
+
+    @pytest.fixture
+    def sample_component_def_path(self):
+        """Return path to sample component definition fixture."""
+        return Path(__file__).parent.parent / "fixtures" / "sample_component_definition.json"
+
+    def test_query_all_components_summary_format(self, mock_context, sample_component_def_path):
+        """Test querying all components with summary format."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query
+        result = query_component_definition(
+            ctx=mock_context,
+            source=str(sample_component_def_path),
+            query_type="all",
+            return_format="summary",
+        )
+
+        # Verify response structure
+        assert "components" in result
+        assert "total_count" in result
+        assert "query_type" in result
+        assert "source" in result
+
+        # Verify query metadata
+        assert result["query_type"] == "all"
+        assert result["source"] == str(sample_component_def_path)
+        assert result["total_count"] == 1
+
+        # Verify component summary fields
+        component = result["components"][0]
+        assert "uuid" in component
+        assert "title" in component
+        assert "description" in component
+        assert "type" in component
+        assert "purpose" in component
+        assert component["uuid"] == "b2c3d4e5-6789-4bcd-9efa-234567890123"
+        assert component["title"] == "Sample Component"
+
+    def test_query_all_components_raw_format(self, mock_context, sample_component_def_path):
+        """Test querying all components with raw format."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query
+        result = query_component_definition(
+            ctx=mock_context,
+            source=str(sample_component_def_path),
+            query_type="all",
+            return_format="raw",
+        )
+
+        # Verify response structure
+        assert result["total_count"] == 1
+        assert result["query_type"] == "all"
+
+        # Verify raw format includes all fields
+        component = result["components"][0]
+        assert "uuid" in component
+        assert "title" in component
+        assert "description" in component
+        assert "type" in component
+        assert "purpose" in component
+
+    def test_query_by_uuid_success(self, mock_context, sample_component_def_path):
+        """Test querying component by UUID successfully."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query
+        result = query_component_definition(
+            ctx=mock_context,
+            source=str(sample_component_def_path),
+            query_type="by_uuid",
+            query_value="b2c3d4e5-6789-4bcd-9efa-234567890123",
+            return_format="summary",
+        )
+
+        # Verify single component returned
+        assert result["total_count"] == 1
+        assert result["query_type"] == "by_uuid"
+        assert result["components"][0]["uuid"] == "b2c3d4e5-6789-4bcd-9efa-234567890123"
+
+    def test_query_by_uuid_not_found(self, mock_context, sample_component_def_path):
+        """Test querying component by UUID that doesn't exist."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query and expect error
+        with pytest.raises(ValueError) as exc_info:
+            query_component_definition(
+                ctx=mock_context,
+                source=str(sample_component_def_path),
+                query_type="by_uuid",
+                query_value="00000000-0000-0000-0000-000000000000",
+                return_format="summary",
+            )
+
+        assert "not found" in str(exc_info.value).lower()
+
+    def test_query_by_title_success(self, mock_context, sample_component_def_path):
+        """Test querying component by title successfully."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query
+        result = query_component_definition(
+            ctx=mock_context,
+            source=str(sample_component_def_path),
+            query_type="by_title",
+            query_value="Sample Component",
+            return_format="summary",
+        )
+
+        # Verify single component returned
+        assert result["total_count"] == 1
+        assert result["query_type"] == "by_title"
+        assert result["components"][0]["title"] == "Sample Component"
+
+    def test_query_by_title_not_found(self, mock_context, sample_component_def_path):
+        """Test querying component by title that doesn't exist."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query and expect error
+        with pytest.raises(ValueError) as exc_info:
+            query_component_definition(
+                ctx=mock_context,
+                source=str(sample_component_def_path),
+                query_type="by_title",
+                query_value="Nonexistent Component",
+                return_format="summary",
+            )
+
+        assert "not found" in str(exc_info.value).lower()
+
+    def test_query_by_type_success(self, mock_context, sample_component_def_path):
+        """Test querying components by type successfully."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query
+        result = query_component_definition(
+            ctx=mock_context,
+            source=str(sample_component_def_path),
+            query_type="by_type",
+            query_value="software",
+            return_format="summary",
+        )
+
+        # Verify components returned
+        assert result["total_count"] >= 1
+        assert result["query_type"] == "by_type"
+        # All returned components should have the queried type
+        for component in result["components"]:
+            assert component["type"] == "software"
+
+    def test_query_by_type_not_found(self, mock_context, sample_component_def_path):
+        """Test querying components by type that doesn't exist."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query and expect error
+        with pytest.raises(ValueError) as exc_info:
+            query_component_definition(
+                ctx=mock_context,
+                source=str(sample_component_def_path),
+                query_type="by_type",
+                query_value="nonexistent-type",
+                return_format="summary",
+            )
+
+        assert "found" in str(exc_info.value).lower()
+
+    def test_query_missing_query_value(self, mock_context, sample_component_def_path):
+        """Test that query_value is required for specific query types."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Test by_uuid without query_value
+        with pytest.raises(ValueError) as exc_info:
+            query_component_definition(
+                ctx=mock_context,
+                source=str(sample_component_def_path),
+                query_type="by_uuid",
+                query_value=None,
+                return_format="summary",
+            )
+
+        assert "query_value is required" in str(exc_info.value)
+
+    def test_query_invalid_query_type(self, mock_context, sample_component_def_path):
+        """Test that invalid query_type raises error."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query with invalid type
+        with pytest.raises(ValueError) as exc_info:
+            query_component_definition(
+                ctx=mock_context,
+                source=str(sample_component_def_path),
+                query_type="invalid_type",  # type: ignore
+                return_format="summary",
+            )
+
+        assert "Invalid query_type" in str(exc_info.value)
+
+    def test_query_invalid_source_file(self, mock_context):
+        """Test querying with invalid source file path."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query with nonexistent file
+        with pytest.raises(Exception):
+            query_component_definition(
+                ctx=mock_context,
+                source="/nonexistent/path/to/file.json",
+                query_type="all",
+                return_format="summary",
+            )
+
+    def test_query_with_resolve_uris_false(self, mock_context, sample_component_def_path):
+        """Test querying with resolve_uris set to False."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query
+        result = query_component_definition(
+            ctx=mock_context,
+            source=str(sample_component_def_path),
+            query_type="all",
+            return_format="summary",
+            resolve_uris=False,
+        )
+
+        # Verify query executes successfully
+        assert result["total_count"] >= 1
+        assert "components" in result
+
+    def test_query_includes_control_implementations(self, mock_context, sample_component_def_path):
+        """Test that query includes control implementations in summary format."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query
+        result = query_component_definition(
+            ctx=mock_context,
+            source=str(sample_component_def_path),
+            query_type="all",
+            return_format="summary",
+        )
+
+        # Check if control implementations are included when present
+        component = result["components"][0]
+        # Control implementations should be included if they exist in the component
+        if "control_implementations" in component:
+            assert isinstance(component["control_implementations"], list)
+
+    def test_query_includes_links_and_props(self, mock_context, sample_component_def_path):
+        """Test that query includes links and props in summary format."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Execute query
+        result = query_component_definition(
+            ctx=mock_context,
+            source=str(sample_component_def_path),
+            query_type="all",
+            return_format="summary",
+        )
+
+        # Check if links and props are included when present
+        component = result["components"][0]
+        # Links and props should be included if they exist in the component
+        if "props" in component:
+            assert isinstance(component["props"], list)
+        if "links" in component:
+            assert isinstance(component["links"], list)
+
+    def test_query_empty_component_definition(self, mock_context, tmp_path):
+        """Test querying a component definition with no components."""
+        from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+
+        # Create a minimal component definition with no components
+        empty_comp_def = {
+            "component-definition": {
+                "uuid": "a1b2c3d4-5678-4abc-8def-123456789012",
+                "metadata": {
+                    "title": "Empty Component Definition",
+                    "last-modified": "2024-01-01T00:00:00Z",
+                    "version": "1.0",
+                    "oscal-version": "1.0.4",
+                },
+            }
+        }
+
+        # Write to temporary file
+        temp_file = tmp_path / "empty_comp_def.json"
+        with open(temp_file, "w") as f:
+            json.dump(empty_comp_def, f)
+
+        # Execute query
+        result = query_component_definition(
+            ctx=mock_context,
+            source=str(temp_file),
+            query_type="all",
+            return_format="summary",
+        )
+
+        # Verify empty result
+        assert result["total_count"] == 0
+        assert result["components"] == []
+        assert result["query_type"] == "all"

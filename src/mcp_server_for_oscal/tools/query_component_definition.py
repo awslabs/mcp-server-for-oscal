@@ -5,10 +5,11 @@ Tool for querying OSCAL Component Definition documents.
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import requests
 from mcp.server.fastmcp.server import Context
+from strands import tool
 from trestle.oscal.component import ComponentDefinition
 
 from mcp_server_for_oscal.config import config
@@ -20,70 +21,70 @@ logger = logging.getLogger(__name__)
 def load_component_definition(source: str, ctx: Context) -> ComponentDefinition:
     """
     Load and validate an OSCAL Component Definition from a local file path or remote URI.
-    
+
     Uses compliance-trestle's load_validate_model_path for automatic validation
     via Pydantic models. Remote URI loading is only supported when explicitly
     configured via allow_remote_uris setting.
-    
+
     Args:
         source: Local file path or remote URI to the Component Definition JSON file
         ctx: MCP server context for error reporting
-        
+
     Returns:
         ComponentDefinition: Validated Pydantic model instance
-        
+
     Raises:
         FileNotFoundError: If the source file does not exist
         ValueError: If the file cannot be parsed, fails validation, or remote URIs are not allowed
         requests.RequestException: If remote URI fetching fails
     """
     logger.debug("Loading component definition from: %s", source)
-    
+
     # Check if source is a remote URI
     is_remote = source.startswith("http://") or source.startswith("https://")
-    
+
     if is_remote:
         return _load_remote_component_definition(source, ctx)
-    else:
-        return _load_local_component_definition(source, ctx)
+
+    return _load_local_component_definition(source, ctx)
 
 
 def _load_local_component_definition(source: str, ctx: Context) -> ComponentDefinition:
     """
     Load and validate an OSCAL Component Definition from a local file path.
-    
+
     Args:
         source: Local file path to the Component Definition JSON file
         ctx: MCP server context for error reporting
-        
+
     Returns:
         ComponentDefinition: Validated Pydantic model instance
-        
+
     Raises:
         FileNotFoundError: If the source file does not exist
         ValueError: If the file cannot be parsed or fails validation
     """
     source_path = Path(source)
-    
+
     # Check if file exists
     if not source_path.exists():
         msg = f"Component Definition file not found: {source}"
         logger.error(msg)
         try_notify_client_error(msg, ctx)
         raise FileNotFoundError(msg)
-    
+
     # Check if it's a file (not a directory)
     if not source_path.is_file():
         msg = f"Source path is not a file: {source}"
         logger.error(msg)
         try_notify_client_error(msg, ctx)
         raise ValueError(msg)
-    
+
     try:
         # Load and parse the JSON file
         with open(source_path) as f:
             data = json.load(f)
-        
+
         # Validate and instantiate ComponentDefinition using Pydantic
         # The data should have a 'component-definition' key at the root
         if "component-definition" in data:
@@ -91,16 +92,16 @@ def _load_local_component_definition(source: str, ctx: Context) -> ComponentDefi
         else:
             # Try direct instantiation if the root is already the component definition
             component_def = ComponentDefinition(**data)
-        
+
         logger.info("Successfully loaded and validated component definition from: %s", source)
         return component_def
-        
+
     except json.JSONDecodeError as e:
         msg = f"Failed to parse Component Definition JSON: {e}"
         logger.exception(msg)
         try_notify_client_error(msg, ctx)
         raise ValueError(msg) from e
-        
+
     except Exception as e:
         msg = f"Failed to load or validate Component Definition: {e}"
         logger.exception(msg)
@@ -111,17 +112,17 @@ def _load_local_component_definition(source: str, ctx: Context) -> ComponentDefi
 def _load_remote_component_definition(source: str, ctx: Context) -> ComponentDefinition:
     """
     Load and validate an OSCAL Component Definition from a remote URI.
-    
+
     Only works when allow_remote_uris is configured to True. Fetches the JSON
     content via HTTP and validates it using compliance-trestle.
-    
+
     Args:
         source: Remote URI to the Component Definition JSON file
         ctx: MCP server context for error reporting
-        
+
     Returns:
         ComponentDefinition: Validated Pydantic model instance
-        
+
     Raises:
         ValueError: If remote URIs are not allowed or validation fails
         requests.RequestException: If HTTP request fails
@@ -135,17 +136,17 @@ def _load_remote_component_definition(source: str, ctx: Context) -> ComponentDef
         logger.error(msg)
         try_notify_client_error(msg, ctx)
         raise ValueError(msg)
-    
+
     logger.info("Fetching remote Component Definition from: %s", source)
-    
+
     try:
         # Fetch the remote content with timeout
         response = requests.get(source, timeout=config.request_timeout)
         response.raise_for_status()
-        
+
         # Parse JSON content
         data = response.json()
-        
+
         # Validate and instantiate ComponentDefinition using Pydantic
         # The data should have a 'component-definition' key at the root
         if "component-definition" in data:
@@ -153,28 +154,28 @@ def _load_remote_component_definition(source: str, ctx: Context) -> ComponentDef
         else:
             # Try direct instantiation if the root is already the component definition
             component_def = ComponentDefinition(**data)
-        
+
         logger.info("Successfully loaded and validated remote component definition from: %s", source)
         return component_def
-        
+
     except requests.Timeout as e:
         msg = f"Request timeout while fetching remote URI (timeout={config.request_timeout}s): {source}"
         logger.exception(msg)
         try_notify_client_error(msg, ctx)
         raise ValueError(msg) from e
-        
+
     except requests.RequestException as e:
         msg = f"Failed to fetch remote Component Definition: {e}"
         logger.exception(msg)
         try_notify_client_error(msg, ctx)
         raise ValueError(msg) from e
-        
+
     except json.JSONDecodeError as e:
         msg = f"Failed to parse remote Component Definition JSON: {e}"
         logger.exception(msg)
         try_notify_client_error(msg, ctx)
         raise ValueError(msg) from e
-        
+
     except Exception as e:
         msg = f"Failed to load or validate remote Component Definition: {e}"
         logger.exception(msg)
@@ -381,7 +382,7 @@ def extract_control_implementations(component: Any) -> list[dict[str, Any]]:
                     - uuid: Statement UUID
                     - description: Statement description (required)
     """
-    control_implementations = []
+    control_implementations: list[dict[str, Any]] = []
 
     # Check if component has control implementations
     if not hasattr(component, 'control_implementations') or not component.control_implementations:
@@ -550,3 +551,144 @@ def _resolve_uri_reference(uri: str, ctx: Context, visited_uris: set[str], curre
             "uri": uri
         }
 
+
+
+@tool
+def query_component_definition(
+    ctx: Context,
+    source: str,
+    query_type: Literal["all", "by_uuid", "by_title", "by_type"] = "all",
+    query_value: str | None = None,
+    return_format: Literal["summary", "raw"] = "summary",
+    resolve_uris: bool = False,
+) -> dict[str, Any]:
+    """
+    Query an OSCAL Component Definition document to extract component information.
+
+    This tool loads and parses OSCAL Component Definition documents from local files
+    or remote URIs (when configured), validates them against the OSCAL schema, and
+    extracts component information based on the specified query parameters.
+
+    Args:
+        ctx: MCP server context (injected automatically by MCP server)
+        source: Path to local Component Definition file or remote URI
+        query_type: Type of query to perform:
+            - "all": Return all components in the definition
+            - "by_uuid": Find component by UUID (requires query_value)
+            - "by_title": Find component by title with prop fallback (requires query_value)
+            - "by_type": Filter components by type (requires query_value)
+        query_value: Value to search for (required for by_uuid, by_title, by_type)
+        return_format: Format of returned component data:
+            - "summary": Return component summary with key fields only
+            - "raw": Return complete component object
+        resolve_uris: Whether to resolve and process URI references in components
+
+    Returns:
+        dict: ComponentQueryResponse containing:
+            - components: List of component summaries or raw objects
+            - total_count: Number of components returned
+            - query_type: The query type used
+            - source: The source file/URI queried
+
+    Raises:
+        ValueError: If query parameters are invalid or component not found
+        Exception: If document loading, parsing, or validation fails
+    """
+    logger.debug(
+        "query_component_definition(source: %s, query_type: %s, query_value: %s, return_format: %s, resolve_uris: %s)",
+        source,
+        query_type,
+        query_value,
+        return_format,
+        resolve_uris,
+    )
+
+    # Validate query parameters
+    if query_type in ["by_uuid", "by_title", "by_type"] and not query_value:
+        msg = f"query_value is required when query_type is '{query_type}'"
+        try_notify_client_error(msg, ctx)
+        raise ValueError(msg)
+
+    # Load and validate the Component Definition document
+    try:
+        comp_def = load_component_definition(source, ctx)
+    except Exception as e:
+        msg = f"Failed to load or parse Component Definition from {source}: {e!s}"
+        logger.exception(msg)
+        try_notify_client_error(msg, ctx)
+        raise
+
+    # Get all components from the definition
+    if not comp_def.components:
+        logger.warning("Component Definition has no components")
+        return {
+            "components": [],
+            "total_count": 0,
+            "query_type": query_type,
+            "source": source,
+        }
+
+    components = comp_def.components
+
+    # Filter/query components based on query_type
+    if query_type == "all":
+        selected_components = components
+    elif query_type == "by_uuid":
+        assert query_value is not None  # Validated earlier
+        component = find_component_by_uuid(components, query_value)
+        if not component:
+            msg = f"Component with UUID '{query_value}' not found in {source}"
+            try_notify_client_error(msg, ctx)
+            raise ValueError(msg)
+        selected_components = [component]
+    elif query_type == "by_title":
+        assert query_value is not None  # Validated earlier
+        # Try exact title match first
+        component = find_component_by_title(components, query_value)
+        # Fallback to prop value search if title not found
+        if not component:
+            component = find_component_by_prop_value(components, query_value)
+        if not component:
+            msg = f"Component with title or prop value '{query_value}' not found in {source}"
+            try_notify_client_error(msg, ctx)
+            raise ValueError(msg)
+        selected_components = [component]
+    elif query_type == "by_type":
+        assert query_value is not None  # Validated earlier
+        selected_components = filter_components_by_type(components, query_value)
+        if not selected_components:
+            msg = f"No components with type '{query_value}' found in {source}"
+            try_notify_client_error(msg, ctx)
+            raise ValueError(msg)
+    else:
+        msg = f"Invalid query_type: {query_type}"
+        try_notify_client_error(msg, ctx)
+        raise ValueError(msg)
+
+    # Format the components based on return_format
+    formatted_components = []
+    for component in selected_components:
+        if return_format == "summary":
+            component_data = extract_component_summary(component)
+            # Add links and props resolution
+            links_props = resolve_links_and_props(component, ctx, resolve_uris)
+            if links_props.get("props"):
+                component_data["props"] = links_props["props"]
+            if links_props.get("links"):
+                component_data["links"] = links_props["links"]
+            # Add control implementations
+            control_impls = extract_control_implementations(component)
+            if control_impls:
+                component_data["control_implementations"] = control_impls
+        else:  # raw format
+            component_data = component.dict(exclude_none=True)
+
+        formatted_components.append(component_data)
+
+    # Return the query response
+    return {
+        "components": formatted_components,
+        "total_count": len(formatted_components),
+        "query_type": query_type,
+        "source": source,
+    }
