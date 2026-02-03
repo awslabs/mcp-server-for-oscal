@@ -277,3 +277,162 @@ class TestLoadComponentDefinition:
         # Verify results
         assert isinstance(result, ComponentDefinition)
         mock_load_remote.assert_called_once_with("https://example.com/component.json", mock_context)
+
+
+
+
+class TestExtractComponentSummary:
+    """Test cases for extract_component_summary function."""
+
+    @pytest.fixture
+    def sample_component_def_path(self):
+        """Return path to sample component definition fixture."""
+        return Path(__file__).parent.parent / "fixtures" / "sample_component_definition.json"
+
+    def test_extract_summary_with_required_fields_only(self):
+        """Test extracting summary from component with only required fields."""
+        from trestle.oscal.component import DefinedComponent
+        from mcp_server_for_oscal.tools.query_component_definition import extract_component_summary
+
+        # Create a minimal component with only required fields
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901234",
+            type="software",
+            title="Test Component",
+            description="A test component description",
+            purpose="Testing summary extraction",
+        )
+
+        # Extract summary
+        result = extract_component_summary(component)
+
+        # Verify required fields
+        assert result["uuid"] == "c1d2e3f4-7890-4cde-9fab-345678901234"
+        assert result["title"] == "Test Component"
+        assert result["description"] == "A test component description"
+        assert result["type"] == "software"
+        assert result["purpose"] == "Testing summary extraction"
+        
+        # Verify optional fields are not present
+        assert "responsible_roles" not in result
+        assert "protocols" not in result
+
+    def test_extract_summary_with_responsible_roles(self):
+        """Test extracting summary from component with responsible roles."""
+        from trestle.oscal.component import DefinedComponent
+        from trestle.oscal.common import ResponsibleRole
+        from mcp_server_for_oscal.tools.query_component_definition import extract_component_summary
+
+        # Create component with responsible roles
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901234",
+            type="service",
+            title="Test Service Component",
+            description="A service component with roles",
+            purpose="Testing role extraction",
+            responsible_roles=[
+                ResponsibleRole(role_id="admin"),
+                ResponsibleRole(role_id="developer"),
+            ],
+        )
+
+        # Extract summary
+        result = extract_component_summary(component)
+
+        # Verify required fields
+        assert result["uuid"] == "c1d2e3f4-7890-4cde-9fab-345678901234"
+        assert result["title"] == "Test Service Component"
+        assert result["type"] == "service"
+        
+        # Verify responsible roles are included
+        assert "responsible_roles" in result
+        assert result["responsible_roles"] == ["admin", "developer"]
+
+    def test_extract_summary_with_protocols(self):
+        """Test extracting summary from component with protocols."""
+        from trestle.oscal.component import DefinedComponent
+        from trestle.oscal.common import Protocol
+        from mcp_server_for_oscal.tools.query_component_definition import extract_component_summary
+
+        # Create component with protocols
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901234",
+            type="software",
+            title="Test Protocol Component",
+            description="A component with protocols",
+            purpose="Testing protocol extraction",
+            protocols=[
+                Protocol(uuid="d2e3f4a5-8901-4def-9abc-456789012345", name="HTTPS"),
+                Protocol(uuid="e3f4a5b6-9012-4efa-9bcd-567890123456", name="SSH"),
+            ],
+        )
+
+        # Extract summary
+        result = extract_component_summary(component)
+
+        # Verify required fields
+        assert result["uuid"] == "c1d2e3f4-7890-4cde-9fab-345678901234"
+        assert result["title"] == "Test Protocol Component"
+        
+        # Verify protocols are included
+        assert "protocols" in result
+        assert result["protocols"] == [
+            "d2e3f4a5-8901-4def-9abc-456789012345",
+            "e3f4a5b6-9012-4efa-9bcd-567890123456",
+        ]
+
+    def test_extract_summary_with_all_optional_fields(self):
+        """Test extracting summary from component with all optional fields."""
+        from trestle.oscal.component import DefinedComponent
+        from trestle.oscal.common import ResponsibleRole, Protocol
+        from mcp_server_for_oscal.tools.query_component_definition import extract_component_summary
+
+        # Create component with all optional fields
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901234",
+            type="hardware",
+            title="Complete Component",
+            description="A component with all fields",
+            purpose="Testing complete extraction",
+            responsible_roles=[
+                ResponsibleRole(role_id="security-officer"),
+            ],
+            protocols=[
+                Protocol(uuid="d2e3f4a5-8901-4def-9abc-456789012345", name="TLS"),
+            ],
+        )
+
+        # Extract summary
+        result = extract_component_summary(component)
+
+        # Verify all fields are present
+        assert result["uuid"] == "c1d2e3f4-7890-4cde-9fab-345678901234"
+        assert result["title"] == "Complete Component"
+        assert result["description"] == "A component with all fields"
+        assert result["type"] == "hardware"
+        assert result["purpose"] == "Testing complete extraction"
+        assert result["responsible_roles"] == ["security-officer"]
+        assert result["protocols"] == ["d2e3f4a5-8901-4def-9abc-456789012345"]
+
+    def test_extract_summary_from_loaded_component(self, sample_component_def_path):
+        """Test extracting summary from a component loaded from fixture file."""
+        from mcp_server_for_oscal.tools.query_component_definition import (
+            extract_component_summary,
+            _load_local_component_definition,
+        )
+        from unittest.mock import AsyncMock
+
+        # Load component definition from fixture
+        mock_context = AsyncMock()
+        comp_def = _load_local_component_definition(str(sample_component_def_path), mock_context)
+        
+        # Extract summary from first component
+        component = comp_def.components[0]
+        result = extract_component_summary(component)
+
+        # Verify the summary matches the fixture data
+        assert result["uuid"] == "b2c3d4e5-6789-4bcd-9efa-234567890123"
+        assert result["title"] == "Sample Component"
+        assert result["description"] == "A sample component for testing"
+        assert result["type"] == "software"
+        assert result["purpose"] == "Testing component definition loading"

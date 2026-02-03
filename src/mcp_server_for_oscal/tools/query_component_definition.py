@@ -180,3 +180,43 @@ def _load_remote_component_definition(source: str, ctx: Context) -> ComponentDef
         logger.exception(msg)
         try_notify_client_error(msg, ctx)
         raise ValueError(msg) from e
+
+
+def extract_component_summary(component: Any) -> dict[str, Any]:
+    """
+    Extract summary information from a DefinedComponent.
+
+    Extracts the required fields (UUID, title, description, type, purpose) and
+    handles optional fields (responsible_roles, protocols) from a compliance-trestle
+    DefinedComponent Pydantic model.
+
+    Args:
+        component: DefinedComponent Pydantic model instance
+
+    Returns:
+        dict: Summary dictionary with component information including:
+            - uuid: Component UUID
+            - title: Component title
+            - description: Component description
+            - type: Component type
+            - purpose: Component purpose
+            - responsible_roles: List of responsible role IDs (optional)
+            - protocols: List of protocol UUIDs (optional)
+    """
+    summary = {
+        "uuid": str(component.uuid),
+        "title": component.title,
+        "description": component.description,
+        "type": component.type,
+        "purpose": component.purpose,
+    }
+
+    # Handle optional fields
+    if hasattr(component, "responsible_roles") and component.responsible_roles:
+        summary["responsible_roles"] = [role.role_id for role in component.responsible_roles]
+
+    if hasattr(component, "protocols") and component.protocols:
+        summary["protocols"] = [str(protocol.uuid) for protocol in component.protocols]
+
+    return summary
+
