@@ -4,7 +4,7 @@
 
 The OSCAL MCP Server is a Model Context Protocol (MCP) server that provides AI assistants with specialized tools for working with NIST's Open Security Controls Assessment Language (OSCAL). The server acts as a bridge between AI assistants and OSCAL resources, enabling intelligent querying of OSCAL documentation, schema retrieval, and model information access.
 
-The system is built using Python with the FastMCP framework and integrates with AWS Bedrock Knowledge Base for documentation queries. It provides four primary tools: documentation querying, model listing, schema retrieval, and OSCAL community resources listing.
+The system is built using Python with the FastMCP framework and integrates with AWS Bedrock Knowledge Base for documentation queries. It leverages the **compliance-trestle** library for OSCAL document parsing, validation, and manipulation, providing type-safe Pydantic models for all OSCAL document types. The server provides five primary tools: documentation querying, model listing, schema retrieval, OSCAL community resources listing, and component definition querying.
 
 ## Architecture
 
@@ -32,14 +32,16 @@ graph TB
         H[List Models Tool]
         I[Get Schema Tool]
         J[List OSCAL Resources Tool]
+        K[Query Component Definition Tool]
     end
     
     subgraph "Data Layer"
-        K[AWS Bedrock Knowledge Base]
-        L[Local Schema Files]
-        M[OSCAL Model Definitions]
-        N[Local document index]
-        O[OSCAL Community Resources File]
+        L[AWS Bedrock Knowledge Base]
+        M[Local Schema Files]
+        N[OSCAL Model Definitions]
+        O[Local document index]
+        P[OSCAL Community Resources File]
+        Q[Component Definition Files]
     end
     
     A <--> B
@@ -51,11 +53,13 @@ graph TB
     F --> H
     F --> I
     F --> J
-    G --> K
-    G --> N
-    H --> M
-    I --> L
-    J --> O
+    F --> K
+    G --> L
+    G --> O
+    H --> N
+    I --> M
+    J --> P
+    K --> Q
 ```
 
 ### Key Architectural Principles
@@ -64,7 +68,8 @@ graph TB
 2. **Tool-Based Design**: Functionality is exposed as discrete, composable tools
 3. **Configuration-Driven**: Behavior is controlled through environment variables and command line arguments
 4. **Error Resilience**: Comprehensive error handling with graceful degradation
-5. **Local-First Schema Access**: Schemas are stored locally for fast, reliable access
+5. **Local-First Resource**: Schemas and other resources are stored locally for fast, reliable access. We should not query remote resources unless explicitly configured to do so.
+6. **Type-Safe OSCAL Handling**: Use compliance-trestle's Pydantic models for automatic validation and type safety
 
 ## Components and Interfaces
 
@@ -180,6 +185,51 @@ def read_resources_file() -> str
     # File system interface for reading awesome-oscal.md
 ```
 
+### Query Component Definition Tool (`query_component_definition.py`)
+
+**Responsibilities:**
+- Parse OSCAL Component Definition documents from local files or URLs
+- Extract component information including metadata, control implementations, and properties
+- Support JSON format parsing
+- Provide summary and raw component object views
+- Resolve Link and Prop objects according to OSCAL extension patterns
+- Handle component queries by UUID, title, and type
+- Validate Component Definition documents against OSCAL schema
+- Process URI references when requested
+
+**Key Interfaces:**
+```python
+@tool
+def query_component_definition(
+    ctx: Context,
+    source: str,
+    query_type: Literal["all", "by_uuid", "by_title", "by_type"] = "all",
+    query_value: str | None = None,
+    return_format: Literal["summary", "raw"] = "summary",
+    resolve_uris: bool = False
+) -> dict
+    # Main tool function for querying component definitions
+
+def load_component_definition(source: str, ctx: Context) -> ComponentDefinition
+    # Load and validate using compliance-trestle's load_validate functions
+    # Returns: trestle.oscal.component.ComponentDefinition
+
+def extract_component_summary(component: DefinedComponent) -> dict
+    # Extract summary fields from compliance-trestle DefinedComponent model
+
+def resolve_links_and_props(component: DefinedComponent, ctx: Context) -> dict
+    # Process Link and Prop Pydantic objects from compliance-trestle
+
+def find_component_by_title(components: List[DefinedComponent], title: str) -> DefinedComponent | None
+    # Search for component by exact title match
+
+def find_component_by_prop_value(components: List[DefinedComponent], value: str) -> DefinedComponent | None
+    # Use ModelUtils.find_values_by_name() for prop value search
+
+def filter_components_by_type(components: List[DefinedComponent], component_type: str) -> List[DefinedComponent]
+    # Filter components by type field
+```
+
 ### Utilities Module (`utils.py`)
 
 **Responsibilities:**
@@ -237,7 +287,159 @@ class SchemaResponse(TypedDict):
     schema: str  # JSON-serialized schema content
     model_name: str
     schema_type: Literal["json", "xsd"]
+
+# Component Definition Query Response
+class ComponentSummary(TypedDict):
+    uuid: str
+    title: str
+    description: str
+    type: str
+    purpose: str
+
+class ComponentQueryResponse(TypedDict):
+    components: List[ComponentSummary | dict]  # Summary or raw format
+    total_count: int
+    query_type: str
+    source: str
+
+# Component Definition uses compliance-trestle Pydantic models
+# from trestle.oscal.component import ComponentDefinition, DefinedComponent
+# ComponentDefinition fields: uuid, metadata, import_component_definitions, components, capabilities, back_matter
+# DefinedComponent fields: uuid, type, title, description, purpose, props, links, responsible_roles, protocols, control_implementations, remarks
 ```
+
+## Implementation Details
+
+### Component Definition Query Implementation
+
+The Component Definition Query tool leverages the **compliance-trestle** library, which provides comprehensive Pydantic models for all OSCAL document types and built-in validation capabilities.
+
+#### 1. Document Loading and Parsing
+
+**Using compliance-trestle Models:**
+- Import from `trestle.oscal.component`: `ComponentDefinition`, `DefinedComponent`
+- Use `trestle.common.model_utils.ModelUtils.load_model_for_class()` for file loading
+- Use `trestle.common.load_validate.load_validate_model_path()` for loading with validation
+- Direct instantiation from dict: `ComponentDefinition(**json_data)` with automatic validation
+
+**Parsing Approaches:**
+- **Local Files**: Use `ModelUtils.load_model_for_class(trestle_root, model_name, ComponentDefinition)`
+- **From JSON dict**: Parse JSON and instantiate: `ComponentDefinition(**data['component-definition'])`
+- **Remote URIs**: Fetch JSON, parse, and instantiate with validation
+- **Format Support**: JSON and YAML (via compliance-trestle's FileContentType)
+
+**Benefits of compliance-trestle:**
+- Automatic schema validation via Pydantic models
+- Type safety with full IDE support
+- Built-in UUID format validation
+- Handles OSCAL versioning (supports 1.0.4 and 1.1.3)
+- No need for custom parsing or validation logic
+
+#### 2. Schema Validation
+
+**Using compliance-trestle Validation:**
+- Validation is automatic when instantiating models
+- Use `load_validate_model_path()` for file-based validation
+- Pydantic v1 validation provides detailed error messages
+- UUID format validation built-in (RFC 4122 compliant)
+- All OSCAL field constraints enforced automatically
+
+**No need for:**
+- Custom jsonschema validation
+- Manual schema file management
+- Custom validation logic
+
+#### 3. Component Extraction and Filtering
+
+**Access component data via Pydantic models:**
+```python
+comp_def = ComponentDefinition(**data)
+components = comp_def.components  # List[DefinedComponent]
+
+# Filter by UUID
+component = next((c for c in components if c.uuid == query_uuid), None)
+
+# Filter by title
+component = next((c for c in components if c.title == query_title), None)
+
+# Filter by type
+filtered = [c for c in components if c.type == query_type]
+```
+
+#### 4. Summary Generation
+
+Extract fields directly from DefinedComponent Pydantic model:
+```python
+summary = {
+    'uuid': component.uuid,
+    'title': component.title,
+    'description': component.description,
+    'purpose': component.purpose,
+    'type': component.type
+}
+```
+
+#### 5. Link and Prop Resolution
+
+**Using compliance-trestle's built-in structures:**
+- `component.props`: List of Property objects with name, value, class, remarks
+- `component.links`: List of Link objects with href, rel, text
+- Use `ModelUtils.find_values_by_name()` for searching props
+- Props and Links are already parsed Pydantic models
+
+**URI Resolution:**
+- When requested, fetch and process referenced resources
+- Use `component.links` to find href attributes
+- Handle relative and absolute URIs
+- Track visited URIs to prevent circular references
+
+#### 6. Control Implementation Extraction
+
+**Access via Pydantic model:**
+```python
+if component.control_implementations:
+    for ctrl_impl in component.control_implementations:
+        # ctrl_impl.uuid, ctrl_impl.source
+        for req in ctrl_impl.implemented_requirements:
+            # req.uuid, req.control_id, req.description
+            for stmt in req.statements:
+                # stmt.statement_id, stmt.uuid, stmt.description
+```
+
+#### 7. Serialization
+
+**Convert to dict or JSON:**
+```python
+# To dict (for summary or raw format)
+component_dict = component.dict()
+
+# To JSON string
+component_json = component.json()
+
+# Exclude None values
+component_dict = component.dict(exclude_none=True)
+```
+
+### Configuration Requirements
+
+Add to `config.py`:
+```python
+allow_remote_uris: bool = False  # Security flag for remote URI processing
+request_timeout: int = 30  # Timeout for remote URI requests in seconds
+max_uri_depth: int = 3  # Maximum depth for URI reference resolution
+```
+
+### Dependencies
+
+**Primary dependency:**
+- `compliance-trestle>=3.0.0`: Provides Pydantic models for all OSCAL types, validation, and utilities
+
+**Additional dependencies:**
+- `requests`: HTTP client for remote URI fetching (already used by compliance-trestle)
+
+**Removed dependencies:**
+- ~~`jsonschema`~~: Not needed, validation handled by compliance-trestle
+- ~~Custom validation logic~~: Built into Pydantic models
 
 ## Correctness Properties
 
@@ -306,6 +508,34 @@ Property 13: Schema File System Consistency\
 *For any* supported model type and schema format, the corresponding schema file should exist in the expected location with the correct naming convention\
 **Validates: Requirements 8.2, 8.3, 8.4**
 
+Property 14: Component Summary Field Completeness\
+*For any* component returned in summary format, the response should include all required fields: UUID, title, description, type, and purpose\
+**Validates: Requirements 10.4**
+
+Property 15: Component Query Type Consistency\
+*For any* component query by UUID or title, when a match is found, the returned component should have the queried field matching the query value\
+**Validates: Requirements 10.8, 10.9**
+
+Property 16: Component Type Filtering Accuracy\
+*For any* component type filter, all returned components should have a type field matching the filter value\
+**Validates: Requirements 10.18**
+
+Property 17: Component Definition Schema Validation\
+*For any* Component Definition document processed, the document should conform to the OSCAL Component Definition schema structure\
+**Validates: Requirements 10.16**
+
+Property 18: Link and Prop Resolution Consistency\
+*For any* component with Link or Prop objects, when resolution is requested, the resolved objects should follow OSCAL extension patterns\
+**Validates: Requirements 10.5**
+
+Property 19: Component Not Found Error Handling\
+*For any* query for a non-existent component UUID or title, the server should return an appropriate error message indicating the component was not found\
+**Validates: Requirements 10.15**
+
+Property 20: Component Definition Parse Error Handling\
+*For any* malformed Component Definition document, the server should return an error with details about the parsing failure\
+**Validates: Requirements 10.14**
+
 Property 14: Schema JSON Format Validation\
 *For any* schema returned by get_oscal_schema, the response should be a valid JSON string that can be parsed without errors\
 **Validates: Requirements 8.6**
@@ -359,6 +589,10 @@ The system implements comprehensive error handling at multiple levels:
 - **AWS Service Errors**: Boto3 exceptions are caught and handled gracefully with appropriate error messages
 - **File System Errors**: Schema file operations include proper error handling for missing or inaccessible files
 - **Context Reporting**: All errors are reported through MCP context for client visibility
+- **Component Definition Parsing**: Handle JSON/XML parsing errors with descriptive messages about malformed documents
+- **Network Errors**: Handle timeouts and connection failures when processing remote URIs
+- **Schema Validation Errors**: Provide detailed feedback when Component Definition documents fail schema validation
+- **Component Not Found**: Clear error messages when queried components don't exist in the definition
 
 ### Configuration Error Handling
 - **Missing Configuration**: Graceful degradation when optional configuration is missing
@@ -402,6 +636,10 @@ The system uses **pytest** with **Hypothesis** for property-based testing. Each 
 - **Configuration Values**: Generate various configuration combinations
 - **Schema Types**: Test both supported and unsupported schema format requests
 - **AWS Responses**: Generate realistic Bedrock Knowledge Base response structures
+- **Component Definitions**: Generate valid and invalid Component Definition documents in JSON format
+- **Component Queries**: Generate queries by UUID, title, type, and property values
+- **Link and Prop Objects**: Generate components with various Link and Prop configurations
+- **URI References**: Generate components with local and remote URI references
 
 ### Integration Testing
 - **End-to-End Tool Testing**: Test complete tool execution paths

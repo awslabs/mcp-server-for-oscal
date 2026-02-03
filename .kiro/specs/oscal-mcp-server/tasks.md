@@ -233,12 +233,169 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - Tag tests with feature and property information
   - _Requirements: All requirements covered by correctness properties_
 
-- [ ] 17. Final integration verification
+- [x] 17. Add compliance-trestle dependency
+  - _Requirements: 10.1, 10.2, 10.16_
+
+- [x] 17.1 Add compliance-trestle to pyproject.toml dependencies
+  - _Requirements: 10.1, 10.2, 10.16_
+
+- [x] 17.2 Verify compliance-trestle installation and imports
+  - _Requirements: 10.1, 10.2_
+
+- [ ] 18. Implement Component Definition loading and validation
+  - _Requirements: 10.1, 10.2, 10.16_
+
+- [ ] 18.1 Create load_component_definition function using compliance-trestle
+  - _Requirements: 10.1, 10.2_
+  - Use `trestle.oscal.component.ComponentDefinition`
+  - Support local file paths
+  - Automatic validation via Pydantic models
+
+- [ ] 18.2 Add remote URI loading support (when configured)
+  - _Requirements: 10.3, 10.17_
+  - Check `allow_remote_uris` configuration flag
+  - Implement HTTP fetching with timeout
+  - Handle network errors gracefully
+
+- [ ] 18.3 Write unit tests for component definition loading
+  - _Requirements: 10.1, 10.2, 10.14, 10.16_
+
+- [ ]* 18.4 Write property tests for component definition validation
+  - **Property 17: Component Definition Schema Validation**
+  - **Validates: Requirements 10.16**
+
+- [ ] 19. Implement component summary extraction
+  - _Requirements: 10.4, 10.6, 10.11_
+
+- [ ] 19.1 Create extract_component_summary function
+  - _Requirements: 10.4, 10.11_
+  - Extract UUID, title, description, type, purpose from DefinedComponent
+  - Handle optional fields (responsible_roles, protocols)
+
+- [ ] 19.2 Write unit tests for summary extraction
+  - _Requirements: 10.4, 10.11_
+
+- [ ]* 19.3 Write property tests for summary field completeness
+  - **Property 14: Component Summary Field Completeness**
+  - **Validates: Requirements 10.4**
+
+- [ ] 20. Implement component querying and filtering
+  - _Requirements: 10.6, 10.7, 10.8, 10.9, 10.18_
+
+- [ ] 20.1 Implement query by UUID
+  - _Requirements: 10.8, 10.15_
+  - Exact match on component.uuid
+  - Return error if not found
+
+- [ ] 20.2 Implement query by title with prop fallback
+  - _Requirements: 10.8, 10.9, 10.15_
+  - Exact match on component.title
+  - Fallback to searching prop values using ModelUtils.find_values_by_name()
+
+- [ ] 20.3 Implement query by type filtering
+  - _Requirements: 10.18_
+  - Filter components where type matches query value
+
+- [ ] 20.4 Write unit tests for component querying
+  - _Requirements: 10.8, 10.9, 10.15, 10.18_
+
+- [ ]* 20.5 Write property tests for query type consistency
+  - **Property 15: Component Query Type Consistency**
+  - **Validates: Requirements 10.8, 10.9**
+
+- [ ]* 20.6 Write property tests for type filtering accuracy
+  - **Property 16: Component Type Filtering Accuracy**
+  - **Validates: Requirements 10.18**
+
+- [ ] 21. Implement Link and Prop resolution
+  - _Requirements: 10.5, 10.10, 10.13_
+
+- [ ] 21.1 Create resolve_links_and_props function
+  - _Requirements: 10.5, 10.13_
+  - Access component.props and component.links (Pydantic models)
+  - Extract name-value pairs from props
+  - Extract href from links
+
+- [ ] 21.2 Implement URI reference resolution (when requested)
+  - _Requirements: 10.10, 10.17_
+  - Fetch and process referenced URIs
+  - Track visited URIs to prevent circular references
+  - Respect max_uri_depth configuration
+
+- [ ] 21.3 Write unit tests for link and prop resolution
+  - _Requirements: 10.5, 10.10, 10.13_
+
+- [ ]* 21.4 Write property tests for link and prop resolution consistency
+  - **Property 18: Link and Prop Resolution Consistency**
+  - **Validates: Requirements 10.5**
+
+- [ ] 22. Implement control implementation extraction
+  - _Requirements: 10.12_
+
+- [ ] 22.1 Extract control implementations from components
+  - _Requirements: 10.12_
+  - Access component.control_implementations
+  - Extract implemented requirements with UUIDs, control IDs, descriptions
+  - Extract implementation statements
+
+- [ ] 22.2 Write unit tests for control implementation extraction
+  - _Requirements: 10.12_
+
+- [ ] 23. Implement query_component_definition MCP tool
+  - _Requirements: 10.1-10.18_
+
+- [ ] 23.1 Create query_component_definition tool function
+  - _Requirements: 10.1, 10.6, 10.7, 10.8_
+  - Accept source, query_type, query_value, return_format, resolve_uris parameters
+  - Integrate all component query functions
+  - Return ComponentQueryResponse with components and metadata
+
+- [ ] 23.2 Add configuration for remote URI processing
+  - _Requirements: 10.3, 10.17_
+  - Add allow_remote_uris, request_timeout, max_uri_depth to config.py
+
+- [ ] 23.3 Write unit tests for the complete tool
+  - _Requirements: 10.1-10.18_
+
+- [ ]* 23.4 Write property tests for component not found error handling
+  - **Property 19: Component Not Found Error Handling**
+  - **Validates: Requirements 10.15**
+
+- [ ]* 23.5 Write property tests for parse error handling
+  - **Property 20: Component Definition Parse Error Handling**
+  - **Validates: Requirements 10.14**
+
+- [ ] 24. Register query_component_definition tool with MCP server
+  - _Requirements: 5.1, 5.2_
+
+- [ ] 24.1 Add tool registration in main.py
+  - _Requirements: 5.1, 5.2_
+
+- [ ] 24.2 Update server instructions to include component definition querying
+  - _Requirements: 5.7_
+
+- [ ] 25. Integration testing for Component Definition Query
+  - _Requirements: 10.1-10.18_
+
+- [ ] 25.1 Test with sample OSCAL Component Definition files
+  - _Requirements: 10.1, 10.2_
+
+- [ ] 25.2 Test all query modes (all, by_uuid, by_title, by_type)
+  - _Requirements: 10.6, 10.8, 10.18_
+
+- [ ] 25.3 Test summary vs raw return formats
+  - _Requirements: 10.6, 10.7_
+
+- [ ] 25.4 Test error conditions (invalid files, not found, network errors)
+  - _Requirements: 10.14, 10.15, 10.17_
+
+- [ ] 26. Final integration verification
   - Ensure all tests pass including new property-based tests
   - Verify end-to-end functionality works correctly with both transports
   - Test MCP server can start with stdio transport (default)
   - Test MCP server can start with streamable-http transport (explicit)
   - Validate all error handling paths work as expected
+  - Test Component Definition Query tool with real OSCAL files
 
 ## Notes
 
