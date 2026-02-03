@@ -604,3 +604,396 @@ class TestComponentQuerying:
         result = filter_components_by_type([], "software")
 
         assert len(result) == 0
+
+
+class TestResolveLinksAndProps:
+    """Test cases for resolve_links_and_props function."""
+
+    @pytest.fixture
+    def mock_context(self):
+        """Create a mock MCP context."""
+        context = AsyncMock()
+        context.log = AsyncMock()
+        context.session = AsyncMock()
+        context.session.client_params = {}
+        return context
+
+    def test_resolve_props_basic(self, mock_context):
+            """Test resolving basic props from a component."""
+            from trestle.oscal.component import DefinedComponent
+            from trestle.oscal.common import Property
+            from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+
+            # Create component with props
+            component = DefinedComponent(
+                uuid="c1d2e3f4-7890-4cde-9fab-345678901234",
+                type="software",
+                title="Test Component",
+                description="Test description",
+                purpose="Testing",
+                props=[
+                    Property(name="version", value="1.0.0"),
+                    Property(name="vendor", value="ACME Corp"),
+                ],
+            )
+
+            # Resolve props
+            result = resolve_links_and_props(component, mock_context, resolve_uris=False)
+
+            # Verify props
+            assert "props" in result
+            assert len(result["props"]) == 2
+            assert result["props"][0]["name"] == "version"
+            assert result["props"][0]["value"] == "1.0.0"
+            assert result["props"][1]["name"] == "vendor"
+            assert result["props"][1]["value"] == "ACME Corp"
+
+    def test_resolve_props_with_optional_fields(self, mock_context):
+        """Test resolving props with optional fields like ns, class, and remarks."""
+        from trestle.oscal.component import DefinedComponent
+        from trestle.oscal.common import Property
+        from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+
+        # Create component with props including optional fields
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901235",
+            type="software",
+            title="Test Component",
+            description="Test description",
+            purpose="Testing",
+            props=[
+                Property(
+                    name="version",
+                    value="1.0.0",
+                    ns="http://example.com/ns",
+                    class_="metadata",
+                    remarks="Version information",
+                ),
+            ],
+        )
+
+        # Resolve props
+        result = resolve_links_and_props(component, mock_context, resolve_uris=False)
+
+        # Verify props with optional fields
+        assert len(result["props"]) == 1
+        prop = result["props"][0]
+        assert prop["name"] == "version"
+        assert prop["value"] == "1.0.0"
+        assert prop["ns"] == "http://example.com/ns"
+        assert prop["class"] == "metadata"
+        assert prop["remarks"] == "Version information"
+
+    def test_resolve_links_basic(self, mock_context):
+        """Test resolving basic links from a component."""
+        from trestle.oscal.component import DefinedComponent
+        from trestle.oscal.common import Link
+        from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+
+        # Create component with links
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901236",
+            type="software",
+            title="Test Component",
+            description="Test description",
+            purpose="Testing",
+            links=[
+                Link(href="https://example.com/docs", rel="documentation"),
+                Link(href="https://example.com/source", rel="source"),
+            ],
+        )
+
+        # Resolve links
+        result = resolve_links_and_props(component, mock_context, resolve_uris=False)
+
+        # Verify links
+        assert "links" in result
+        assert len(result["links"]) == 2
+        assert result["links"][0]["href"] == "https://example.com/docs"
+        assert result["links"][0]["rel"] == "documentation"
+        assert result["links"][1]["href"] == "https://example.com/source"
+        assert result["links"][1]["rel"] == "source"
+
+    def test_resolve_links_with_text(self, mock_context):
+        """Test resolving links with optional text field."""
+        from trestle.oscal.component import DefinedComponent
+        from trestle.oscal.common import Link
+        from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+
+        # Create component with links including text
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901237",
+            type="software",
+            title="Test Component",
+            description="Test description",
+            purpose="Testing",
+            links=[
+                Link(href="https://example.com/docs", rel="documentation", text="Documentation Site"),
+            ],
+        )
+
+        # Resolve links
+        result = resolve_links_and_props(component, mock_context, resolve_uris=False)
+
+        # Verify link with text
+        assert len(result["links"]) == 1
+        link = result["links"][0]
+        assert link["href"] == "https://example.com/docs"
+        assert link["rel"] == "documentation"
+        assert link["text"] == "Documentation Site"
+
+    def test_resolve_component_without_props_or_links(self, mock_context):
+        """Test resolving a component with no props or links."""
+        from trestle.oscal.component import DefinedComponent
+        from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+
+        # Create component without props or links
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901238",
+            type="software",
+            title="Test Component",
+            description="Test description",
+            purpose="Testing",
+        )
+
+        # Resolve
+        result = resolve_links_and_props(component, mock_context, resolve_uris=False)
+
+        # Verify empty lists
+        assert result["props"] == []
+        assert result["links"] == []
+
+    def test_resolve_props_and_links_together(self, mock_context):
+        """Test resolving both props and links from the same component."""
+        from trestle.oscal.component import DefinedComponent
+        from trestle.oscal.common import Property, Link
+        from mcp_server_for_oscal.tools.query_component_definition import resolve_links_and_props
+
+        # Create component with both props and links
+        component = DefinedComponent(
+            uuid="c1d2e3f4-7890-4cde-9fab-345678901239",
+            type="software",
+            title="Test Component",
+            description="Test description",
+            purpose="Testing",
+            props=[
+                Property(name="version", value="1.0.0"),
+            ],
+            links=[
+                Link(href="https://example.com/docs", rel="documentation"),
+            ],
+        )
+
+        # Resolve
+        result = resolve_links_and_props(component, mock_context, resolve_uris=False)
+
+        # Verify both props and links
+        assert len(result["props"]) == 1
+        assert result["props"][0]["name"] == "version"
+        assert len(result["links"]) == 1
+        assert result["links"][0]["href"] == "https://example.com/docs"
+
+
+class TestResolveURIReference:
+    """Test cases for _resolve_uri_reference function."""
+
+    @pytest.fixture
+    def mock_context(self):
+        """Create a mock MCP context."""
+        context = AsyncMock()
+        context.log = AsyncMock()
+        context.session = AsyncMock()
+        context.session.client_params = {}
+        return context
+
+    @patch("mcp_server_for_oscal.tools.query_component_definition.config")
+    @patch("mcp_server_for_oscal.tools.query_component_definition.requests.get")
+    def test_resolve_remote_uri_json(self, mock_requests_get, mock_config, mock_context):
+        """Test resolving a remote URI that returns JSON."""
+        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+
+        # Setup mocks
+        mock_config.allow_remote_uris = True
+        mock_config.request_timeout = 30
+        mock_config.max_uri_depth = 3
+
+        mock_response = Mock()
+        mock_response.json.return_value = {"key": "value"}
+        mock_response.raise_for_status = Mock()
+        mock_requests_get.return_value = mock_response
+
+        # Resolve URI
+        result = _resolve_uri_reference("https://example.com/data.json", mock_context, set(), 0)
+
+        # Verify result
+        assert result is not None
+        assert result["uri"] == "https://example.com/data.json"
+        assert result["content"] == {"key": "value"}
+        assert result["content_type"] == "json"
+        assert result["depth"] == 0
+        mock_requests_get.assert_called_once_with("https://example.com/data.json", timeout=30)
+
+    @patch("mcp_server_for_oscal.tools.query_component_definition.config")
+    @patch("mcp_server_for_oscal.tools.query_component_definition.requests.get")
+    def test_resolve_remote_uri_text(self, mock_requests_get, mock_config, mock_context):
+        """Test resolving a remote URI that returns text."""
+        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+
+        # Setup mocks
+        mock_config.allow_remote_uris = True
+        mock_config.request_timeout = 30
+        mock_config.max_uri_depth = 3
+
+        mock_response = Mock()
+        mock_response.json.side_effect = json.JSONDecodeError("msg", "doc", 0)
+        mock_response.text = "Plain text content"
+        mock_response.raise_for_status = Mock()
+        mock_requests_get.return_value = mock_response
+
+        # Resolve URI
+        result = _resolve_uri_reference("https://example.com/data.txt", mock_context, set(), 0)
+
+        # Verify result
+        assert result is not None
+        assert result["uri"] == "https://example.com/data.txt"
+        assert result["content"] == "Plain text content"
+        assert result["content_type"] == "text"
+        assert result["depth"] == 0
+
+    @patch("mcp_server_for_oscal.tools.query_component_definition.config")
+    def test_resolve_uri_remote_not_allowed(self, mock_config, mock_context):
+        """Test that remote URI resolution fails when not allowed."""
+        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+
+        # Setup mocks
+        mock_config.allow_remote_uris = False
+        mock_config.max_uri_depth = 3
+
+        # Resolve URI
+        result = _resolve_uri_reference("https://example.com/data.json", mock_context, set(), 0)
+
+        # Verify error result
+        assert result is not None
+        assert "error" in result
+        assert "not enabled" in result["error"]
+        assert result["uri"] == "https://example.com/data.json"
+
+    @patch("mcp_server_for_oscal.tools.query_component_definition.config")
+    def test_resolve_uri_max_depth_exceeded(self, mock_config, mock_context):
+        """Test that URI resolution stops at max depth."""
+        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+
+        # Setup mocks
+        mock_config.max_uri_depth = 2
+
+        # Resolve URI at max depth
+        result = _resolve_uri_reference("https://example.com/data.json", mock_context, set(), 2)
+
+        # Verify error result
+        assert result is not None
+        assert "error" in result
+        assert "Maximum URI resolution depth" in result["error"]
+        assert result["uri"] == "https://example.com/data.json"
+
+    @patch("mcp_server_for_oscal.tools.query_component_definition.config")
+    def test_resolve_uri_circular_reference(self, mock_config, mock_context):
+        """Test that circular references are detected."""
+        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+
+        # Setup mocks
+        mock_config.max_uri_depth = 3
+
+        # Create visited set with the URI already in it
+        visited = {"https://example.com/data.json"}
+
+        # Resolve URI
+        result = _resolve_uri_reference("https://example.com/data.json", mock_context, visited, 0)
+
+        # Verify error result
+        assert result is not None
+        assert "error" in result
+        assert "Circular reference" in result["error"]
+        assert result["uri"] == "https://example.com/data.json"
+
+    @patch("mcp_server_for_oscal.tools.query_component_definition.config")
+    @patch("mcp_server_for_oscal.tools.query_component_definition.requests.get")
+    def test_resolve_uri_network_error(self, mock_requests_get, mock_config, mock_context):
+        """Test handling of network errors during URI resolution."""
+        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+
+        # Setup mocks
+        mock_config.allow_remote_uris = True
+        mock_config.request_timeout = 30
+        mock_config.max_uri_depth = 3
+
+        mock_requests_get.side_effect = requests.RequestException("Network error")
+
+        # Resolve URI
+        result = _resolve_uri_reference("https://example.com/data.json", mock_context, set(), 0)
+
+        # Verify error result
+        assert result is not None
+        assert "error" in result
+        assert "Failed to fetch URI" in result["error"]
+        assert result["uri"] == "https://example.com/data.json"
+
+    @patch("mcp_server_for_oscal.tools.query_component_definition.config")
+    def test_resolve_local_uri_json(self, mock_config, mock_context, tmp_path):
+        """Test resolving a local file URI with JSON content."""
+        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+
+        # Setup mocks
+        mock_config.max_uri_depth = 3
+
+        # Create a temporary JSON file
+        json_file = tmp_path / "data.json"
+        json_file.write_text('{"key": "value"}')
+
+        # Resolve URI
+        result = _resolve_uri_reference(str(json_file), mock_context, set(), 0)
+
+        # Verify result
+        assert result is not None
+        assert result["uri"] == str(json_file)
+        assert result["content"] == {"key": "value"}
+        assert result["content_type"] == "json"
+        assert result["depth"] == 0
+
+    @patch("mcp_server_for_oscal.tools.query_component_definition.config")
+    def test_resolve_local_uri_text(self, mock_config, mock_context, tmp_path):
+        """Test resolving a local file URI with text content."""
+        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+
+        # Setup mocks
+        mock_config.max_uri_depth = 3
+
+        # Create a temporary text file
+        text_file = tmp_path / "data.txt"
+        text_file.write_text("Plain text content")
+
+        # Resolve URI
+        result = _resolve_uri_reference(str(text_file), mock_context, set(), 0)
+
+        # Verify result
+        assert result is not None
+        assert result["uri"] == str(text_file)
+        assert result["content"] == "Plain text content"
+        assert result["content_type"] == "text"
+        assert result["depth"] == 0
+
+    @patch("mcp_server_for_oscal.tools.query_component_definition.config")
+    def test_resolve_local_uri_not_found(self, mock_config, mock_context):
+        """Test handling of local file not found."""
+        from mcp_server_for_oscal.tools.query_component_definition import _resolve_uri_reference
+
+        # Setup mocks
+        mock_config.max_uri_depth = 3
+
+        # Resolve non-existent file
+        result = _resolve_uri_reference("/nonexistent/file.json", mock_context, set(), 0)
+
+        # Verify error result
+        assert result is not None
+        assert "error" in result
+        assert "File not found" in result["error"]
+        assert result["uri"] == "/nonexistent/file.json"

@@ -307,22 +307,22 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - **Property 16: Component Type Filtering Accuracy**
   - **Validates: Requirements 10.18**
 
-- [ ] 21. Implement Link and Prop resolution
+- [x] 21. Implement Link and Prop resolution
   - _Requirements: 10.5, 10.10, 10.13_
 
-- [ ] 21.1 Create resolve_links_and_props function
+- [x] 21.1 Create resolve_links_and_props function
   - _Requirements: 10.5, 10.13_
   - Access component.props and component.links (Pydantic models)
   - Extract name-value pairs from props
   - Extract href from links
 
-- [ ] 21.2 Implement URI reference resolution (when requested)
+- [x] 21.2 Implement URI reference resolution (when requested)
   - _Requirements: 10.10, 10.17_
   - Fetch and process referenced URIs
   - Track visited URIs to prevent circular references
   - Respect max_uri_depth configuration
 
-- [ ] 21.3 Write unit tests for link and prop resolution
+- [x] 21.3 Write unit tests for link and prop resolution
   - _Requirements: 10.5, 10.10, 10.13_
 
 - [ ]* 21.4 Write property tests for link and prop resolution consistency

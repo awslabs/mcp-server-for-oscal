@@ -290,4 +290,190 @@ def filter_components_by_type(components: list[Any], component_type: str) -> lis
         List of DefinedComponent instances matching the type
     """
     return [component for component in components if component.type == component_type]
+def resolve_links_and_props(component: Any, ctx: Context, resolve_uris: bool = False, visited_uris: set[str] | None = None, current_depth: int = 0) -> dict[str, Any]:
+    """
+    Resolve and process Link and Prop objects from a component.
+
+    Extracts name-value pairs from props and href from links according to
+    OSCAL extension patterns. Optionally fetches and processes referenced URIs
+    when requested.
+
+    Args:
+        component: DefinedComponent Pydantic model instance
+        ctx: MCP server context for error reporting
+        resolve_uris: Whether to fetch and process URI references
+        visited_uris: Set of already visited URIs to prevent circular references
+        current_depth: Current depth of URI resolution
+
+    Returns:
+        Dictionary containing resolved props and links information
+    """
+    result: dict[str, Any] = {
+        "props": [],
+        "links": []
+    }
+
+    # Extract props (name-value pairs)
+    if hasattr(component, 'props') and component.props:
+        for prop in component.props:
+            prop_data = {
+                "name": prop.name,
+                "value": prop.value
+            }
+            # Include optional fields if present
+            if hasattr(prop, 'ns') and prop.ns:
+                prop_data["ns"] = prop.ns
+            if hasattr(prop, 'class_') and prop.class_:
+                prop_data["class"] = prop.class_
+            if hasattr(prop, 'remarks') and prop.remarks:
+                prop_data["remarks"] = prop.remarks
+
+            result["props"].append(prop_data)
+
+    # Extract links (href references)
+    if hasattr(component, 'links') and component.links:
+        for link in component.links:
+            link_data = {
+                "href": link.href
+            }
+            # Include optional fields if present
+            if hasattr(link, 'rel') and link.rel:
+                link_data["rel"] = link.rel
+            if hasattr(link, 'text') and link.text:
+                link_data["text"] = link.text
+
+            # Optionally resolve URI references
+            if resolve_uris and link.href:
+                resolved_content = _resolve_uri_reference(
+                    link.href,
+                    ctx,
+                    visited_uris or set(),
+                    current_depth
+                )
+                if resolved_content:
+                    link_data["resolved_content"] = resolved_content
+
+            result["links"].append(link_data)
+
+    return result
+def _resolve_uri_reference(uri: str, ctx: Context, visited_uris: set[str], current_depth: int) -> dict[str, Any] | None:
+    """
+    Fetch and process a URI reference.
+
+    Tracks visited URIs to prevent circular references and respects max_uri_depth
+    configuration to limit recursion depth.
+
+    Args:
+        uri: The URI to resolve
+        ctx: MCP server context for error reporting
+        visited_uris: Set of already visited URIs to prevent circular references
+        current_depth: Current depth of URI resolution
+
+    Returns:
+        Dictionary containing resolved URI content, or None if resolution fails
+    """
+    # Check if we've exceeded max depth
+    if current_depth >= config.max_uri_depth:
+        logger.warning("Maximum URI resolution depth (%d) reached for URI: %s", config.max_uri_depth, uri)
+        return {
+            "error": f"Maximum URI resolution depth ({config.max_uri_depth}) reached",
+            "uri": uri
+        }
+
+    # Check for circular references
+    if uri in visited_uris:
+        logger.warning("Circular reference detected for URI: %s", uri)
+        return {
+            "error": "Circular reference detected",
+            "uri": uri
+        }
+
+    # Add to visited set
+    visited_uris.add(uri)
+
+    # Check if remote URIs are allowed
+    is_remote = uri.startswith("http://") or uri.startswith("https://")
+    if is_remote and not config.allow_remote_uris:
+        logger.warning("Remote URI resolution is not enabled: %s", uri)
+        return {
+            "error": "Remote URI resolution is not enabled",
+            "uri": uri
+        }
+
+    try:
+        if is_remote:
+            # Fetch remote URI
+            logger.debug("Fetching remote URI: %s (depth: %d)", uri, current_depth)
+            response = requests.get(uri, timeout=config.request_timeout)
+            response.raise_for_status()
+
+            # Try to parse as JSON
+            try:
+                content = response.json()
+                return {
+                    "uri": uri,
+                    "content": content,
+                    "content_type": "json",
+                    "depth": current_depth
+                }
+            except json.JSONDecodeError:
+                # Return as text if not JSON
+                return {
+                    "uri": uri,
+                    "content": response.text,
+                    "content_type": "text",
+                    "depth": current_depth
+                }
+        else:
+            # Handle local file references
+            logger.debug("Resolving local URI: %s (depth: %d)", uri, current_depth)
+            local_path = Path(uri)
+
+            if not local_path.exists():
+                logger.warning("Local URI file not found: %s", uri)
+                return {
+                    "error": "File not found",
+                    "uri": uri
+                }
+
+            # Read local file
+            with open(local_path) as f:
+                content_str = f.read()
+
+            # Try to parse as JSON
+            try:
+                content = json.loads(content_str)
+                return {
+                    "uri": uri,
+                    "content": content,
+                    "content_type": "json",
+                    "depth": current_depth
+                }
+            except json.JSONDecodeError:
+                # Return as text if not JSON
+                return {
+                    "uri": uri,
+                    "content": content_str,
+                    "content_type": "text",
+                    "depth": current_depth
+                }
+
+    except requests.RequestException as e:
+        logger.error("Failed to fetch remote URI %s: %s", uri, e)
+        return {
+            "error": f"Failed to fetch URI: {e}",
+            "uri": uri
+        }
+    except OSError as e:
+        logger.error("Failed to read local URI %s: %s", uri, e)
+        return {
+            "error": f"Failed to read file: {e}",
+            "uri": uri
+        }
+    except Exception as e:
+        logger.error("Unexpected error resolving URI %s: %s", uri, e)
+        return {
+            "error": f"Unexpected error: {e}",
+            "uri": uri
+        }
 
