@@ -150,19 +150,13 @@ This document specifies the requirements for an MCP (Model Context Protocol) ser
 
 1. WHEN a component query request is received with a component definition file path or URL, THE CDef_Tool SHALL parse the OSCAL Component Definition document
 2. THE CDef_Tool SHALL support JSON format for Component Definition documents
-3. THE CDef_Tool SHALL attempt to process remote URIs only if explicitly configured to do so. 
-4. THE Summary of a Component object SHALL include the following fields; UUID, title, description, type, purpose
-5. THE CDef_Tool SHALL resolve and process Link and Prop objects as described in https://pages.nist.gov/OSCAL/learn/tutorials/general/extension/
-6. THE CDef_Tool SHALL return the Summary of a Component(s) by default.
-7. WHEN requested, THE CDef_Tool SHALL return the complete, raw Component object.
-8. THE CDef_Tool SHALL support queries by title, UUID, and type. 
-9. WHEN querying for a specific component, THE CDef_Tool SHALL look for an exact match by title. If no title exact match is found, THE CDef_Tool SHALL search for an exact match in the values of any props defined by the Component. 
-10. WHEN requested, THE CDef_Tool SHALL attempt to resolve and process URI references in the Component(s).
-11. FOR EACH component, THE CDef_Tool SHALL extract and return: component UUID, title, description, type, purpose, responsible roles, and protocols
-12. WHEN a component has control implementations, THE CDef_Tool SHALL return the implemented requirements with their UUIDs, control IDs, descriptions, and implementation statements
-13. WHEN a component references properties or links, THE CDef_Tool SHALL include those in the returned information
-14. WHEN the Component Definition file cannot be parsed, THE CDef_Tool SHALL return an error with details about the parsing failure
-15. WHEN a requested component UUID or title is not found, THE CDef_Tool SHALL return an appropriate error message
-16. THE CDef_Tool SHALL validate that the document conforms to the OSCAL Component Definition schema before processing
-17. WHEN processing remote URIs, THE CDef_Tool SHALL handle network errors and timeouts gracefully
-18. THE CDef_Tool SHALL support filtering components by type.
+3. THE CDef_Tool SHALL validate that the document conforms to the OSCAL Component Definition schema before processing
+4. THE CDef_Tool SHALL attempt to process remote URIs only if explicitly configured to do so
+5. WHEN processing remote URIs, THE CDef_Tool SHALL handle network errors and timeouts gracefully
+6. THE CDef_Tool SHALL resolve and process Link and Prop objects as described in https://pages.nist.gov/OSCAL/learn/tutorials/general/extension/
+7. THE CDef_Tool SHALL support queries by title, UUID, and type
+8. WHEN querying for a specific component, THE CDef_Tool SHALL look for an exact match by title. If no title exact match is found, THE CDef_Tool SHALL search for an exact match in the values of any props defined by the Component
+9. THE CDef_Tool SHALL support filtering components by type
+10. WHEN the Component Definition file cannot be parsed, THE CDef_Tool SHALL return an error with details about the parsing failure
+11. WHEN a requested component UUID or title is not found, THE CDef_Tool SHALL return an appropriate error message
+12. THE CDef_Tool SHALL load recursively all Component Definitions in the specified directory within the package WHEN the MCP_Server starts

@@ -561,7 +561,7 @@ def query_component_definition(
     source: str,
     query_type: Literal["all", "by_uuid", "by_title", "by_type"] = "all",
     query_value: str | None = None,
-    return_format: Literal["summary", "raw"] = "summary",
+    return_format: Literal["raw"] = "raw",
     resolve_uris: bool = False,
 ) -> dict[str, Any]:
     """
@@ -570,6 +570,9 @@ def query_component_definition(
     This tool loads and parses OSCAL Component Definition documents from local files
     or remote URIs (when configured), validates them against the OSCAL schema, and
     extracts component information based on the specified query parameters.
+
+    The tool returns full OSCAL Component objects as JSON, preserving all fields and
+    structure from the original OSCAL Component Definition schema.
 
     Args:
         ctx: MCP server context (injected automatically by MCP server)
@@ -580,14 +583,14 @@ def query_component_definition(
             - "by_title": Find component by title with prop fallback (requires query_value)
             - "by_type": Filter components by type (requires query_value)
         query_value: Value to search for (required for by_uuid, by_title, by_type)
-        return_format: Format of returned component data:
-            - "summary": Return component summary with key fields only
-            - "raw": Return complete component object
+        return_format: Format of returned component data. Currently only "raw" is supported,
+            which returns complete OSCAL Component objects. This parameter is kept for
+            future extensibility.
         resolve_uris: Whether to resolve and process URI references in components
 
     Returns:
         dict: ComponentQueryResponse containing:
-            - components: List of component summaries or raw objects
+            - components: List of complete OSCAL Component objects as JSON
             - total_count: Number of components returned
             - query_type: The query type used
             - source: The source file/URI queried
@@ -676,24 +679,11 @@ def query_component_definition(
         try_notify_client_error(msg, ctx)
         raise ValueError(msg)
 
-    # Format the components based on return_format
+    # Format the components - always use raw format (full OSCAL Component objects)
     formatted_components = []
     for component in selected_components:
-        if return_format == "summary":
-            component_data = extract_component_summary(component)
-            # Add links and props resolution
-            links_props = resolve_links_and_props(component, ctx, resolve_uris)
-            if links_props.get("props"):
-                component_data["props"] = links_props["props"]
-            if links_props.get("links"):
-                component_data["links"] = links_props["links"]
-            # Add control implementations
-            control_impls = extract_control_implementations(component)
-            if control_impls:
-                component_data["control_implementations"] = control_impls
-        else:  # raw format
-            component_data = component.dict(exclude_none=True)
-
+        # Always return full Component as JSON OSCAL object using component.dict()
+        component_data = component.dict(exclude_none=True)
         formatted_components.append(component_data)
 
     # Return the query response

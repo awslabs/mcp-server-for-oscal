@@ -325,8 +325,8 @@ The Component Definition Query tool leverages the **compliance-trestle** library
 **Parsing Approaches:**
 - **Local Files**: Use `ModelUtils.load_model_for_class(trestle_root, model_name, ComponentDefinition)`
 - **From JSON dict**: Parse JSON and instantiate: `ComponentDefinition(**data['component-definition'])`
-- **Remote URIs**: Fetch JSON, parse, and instantiate with validation
-- **Format Support**: JSON and YAML (via compliance-trestle's FileContentType)
+- **Remote URIs**: Fetch JSON, parse, and instantiate with validation (only when explicitly configured)
+- **Format Support**: JSON (primary format supported)
 
 **Benefits of compliance-trestle:**
 - Automatic schema validation via Pydantic models
@@ -508,33 +508,33 @@ Property 13: Schema File System Consistency\
 *For any* supported model type and schema format, the corresponding schema file should exist in the expected location with the correct naming convention\
 **Validates: Requirements 8.2, 8.3, 8.4**
 
-Property 14: Component Summary Field Completeness\
-*For any* component returned in summary format, the response should include all required fields: UUID, title, description, type, and purpose\
-**Validates: Requirements 10.4**
+Property 14: Component Definition Schema Validation\
+*For any* Component Definition document processed, the document should conform to the OSCAL Component Definition schema structure\
+**Validates: Requirements 10.3**
 
 Property 15: Component Query Type Consistency\
 *For any* component query by UUID or title, when a match is found, the returned component should have the queried field matching the query value\
-**Validates: Requirements 10.8, 10.9**
+**Validates: Requirements 10.7, 10.8**
 
 Property 16: Component Type Filtering Accuracy\
 *For any* component type filter, all returned components should have a type field matching the filter value\
-**Validates: Requirements 10.18**
+**Validates: Requirements 10.9**
 
-Property 17: Component Definition Schema Validation\
-*For any* Component Definition document processed, the document should conform to the OSCAL Component Definition schema structure\
-**Validates: Requirements 10.16**
-
-Property 18: Link and Prop Resolution Consistency\
+Property 17: Link and Prop Resolution Consistency\
 *For any* component with Link or Prop objects, when resolution is requested, the resolved objects should follow OSCAL extension patterns\
-**Validates: Requirements 10.5**
+**Validates: Requirements 10.6**
 
-Property 19: Component Not Found Error Handling\
+Property 18: Component Not Found Error Handling\
 *For any* query for a non-existent component UUID or title, the server should return an appropriate error message indicating the component was not found\
-**Validates: Requirements 10.15**
+**Validates: Requirements 10.11**
 
-Property 20: Component Definition Parse Error Handling\
+Property 19: Component Definition Parse Error Handling\
 *For any* malformed Component Definition document, the server should return an error with details about the parsing failure\
-**Validates: Requirements 10.14**
+**Validates: Requirements 10.10**
+
+Property 20: Remote URI Error Handling\
+*For any* network error or timeout when processing remote URIs, the server should handle the error gracefully and provide descriptive error information\
+**Validates: Requirements 10.4, 10.5**
 
 Property 14: Schema JSON Format Validation\
 *For any* schema returned by get_oscal_schema, the response should be a valid JSON string that can be parsed without errors\
@@ -589,8 +589,8 @@ The system implements comprehensive error handling at multiple levels:
 - **AWS Service Errors**: Boto3 exceptions are caught and handled gracefully with appropriate error messages
 - **File System Errors**: Schema file operations include proper error handling for missing or inaccessible files
 - **Context Reporting**: All errors are reported through MCP context for client visibility
-- **Component Definition Parsing**: Handle JSON/XML parsing errors with descriptive messages about malformed documents
-- **Network Errors**: Handle timeouts and connection failures when processing remote URIs
+- **Component Definition Parsing**: Handle JSON parsing errors with descriptive messages about malformed documents
+- **Network Errors**: Handle timeouts and connection failures when processing remote URIs (when configured)
 - **Schema Validation Errors**: Provide detailed feedback when Component Definition documents fail schema validation
 - **Component Not Found**: Clear error messages when queried components don't exist in the definition
 
