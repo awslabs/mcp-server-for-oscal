@@ -401,7 +401,7 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - Validate all error handling paths work as expected
   - Test Component Definition Query tool with real OSCAL files
 
-- [ ] 27. Refactor query_component_definition tool to align with simplified Requirement 10
+- [x] 27. Refactor query_component_definition tool to align with simplified Requirement 10
   - _Requirements: 10.1-10.12_
 
 - [x] 27.1 Update return_format parameter to always use 'raw' format
@@ -412,14 +412,14 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - Always return full Component as JSON OSCAL object using component.dict()
   - Update tool docstring to clarify that full OSCAL Component objects are returned
 
-- [ ] 27.2 Remove component summary extraction functionality
+- [x] 27.2 Remove component summary extraction functionality
   - _Requirements: 10.6, 10.7_
   - Delete extract_component_summary helper function entirely
   - Remove all summary format handling logic from main tool function
   - Ensure all components are returned as full OSCAL objects via .dict()
   - Update response to return complete DefinedComponent Pydantic models as dicts
 
-- [ ] 27.3 Remove resolve_uris parameter and URI resolution functionality
+- [x] 27.3 Remove resolve_uris parameter and URI resolution functionality
   - _Requirements: 10.6_
   - Remove resolve_uris parameter from tool signature
   - Remove _resolve_uri_reference helper function
@@ -428,14 +428,14 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - Simplify resolve_links_and_props or remove it entirely if not needed
   - Update tool docstring to remove resolve_uris documentation
 
-- [ ] 27.4 Remove control implementation extraction functionality
+- [x] 27.4 Remove control implementation extraction functionality
   - _Requirements: 10.6_
   - Delete extract_control_implementations helper function entirely
   - Remove control implementation extraction logic from main tool function
   - Control implementations are already part of the full Component OSCAL object
   - No need for separate extraction since we're returning raw OSCAL objects
 
-- [ ] 27.5 Implement recursive directory loading functionality
+- [x] 27.5 Implement recursive directory loading functionality
   - _Requirements: 10.12_
   - Create function to recursively scan directory for Component Definition files
   - Load all .json files that contain valid Component Definitions
@@ -446,7 +446,7 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - Handle errors gracefully for invalid files in directory
   - Log successful loads and any errors encountered
 
-- [ ] 27.6 Update unit tests for refactored tool
+- [x] 27.6 Update unit tests for refactored tool
   - _Requirements: 10.1-10.12_
   - Remove tests for "summary" return format
   - Remove tests for resolve_uris functionality
@@ -456,7 +456,7 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - Add tests for recursive directory loading functionality
   - Ensure all tests pass with refactored implementation
 
-- [ ] 27.7 Update integration tests for refactored tool
+- [x] 27.7 Update integration tests for refactored tool
   - _Requirements: 10.1-10.12_
   - Update test cases to expect full OSCAL Component objects
   - Verify returned objects match OSCAL Component Definition schema
@@ -464,7 +464,7 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
   - Update expected response structures to include all OSCAL fields
   - Verify error handling still works correctly
 
-- [ ] 27.8 Update tool documentation and examples
+- [x] 27.8 Update tool documentation and examples
   - _Requirements: 10.1-10.12_
   - Update main.py server instructions to reflect that tool returns full OSCAL objects
   - Update tool docstring to clarify return format is complete OSCAL Component

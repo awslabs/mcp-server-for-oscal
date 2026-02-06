@@ -18,7 +18,7 @@ from mcp_server_for_oscal.config import config
 from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
 from mcp_server_for_oscal.tools.list_models import list_oscal_models
 from mcp_server_for_oscal.tools.list_oscal_resources import list_oscal_resources
-from mcp_server_for_oscal.tools.query_component_definition import query_component_definition
+from mcp_server_for_oscal.tools.query_component_definition import query_component_definition, list_component_definitions
 from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
 from mcp_server_for_oscal.tools.utils import verify_package_integrity
 
@@ -50,6 +50,7 @@ mcp.add_tool(list_oscal_models)
 mcp.add_tool(get_oscal_schema)
 mcp.add_tool(list_oscal_resources)
 mcp.add_tool(query_component_definition)
+mcp.add_tool(list_component_definitions)
 
 @mcp.tool(name="about", description="Get metadata about the server itself")
 def about() -> dict:
@@ -131,6 +132,14 @@ def main():
         my_dir = Path(__file__).parent
         verify_package_integrity(my_dir.joinpath("oscal_schemas"))
         verify_package_integrity(my_dir.joinpath("oscal_docs"))
+        
+        # Verify component definitions directory if it exists
+        component_defs_dir = my_dir.joinpath(config.component_definitions_dir)
+        if component_defs_dir.exists():
+            verify_package_integrity(component_defs_dir)
+            logger.info("Component definitions directory verified: %s", component_defs_dir)
+        else:
+            logger.info("Component definitions directory does not exist (optional): %s", component_defs_dir)
     except (RuntimeError, KeyError):
         logger.exception("Bundled context files may have been tampered with; exiting.")
         raise SystemExit(2)
