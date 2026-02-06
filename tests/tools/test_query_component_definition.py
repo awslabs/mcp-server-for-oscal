@@ -69,9 +69,18 @@ class TestLoadComponentDefinitionsFromDirectory:
         assert result == {}
 
     def test_load_from_directory_with_invalid_files(
-        self, tmp_path, sample_component_def_data
+        self, tmp_path, sample_component_def_data, monkeypatch
     ):
         """Test loading from directory with mix of valid and invalid files."""
+
+        # Flush globals of files leftover from prior tests
+        # TODO: this code is repeated all over the place; need a better solution ASAP
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_path", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_uuid", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_title", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_uuid", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_title", {})
+
         comp_defs_dir = tmp_path / "component_definitions"
         comp_defs_dir.mkdir()
 
@@ -96,15 +105,33 @@ class TestLoadComponentDefinitionsFromDirectory:
         assert len(result) == 1
         assert "valid.json" in result
 
-    def test_load_from_directory_empty(self, tmp_path):
+    def test_load_from_directory_empty(self, tmp_path, monkeypatch):
         """Test loading from an empty directory."""
+
+        # Flush globals of files leftover from prior tests
+        # TODO: this code is repeated all over the place; need a better solution ASAP
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_path", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_uuid", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_title", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_uuid", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_title", {})
+
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
         result = load_component_definitions_from_directory(empty_dir)
         assert result == {}
 
-    def test_load_from_directory_no_json_files(self, tmp_path):
-        """Test loading from directory with no JSON files."""
+    def test_load_from_directory_no_json_files(self, tmp_path, monkeypatch):
+        """Test loading from directory with no JSON files."""        
+
+        # Flush globals of files leftover from prior tests
+        # TODO: this code is repeated all over the place; need a better solution ASAP
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_path", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_uuid", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_title", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_uuid", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_title", {})
+
         comp_defs_dir = tmp_path / "component_definitions"
         comp_defs_dir.mkdir()
 
@@ -161,8 +188,15 @@ class TestQueryComponentDefinitionTool:
 
         return comp_defs_dir
 
-    def test_query_all_components_raw_format(self, mock_context, setup_component_defs_dir):
+    def test_query_all_components_raw_format(self, mock_context, setup_component_defs_dir, monkeypatch):
         """Test querying all components with raw format (default)."""
+
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_path", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_uuid", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_title", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_uuid", {})
+        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_title", {})
+
         result = query_component_definition(
             ctx=mock_context,
             component_definition_filter=None,
@@ -386,6 +420,8 @@ class TestQueryComponentDefinitionTool:
             config_module.config, "component_definitions_dir", str(comp_defs_dir)
         )
 
+        # Flush globals of files leftover from prior tests
+        # TODO: this code is repeated all over the place; need a better solution ASAP
         monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_path", {})
         monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_uuid", {})
         monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_title", {})

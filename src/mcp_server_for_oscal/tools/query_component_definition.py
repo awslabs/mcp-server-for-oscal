@@ -23,6 +23,7 @@ _cdefs_by_uuid: dict[str, ComponentDefinition] = {}
 _cdefs_by_title: dict[str, ComponentDefinition] = {}
 _components_by_uuid: dict[str, DefinedComponent] = {}
 _components_by_title: dict[str, DefinedComponent] = {}
+_components_to_cdef_by_uuid: dict[str, str] = {}
 
 def _load_remote_component_definition(source: str, ctx: Context) -> ComponentDefinition:
     """
@@ -95,7 +96,7 @@ def _load_remote_component_definition(source: str, ctx: Context) -> ComponentDef
         raise ValueError(msg) from e
 
 
-def load_component_definitions_from_directory(directory_path: Path) -> dict[str, ComponentDefinition]:
+def load_component_definitions_from_directory(directory_path: Path | None = None) -> dict[str, ComponentDefinition]:
     """
     Recursively scan a directory for Component Definition files and load them.
 
@@ -104,10 +105,10 @@ def load_component_definitions_from_directory(directory_path: Path) -> dict[str,
     and stores successfully loaded definitions in a dictionary keyed by file path.
 
     Args:
-        directory_path: Path to the directory to scan for Component Definition files
+        directory_path: Path to the directory to scan for Component Definition files. Defaults to value of `config.component_definitions_dir`.
 
     Returns:
-        dict: Dictionary mapping file paths (as strings) to ComponentDefinition instances.
+        dict: Dictionary mapping file paths (as strings) to ComponentDefinition instances, which is a global private var: _cdefs_by_path. Don't modify the dict unless you really understand this code.
               Only successfully loaded and validated Component Definitions are included.
 
     Note:
@@ -117,7 +118,7 @@ def load_component_definitions_from_directory(directory_path: Path) -> dict[str,
         - Uses trestle's ComponentDefinition.oscal_read which properly handles
           the OSCAL wrapper format ({"component-definition": {...}})
     """
-    if not directory_path:
+    if directory_path == None:        
         # Load all Component Definitions from the configured directory
         directory_path = Path(__file__).parent.parent / config.component_definitions_dir 
 
@@ -140,6 +141,9 @@ def load_component_definitions_from_directory(directory_path: Path) -> dict[str,
     global _cdefs_by_path
     global _cdefs_by_title
     global _cdefs_by_uuid
+    global _components_by_uuid
+    global _components_by_title
+    global _components_to_cdef_by_uuid
 
     for json_file in json_files:
         # ignore the hash manifest we use for content validation
@@ -158,17 +162,17 @@ def load_component_definitions_from_directory(directory_path: Path) -> dict[str,
                 continue
 
             # Store with relative path as key
-            component_definitions[relative_path] = component_def
+            _cdefs_by_path[relative_path] = component_def
             _cdefs_by_uuid[component_def.uuid] = component_def
             _cdefs_by_title[component_def.metadata.title] = component_def
             logger.info("Successfully loaded Component Definition: %s", relative_path)
 
-            global _components_by_uuid
-            global _components_by_title
+
             if component_def.components:
                 for c in component_def.components:
                     _components_by_uuid[str(c.uuid)] = c
                     _components_by_title[c.title] = c
+                    _components_to_cdef_by_uuid[str(c.uuid)] = str(component_def.uuid)
                     logger.debug("Component %s added to index", c.title)
         except Exception as e:
             # Log but don't fail - file might not be a Component Definition
@@ -177,7 +181,7 @@ def load_component_definitions_from_directory(directory_path: Path) -> dict[str,
 
     logger.info("Successfully loaded %d Component Definitions from directory", len(component_definitions))
     
-    return component_definitions
+    return _cdefs_by_path
 
 
 
@@ -328,10 +332,9 @@ def query_component_definition(
     global _components_by_uuid
     global _components_by_title
 
-    # Load all Component Definitions from the configured directory
-    comp_defs_dir = Path(__file__).parent.parent / config.component_definitions_dir
     try:
-        _cdefs_by_path.update(load_component_definitions_from_directory(comp_defs_dir))
+        # ignore the return value since global is set as side-effect
+        load_component_definitions_from_directory()
     except Exception as e:
         msg = f"Failed to load Component Definitions from directory: {e!s}"
         logger.exception(msg)
@@ -339,7 +342,7 @@ def query_component_definition(
         raise
 
     if not _cdefs_by_path:
-        msg = f"No Component Definitions found in directory: {comp_defs_dir}"
+        msg = f"No Component Definitions found"
         logger.warning(msg)
         try_notify_client_error(msg, ctx)
         raise ValueError(msg)
@@ -473,18 +476,18 @@ def query_component_definition(
 
 @tool()
 def list_component_definitions(ctx: Context) -> List[dict]:
-    """Use this tool to get a list of all loaded Component Definitions including the UUID, title, and component-count of each.
+    """Use this tool to get a list of all loaded Component Definitions including the UUID, title, component-count, and imported component-definition-count of each.
     
     Args:
         ctx: MCP server context (injected automatically by MCP server)
     
     Returns:
-        List[dict]: List of dictionaries containing uuid, title, and componentCount for each Component Definition
+        List[dict]: List of dictionaries containing uuid, title, componentCount, and importedComponentDefinitionsCount, for each Component Definition
     """
     global _cdefs_by_title
     if not _cdefs_by_title:
-        load_component_definitions_from_directory(None)
-        logger.debug(_cdefs_by_title.keys())
+        load_component_definitions_from_directory()
+        # logger.debug(_cdefs_by_title.keys())
     
     rv = []
     for cd in _cdefs_by_title.values():
@@ -494,7 +497,36 @@ def list_component_definitions(ctx: Context) -> List[dict]:
             "uuid": cd.uuid,
             "title": cd.metadata.title,
             "componentCount": component_count,
-            "importedComponentDefinitions": imported_cdef_count
+            "importedComponentDefinitionsCount": imported_cdef_count
         })
 
     return rv
+
+
+@tool()
+def list_components(ctx: Context) -> List[dict]:
+    """Use this tool to get a list of all loaded Components including for each its UUID, title, and parent Component Definition's UUID and title.
+    
+    Args:
+        ctx: MCP server context (injected automatically by MCP server)
+    
+    Returns:
+        List[dict]: List of dictionaries containing for each Component: uuid, title, and parent's UUID and title 
+    """
+    global _components_by_title
+    global _components_to_cdef_by_uuid
+    
+    if not _components_by_title:
+        load_component_definitions_from_directory()
+        # logger.debug(_components_by_title.keys())
+    
+    rv = []
+    for cd in _components_by_title.values():
+        rv.append({
+            "uuid": cd.uuid,
+            "title": cd.title,
+            "parentComponentDefinitionTitle": _cdefs_by_uuid[_components_to_cdef_by_uuid[str(cd.uuid)]].metadata.title,
+            "parentComponentDefinitionUuid": _cdefs_by_uuid[_components_to_cdef_by_uuid[str(cd.uuid)]].uuid
+        })
+
+    return rv    
