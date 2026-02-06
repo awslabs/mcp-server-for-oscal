@@ -10,4 +10,8 @@ A number of scripts and commands exist in `pyproject.toml` under the `*.scripts`
 
 To run any sort of external script within this project, use the command: `hatch run <path/to/script>`.
 
-To run the project's full test suite and generate coverage metrics: `hatch run tests`.
+To run the project's type checking, full test suite, and generate coverage metrics: `hatch run tests`. You cannot run individual tests using this command.
+
+To run a specific test: `hatch test <path/to/test::TestName>`
+
+To run type checking alone: `hatch run typing`. 

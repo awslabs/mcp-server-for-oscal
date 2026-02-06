@@ -79,18 +79,25 @@ def capture_file_state(directory=".", outdir: str = "."):
     # Resolve the absolute path
     directory = os.path.abspath(directory)
     """Capture current Git state for verification"""
-    commit = subprocess.run(
-        ["git", "log", "-1", "--format='%H'", "--", directory],
-        capture_output=True,
-        text=True,
-        check=True,
-        cwd=directory,
-    ).stdout.strip()
+    
+    try:
+        commit = subprocess.run(
+            ["git", "log", "-1", "--format='%H'", "--", directory],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=directory,
+        ).stdout.strip()
+    except:
+        commit = "UNKNOWN"
 
     files = Path(directory).iterdir()
     file_hashes = {}
     for f in files:
-        if f.is_file and f.name != "hashes.json":
+        if f.is_dir():
+            capture_file_state(str(f), str(f))
+            continue
+        if f.is_file() and f.name != "hashes.json":
             with open(f, "rb") as of:
                 file_hashes[f.name] = hashlib.sha256(of.read()).hexdigest()
 
@@ -98,35 +105,35 @@ def capture_file_state(directory=".", outdir: str = "."):
 
     # Save hashes.json in the specified directory
     output_file = os.path.join(outdir, "hashes.json")
-    with open(output_file, "w") as f:
-        json.dump(state, f, indent=2)
+    with open(output_file, "w") as output_f:
+        json.dump(state, output_f, indent=2)
 
     return state, output_file
 
 
 def main():
     """Main function to handle command-line arguments and execute file state capture.
-    
+
     This function provides the command-line interface for the file integrity hash
     generation script. It validates input arguments, processes the specified directory,
     and generates a hashes.json file for later integrity verification.
-    
+
     The function implements comprehensive error handling and validation as specified in:
     .kiro/specs/file-integrity-testing/requirements.md - Requirement 5 (Error Handling)
-    
+
     Command-line Arguments:
         directory: Required positional argument specifying the directory to process
         -v, --verbose: Optional flag to enable detailed output logging
         -o, --outdir: Optional directory where hashes.json will be written
-    
+
     Exit Codes:
         0: Success - hashes.json generated successfully
         1: Error - Invalid arguments, missing directories, or processing failure
-    
+
     Example Usage:
         python bin/update_hashes.py src/schemas
         python bin/update_hashes.py docs -o build/integrity -v
-    
+
     The generated hashes.json file can be used with verify_package_integrity():
         from mcp_server_for_oscal.tools.utils import verify_package_integrity
         verify_package_integrity(Path("src/schemas"))
@@ -185,10 +192,10 @@ def main():
 
     except subprocess.CalledProcessError:
         logger.exception("Error running git command:")
-        logger.error(f"Make sure '{args.directory}' is a valid git repository.")
+        logger.exception(f"Make sure '{args.directory}' is a valid git repository.")
         sys.exit(1)
-    except Exception as e:
-        logger.exception(f"Unexpected error: {e}")
+    except Exception:
+        logger.exception("Unexpected error:")
         sys.exit(1)
 
 

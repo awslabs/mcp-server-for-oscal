@@ -1,0 +1,32 @@
+{
+  "component-definition": {
+    "uuid": "a1b2c3d4-5678-4abc-8def-123456789012",
+    "metadata": {
+      "title": "Sample Component Definition",
+      "last-modified": "2024-01-01T00:00:00Z",
+      "version": "1.0",
+      "oscal-version": "1.0.4"
+    },
+    "components": [
+      {
+        "uuid": "b2c3d4e5-6789-4bcd-9efa-234567890123",
+        "type": "software",
+        "title": "Sample Component",
+        "description": "A sample component for testing",
+        "purpose": "Testing component definition loading",
+        "props": [
+          {
+            "name": "version",
+            "value": "1.0.0"
+          }
+        ],
+        "links": [
+          {
+            "href": "https://example.com/component",
+            "rel": "documentation"
+          }
+        ]
+      }
+    ]
+  }
+}

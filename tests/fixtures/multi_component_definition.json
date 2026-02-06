@@ -1,0 +1,98 @@
+{
+  "component-definition": {
+    "uuid": "f1e2d3c4-1234-4abc-8def-111111111111",
+    "metadata": {
+      "title": "Multi-Component Definition",
+      "last-modified": "2024-01-15T00:00:00Z",
+      "version": "2.0",
+      "oscal-version": "1.0.4"
+    },
+    "components": [
+      {
+        "uuid": "c1111111-1111-4111-8111-111111111111",
+        "type": "software",
+        "title": "Database Service",
+        "description": "PostgreSQL database service component",
+        "purpose": "Provides data persistence and management",
+        "props": [
+          {
+            "name": "version",
+            "value": "14.5"
+          },
+          {
+            "name": "vendor",
+            "value": "PostgreSQL Global Development Group"
+          }
+        ],
+        "links": [
+          {
+            "href": "https://www.postgresql.org/docs/14/",
+            "rel": "documentation"
+          }
+        ],
+        "control-implementations": [
+          {
+            "uuid": "c1111111-1111-4111-8111-111111111112",
+            "source": "https://example.com/nist-800-53-rev5",
+            "description": "Database security controls implementation",
+            "implemented-requirements": [
+              {
+                "uuid": "c1111111-1111-4111-8111-111111111113",
+                "control-id": "AC-2",
+                "description": "Account Management controls for database users"
+              },
+              {
+                "uuid": "c2222222-2222-4222-8222-222222222222",
+                "control-id": "AU-2",
+                "description": "Audit Events logging for database operations"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "uuid": "c2222222-2222-4222-8222-222222222223",
+        "type": "service",
+        "title": "API Gateway",
+        "description": "REST API gateway service",
+        "purpose": "Provides API routing and authentication",
+        "props": [
+          {
+            "name": "version",
+            "value": "3.2.1"
+          },
+          {
+            "name": "protocol",
+            "value": "HTTPS"
+          }
+        ],
+        "responsible-roles": [
+          {
+            "role-id": "api-admin",
+            "party-uuids": ["c1111111-1111-4111-8111-111111111114"]
+          }
+        ],
+        "protocols": [
+          {
+            "uuid": "c1111111-1111-4111-8111-111111111115",
+            "name": "HTTPS",
+            "title": "Secure HTTP Protocol"
+          }
+        ]
+      },
+      {
+        "uuid": "c3333333-3333-4333-8333-333333333333",
+        "type": "hardware",
+        "title": "Hardware Security Module",
+        "description": "HSM for cryptographic key management",
+        "purpose": "Secure key storage and cryptographic operations",
+        "props": [
+          {
+            "name": "fips-140-2-level",
+            "value": "3"
+          }
+        ]
+      }
+    ]
+  }
+}

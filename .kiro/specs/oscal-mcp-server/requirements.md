@@ -141,3 +141,22 @@ This document specifies the requirements for an MCP (Model Context Protocol) ser
 5. WHEN file reading fails, THE MCP_Server SHALL log the error and raise an exception with descriptive information
 6. THE MCP_Server SHALL preserve the original markdown formatting in the returned content
 7. THE MCP_Server SHALL handle encoding issues gracefully when reading the file
+
+### Requirement 10: Component Definition Information Query (CDef_Tool)
+
+**User Story:** As a user of an AI agent, I need authoritative information about components (software, services, etc.) defined by vendors in OSCAL Component Definitions, so that I can evaluate those components for use in my systems.
+
+#### Acceptance Criteria
+
+1. WHEN a component query request is received with a component definition file path or URL, THE CDef_Tool SHALL parse the OSCAL Component Definition document
+2. THE CDef_Tool SHALL support JSON format for Component Definition documents
+3. THE CDef_Tool SHALL validate that the document conforms to the OSCAL Component Definition schema before processing
+4. THE CDef_Tool SHALL attempt to process remote URIs only if explicitly configured to do so
+5. WHEN processing remote URIs, THE CDef_Tool SHALL handle network errors and timeouts gracefully
+6. THE CDef_Tool SHALL resolve and process Link and Prop objects as described in https://pages.nist.gov/OSCAL/learn/tutorials/general/extension/
+7. THE CDef_Tool SHALL support queries by title, UUID, and type
+8. WHEN querying for a specific component, THE CDef_Tool SHALL look for an exact match by title. If no title exact match is found, THE CDef_Tool SHALL search for an exact match in the values of any props defined by the Component
+9. THE CDef_Tool SHALL support filtering components by type
+10. WHEN the Component Definition file cannot be parsed, THE CDef_Tool SHALL return an error with details about the parsing failure
+11. WHEN a requested component UUID or title is not found, THE CDef_Tool SHALL return an appropriate error message
+12. THE CDef_Tool SHALL load recursively all Component Definitions in the specified directory within the package WHEN the MCP_Server starts

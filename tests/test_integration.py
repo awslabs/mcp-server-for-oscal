@@ -2,7 +2,8 @@
 Integration tests for the OSCAL MCP Server.
 """
 
-from unittest.mock import Mock, patch
+import requests
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from mcp.server.fastmcp import FastMCP
@@ -58,17 +59,6 @@ class TestIntegration:
         for tool_name, tool in tools.items():
             # Verify tool has a schema
             assert hasattr(tool, "schema"), f"Tool {tool_name} missing schema"
-
-            # Verify schema has required fields
-            # schema = tool.model_json_schema()
-            # assert 'name' in schema, f"Tool {tool_name} schema missing name"
-            # assert 'description' in schema, f"Tool {tool_name} schema missing description"
-
-            # # Verify name matches
-            # assert schema['name'] == tool_name, f"Tool {tool_name} schema name mismatch"
-
-            # # Verify description is not empty
-            # assert schema['description'].strip(), f"Tool {tool_name} has empty description"
 
     @patch("mcp_server_for_oscal.tools.query_documentation.Session")
     @patch("mcp_server_for_oscal.tools.query_documentation.config")
@@ -265,7 +255,6 @@ class TestIntegration:
         # The actual transport compatibility is tested in the main function tests
         # Here we just verify the server structure supports it
 
-    # TODO: this may be a redundant test; compare to test_get_schema.test_get_schema_all_valid_models
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
     def test_schema_file_integration(self, mock_open_schema_file):
         """Test integration with schema file system."""

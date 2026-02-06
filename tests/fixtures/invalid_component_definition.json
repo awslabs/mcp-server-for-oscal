@@ -1,0 +1,17 @@
+{
+  "component-definition": {
+    "uuid": "invalid-uuid-format",
+    "metadata": {
+      "title": "Invalid Component Definition",
+      "last-modified": "not-a-date",
+      "version": "1.0"
+    },
+    "components": [
+      {
+        "uuid": "also-invalid",
+        "type": "software",
+        "title": "Missing Required Fields"
+      }
+    ]
+  }
+}

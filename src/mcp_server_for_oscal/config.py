@@ -37,6 +37,14 @@ class Config:
         # Transport configuration
         self.transport: str = os.getenv("OSCAL_MCP_TRANSPORT", "stdio")
 
+        # Component Definition remote URI configuration
+        self.allow_remote_uris: bool = os.getenv("OSCAL_ALLOW_REMOTE_URIS", "false").lower() == "true"
+        self.request_timeout: int = int(os.getenv("OSCAL_REQUEST_TIMEOUT", "30"))
+        self.max_uri_depth: int = int(os.getenv("OSCAL_MAX_URI_DEPTH", "3"))
+
+        # Component Definition directory configuration
+        self.component_definitions_dir: str = os.getenv("OSCAL_COMPONENT_DEFINITIONS_DIR", "component_definitions")
+
     def update_from_args(
         self,
         bedrock_model_id: str | None = None,

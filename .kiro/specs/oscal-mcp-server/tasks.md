@@ -149,7 +149,7 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
 
 - [ ] 11. Add missing property-based tests using Hypothesis
   - Install and configure Hypothesis for property-based testing
-  - Implement the 15 correctness properties identified in the design
+  - Implement the 20 correctness properties identified in the design
   - Ensure each property test runs minimum 100 iterations
   - Tag tests with feature and property information
   - _Requirements: All requirements covered by correctness properties_
@@ -228,17 +228,249 @@ This implementation plan reflects the current state of the OSCAL MCP Server impl
 
 - [ ] 16. Add missing property-based tests using Hypothesis
   - Install and configure Hypothesis for property-based testing
-  - Implement the 24 correctness properties identified in the design (including new tool properties)
+  - Implement the 20 correctness properties identified in the design (including new tool properties)
   - Ensure each property test runs minimum 100 iterations
   - Tag tests with feature and property information
   - _Requirements: All requirements covered by correctness properties_
 
-- [ ] 17. Final integration verification
+- [x] 17. Add compliance-trestle dependency
+  - _Requirements: 10.1, 10.2, 10.3_
+
+- [x] 17.1 Add compliance-trestle to pyproject.toml dependencies
+  - _Requirements: 10.1, 10.2, 10.3_
+
+- [x] 17.2 Verify compliance-trestle installation and imports
+  - _Requirements: 10.1, 10.2_
+
+- [x] 18. Implement Component Definition loading and validation
+  - _Requirements: 10.1, 10.2, 10.3_
+
+- [x] 18.1 Create load_component_definition function using compliance-trestle
+  - _Requirements: 10.1, 10.2_
+  - Use `trestle.oscal.component.ComponentDefinition`
+  - Support local file paths
+  - Automatic validation via Pydantic models
+
+- [x] 18.2 Add remote URI loading support (when configured)
+  - _Requirements: 10.4, 10.5_
+  - Check `allow_remote_uris` configuration flag
+  - Implement HTTP fetching with timeout
+  - Handle network errors gracefully
+
+- [x] 18.3 Write unit tests for component definition loading
+  - _Requirements: 10.1, 10.2, 10.3, 10.10_
+
+- [ ]* 18.4 Write property tests for component definition validation
+  - **Property 14: Component Definition Schema Validation**
+  - **Validates: Requirements 10.3**
+
+- [x] 19. Implement component summary extraction
+  - _Requirements: 10.6, 10.7, 10.8_
+
+- [x] 19.1 Create extract_component_summary function
+  - _Requirements: 10.6, 10.8_
+  - Extract UUID, title, description, type, purpose from DefinedComponent
+  - Handle optional fields (responsible_roles, protocols)
+
+- [x] 19.2 Write unit tests for summary extraction
+  - _Requirements: 10.6, 10.8_
+
+- [ ]* 19.3 Write property tests for summary field completeness
+  - **Property 15: Component Query Type Consistency**
+  - **Validates: Requirements 10.7, 10.8**
+
+- [x] 20. Implement component querying and filtering
+  - _Requirements: 10.7, 10.8, 10.9_
+
+- [x] 20.1 Implement query by UUID
+  - _Requirements: 10.7, 10.11_
+  - Exact match on component.uuid
+  - Return error if not found
+
+- [x] 20.2 Implement query by title with prop fallback
+  - _Requirements: 10.7, 10.8, 10.11_
+  - Exact match on component.title
+  - Fallback to searching prop values using ModelUtils.find_values_by_name()
+
+- [x] 20.3 Implement query by type filtering
+  - _Requirements: 10.9_
+  - Filter components where type matches query value
+
+- [x] 20.4 Write unit tests for component querying
+  - _Requirements: 10.7, 10.8, 10.9, 10.11_
+
+- [ ]* 20.5 Write property tests for query type consistency
+  - **Property 15: Component Query Type Consistency**
+  - **Validates: Requirements 10.7, 10.8**
+
+- [ ]* 20.6 Write property tests for type filtering accuracy
+  - **Property 16: Component Type Filtering Accuracy**
+  - **Validates: Requirements 10.9**
+
+- [x] 21. Implement Link and Prop resolution
+  - _Requirements: 10.6_
+
+- [x] 21.1 Create resolve_links_and_props function
+  - _Requirements: 10.6_
+  - Access component.props and component.links (Pydantic models)
+  - Extract name-value pairs from props
+  - Extract href from links
+
+- [x] 21.2 Implement URI reference resolution (when requested)
+  - _Requirements: 10.4, 10.5_
+  - Fetch and process referenced URIs
+  - Track visited URIs to prevent circular references
+  - Respect max_uri_depth configuration
+
+- [x] 21.3 Write unit tests for link and prop resolution
+  - _Requirements: 10.6_
+
+- [ ]* 21.4 Write property tests for link and prop resolution consistency
+  - **Property 17: Link and Prop Resolution Consistency**
+  - **Validates: Requirements 10.6**
+
+- [x] 22. Implement control implementation extraction
+  - _Requirements: 10.6_
+
+- [x] 22.1 Extract control implementations from components
+  - _Requirements: 10.6_
+  - Access component.control_implementations
+  - Extract implemented requirements with UUIDs, control IDs, descriptions
+  - Extract implementation statements
+
+- [x] 22.2 Write unit tests for control implementation extraction
+  - _Requirements: 10.6_
+
+- [x] 23. Implement query_component_definition MCP tool
+  - _Requirements: 10.1-10.12_
+
+- [x] 23.1 Create query_component_definition tool function
+  - _Requirements: 10.1, 10.7, 10.8_
+  - Accept source, query_type, query_value, return_format, resolve_uris parameters
+  - Integrate all component query functions
+  - Return ComponentQueryResponse with components and metadata
+
+- [x] 23.2 Add configuration for remote URI processing
+  - _Requirements: 10.4, 10.5_
+  - Add allow_remote_uris, request_timeout, max_uri_depth to config.py
+
+- [x] 23.3 Write unit tests for the complete tool
+  - _Requirements: 10.1-10.12_
+
+- [ ]* 23.4 Write property tests for component not found error handling
+  - **Property 18: Component Not Found Error Handling**
+  - **Validates: Requirements 10.11**
+
+- [ ]* 23.5 Write property tests for parse error handling
+  - **Property 19: Component Definition Parse Error Handling**
+  - **Validates: Requirements 10.10**
+
+- [ ]* 23.6 Write property tests for remote URI error handling
+  - **Property 20: Remote URI Error Handling**
+  - **Validates: Requirements 10.4, 10.5**
+
+- [x] 24. Register query_component_definition tool with MCP server
+  - _Requirements: 5.1, 5.2_
+
+- [x] 24.1 Add tool registration in main.py
+  - _Requirements: 5.1, 5.2_
+
+- [x] 24.2 Update server instructions to include component definition querying
+  - _Requirements: 5.7_
+
+- [x] 25. Integration testing for Component Definition Query
+  - _Requirements: 10.1-10.12_
+
+- [x] 25.1 Test with sample OSCAL Component Definition files
+  - _Requirements: 10.1, 10.2_
+
+- [x] 25.2 Test all query modes (all, by_uuid, by_title, by_type)
+  - _Requirements: 10.7, 10.9_
+
+- [x] 25.3 Test summary vs raw return formats
+  - _Requirements: 10.7_
+
+- [x] 25.4 Test error conditions (invalid files, not found, network errors)
+  - _Requirements: 10.4, 10.5, 10.10, 10.11_
+
+- [x] 26. Final integration verification
   - Ensure all tests pass including new property-based tests
   - Verify end-to-end functionality works correctly with both transports
   - Test MCP server can start with stdio transport (default)
   - Test MCP server can start with streamable-http transport (explicit)
   - Validate all error handling paths work as expected
+  - Test Component Definition Query tool with real OSCAL files
+
+- [x] 27. Refactor query_component_definition tool to align with simplified Requirement 10
+  - _Requirements: 10.1-10.12_
+
+- [x] 27.1 Update return_format parameter to always use 'raw' format
+  - _Requirements: 10.6, 10.7_
+  - Keep return_format parameter in signature for future extensibility
+  - Set default value to "raw" and document that only "raw" is currently supported
+  - Remove "summary" format option from Literal type hint (keep only "raw")
+  - Always return full Component as JSON OSCAL object using component.dict()
+  - Update tool docstring to clarify that full OSCAL Component objects are returned
+
+- [x] 27.2 Remove component summary extraction functionality
+  - _Requirements: 10.6, 10.7_
+  - Delete extract_component_summary helper function entirely
+  - Remove all summary format handling logic from main tool function
+  - Ensure all components are returned as full OSCAL objects via .dict()
+  - Update response to return complete DefinedComponent Pydantic models as dicts
+
+- [x] 27.3 Remove resolve_uris parameter and URI resolution functionality
+  - _Requirements: 10.6_
+  - Remove resolve_uris parameter from tool signature
+  - Remove _resolve_uri_reference helper function
+  - Remove URI tracking and circular reference prevention logic
+  - Keep basic Link and Prop objects as part of the full Component object (they're in the OSCAL model)
+  - Simplify resolve_links_and_props or remove it entirely if not needed
+  - Update tool docstring to remove resolve_uris documentation
+
+- [x] 27.4 Remove control implementation extraction functionality
+  - _Requirements: 10.6_
+  - Delete extract_control_implementations helper function entirely
+  - Remove control implementation extraction logic from main tool function
+  - Control implementations are already part of the full Component OSCAL object
+  - No need for separate extraction since we're returning raw OSCAL objects
+
+- [x] 27.5 Implement recursive directory loading functionality
+  - _Requirements: 10.12_
+  - Create function to recursively scan directory for Component Definition files
+  - Load all .json files that contain valid Component Definitions
+  - Use trestle's file utilities for directory traversal if available
+  - Store loaded Component Definitions in memory/cache during server startup
+  - Add configuration for component definitions directory path
+  - Update main to verify integrity of component defintion files at startup, as done for other content
+  - Handle errors gracefully for invalid files in directory
+  - Log successful loads and any errors encountered
+
+- [x] 27.6 Update unit tests for refactored tool
+  - _Requirements: 10.1-10.12_
+  - Remove tests for "summary" return format
+  - Remove tests for resolve_uris functionality
+  - Remove tests for extract_component_summary function
+  - Remove tests for extract_control_implementations function
+  - Update tests to expect full OSCAL Component objects in responses
+  - Add tests for recursive directory loading functionality
+  - Ensure all tests pass with refactored implementation
+
+- [x] 27.7 Update integration tests for refactored tool
+  - _Requirements: 10.1-10.12_
+  - Update test cases to expect full OSCAL Component objects
+  - Verify returned objects match OSCAL Component Definition schema
+  - Test recursive directory loading with sample directory structure
+  - Update expected response structures to include all OSCAL fields
+  - Verify error handling still works correctly
+
+- [x] 27.8 Update tool documentation and examples
+  - _Requirements: 10.1-10.12_
+  - Update main.py server instructions to reflect that tool returns full OSCAL objects
+  - Update tool docstring to clarify return format is complete OSCAL Component
+  - Document recursive directory loading feature
+  - Update any inline documentation or comments
+  - Ensure tool schema accurately reflects simplified parameters
 
 ## Notes
 

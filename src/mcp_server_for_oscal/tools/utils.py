@@ -142,6 +142,9 @@ def verify_package_integrity(directory: Path) -> None:
 
     # Validate that all files in directory are unmodified
     for fn in directory.iterdir():
+        if fn.is_dir():
+            verify_package_integrity(fn)
+            continue
         # Skip the hash file itself, which is not included in hashes.json
         if not fn.is_file() or fn.name == "hashes.json":
             continue

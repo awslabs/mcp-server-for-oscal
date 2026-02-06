@@ -9,8 +9,13 @@ import hashlib
 import json
 import logging
 import shutil
+import sys
 import tempfile
 from pathlib import Path
+
+# Import the hash generation function directly instead of calling via subprocess
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from bin.update_hashes import capture_file_state
 
 logger = logging.getLogger(__name__)
 
@@ -69,34 +74,27 @@ class TestPackageManager:
         return package_dir
 
     def _generate_hash_manifest(self, package_dir: Path) -> None:
-        """Generate hashes.json file using our own implementation.
+        # """Generate hashes.json file using our own implementation.
 
-        This creates a hash manifest compatible with the verify_package_integrity function
-        without relying on the bin/update_hashes.py script which has issues.
+        # This creates a hash manifest compatible with the verify_package_integrity function
+        # without relying on the bin/update_hashes.py script which has issues.
 
-        Args:
-            package_dir: Directory to generate hashes for
+        # Args:
+        #     package_dir: Directory to generate hashes for
 
-        Requirements: 7.1
-        """
-        # Generate file hashes for all regular files (excluding hashes.json)
-        file_hashes = {}
-        for file_path in package_dir.iterdir():
-            if file_path.is_file() and file_path.name != "hashes.json":
-                with open(file_path, "rb") as f:
-                    file_hashes[file_path.name] = hashlib.sha256(f.read()).hexdigest()
+        # Requirements: 7.1
+        # """
+        # # Generate file hashes for all regular files (excluding hashes.json)
+        # file_hashes = {}
+        # for file_path in package_dir.iterdir():
+        #     if file_path.is_file() and file_path.name != "hashes.json":
+        #         with open(file_path, "rb") as f:
+        #             file_hashes[file_path.name] = hashlib.sha256(f.read()).hexdigest()
 
-        # Create the hash manifest structure
-        # We use a dummy commit hash since we're not using git for tests
-        manifest = {
-            "commit": "'test-commit-hash-for-testing'",
-            "file_hashes": file_hashes,
-        }
-
-        # Write the manifest to hashes.json
-        manifest_path = package_dir / "hashes.json"
-        with open(manifest_path, "w", encoding="utf-8") as f:
-            json.dump(manifest, f, indent=2)
+        # # Create the hash manifest structure
+        # Generate hash manifest directly instead of spawning subprocess
+        # This is much faster for tests (no subprocess overhead)
+        capture_file_state(directory=str(package_dir), outdir=str(package_dir))
 
     def tamper_file(
         self, package_dir: Path, filename: str, modification: str = "append"
