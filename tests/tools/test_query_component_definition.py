@@ -1,7 +1,7 @@
 """
 Tests for the query_component_definition tool.
 """
-
+import asyncio
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock
@@ -10,13 +10,13 @@ import pytest
 from trestle.oscal.component import ComponentDefinition
 
 from mcp_server_for_oscal.tools.query_component_definition import (
-    load_component_definitions_from_directory,
+    _load_component_definitions_from_directory,
     query_component_definition,
 )
 
 
 class TestLoadComponentDefinitionsFromDirectory:
-    """Test cases for load_component_definitions_from_directory function."""
+    """Test cases for _load_component_definitions_from_directory function."""
 
     @pytest.fixture
     def sample_component_def_data(self):
@@ -47,7 +47,7 @@ class TestLoadComponentDefinitionsFromDirectory:
             json.dump(sample_component_def_data, f)
 
         # Load component definitions
-        result = load_component_definitions_from_directory(comp_defs_dir)
+        result = _load_component_definitions_from_directory(comp_defs_dir)
 
         # Verify results
         assert len(result) == 2
@@ -58,28 +58,20 @@ class TestLoadComponentDefinitionsFromDirectory:
     def test_load_from_directory_nonexistent(self, tmp_path):
         """Test loading from a nonexistent directory."""
         nonexistent_dir = tmp_path / "nonexistent"
-        result = load_component_definitions_from_directory(nonexistent_dir)
+        result = _load_component_definitions_from_directory(nonexistent_dir)
         assert result == {}
 
     def test_load_from_directory_not_a_directory(self, tmp_path):
         """Test loading when path is not a directory."""
         file_path = tmp_path / "not_a_dir.txt"
         file_path.write_text("test")
-        result = load_component_definitions_from_directory(file_path)
+        result = _load_component_definitions_from_directory(file_path)
         assert result == {}
 
     def test_load_from_directory_with_invalid_files(
         self, tmp_path, sample_component_def_data, monkeypatch
     ):
         """Test loading from directory with mix of valid and invalid files."""
-
-        # Flush globals of files leftover from prior tests
-        # TODO: this code is repeated all over the place; need a better solution ASAP
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_path", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_uuid", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_title", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_uuid", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_title", {})
 
         comp_defs_dir = tmp_path / "component_definitions"
         comp_defs_dir.mkdir()
@@ -99,7 +91,7 @@ class TestLoadComponentDefinitionsFromDirectory:
             json.dump({"some": "data"}, f)
 
         # Load component definitions
-        result = load_component_definitions_from_directory(comp_defs_dir)
+        result = _load_component_definitions_from_directory(comp_defs_dir)
 
         # Verify only valid component definition is loaded
         assert len(result) == 1
@@ -108,30 +100,13 @@ class TestLoadComponentDefinitionsFromDirectory:
     def test_load_from_directory_empty(self, tmp_path, monkeypatch):
         """Test loading from an empty directory."""
 
-        # Flush globals of files leftover from prior tests
-        # TODO: this code is repeated all over the place; need a better solution ASAP
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_path", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_uuid", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_title", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_uuid", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_title", {})
-
         empty_dir = tmp_path / "empty"
         empty_dir.mkdir()
-        result = load_component_definitions_from_directory(empty_dir)
+        result = _load_component_definitions_from_directory(empty_dir)
         assert result == {}
 
     def test_load_from_directory_no_json_files(self, tmp_path, monkeypatch):
         """Test loading from directory with no JSON files."""        
-
-        # Flush globals of files leftover from prior tests
-        # TODO: this code is repeated all over the place; need a better solution ASAP
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_path", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_uuid", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_title", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_uuid", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_title", {})
-
         comp_defs_dir = tmp_path / "component_definitions"
         comp_defs_dir.mkdir()
 
@@ -139,7 +114,7 @@ class TestLoadComponentDefinitionsFromDirectory:
         (comp_defs_dir / "readme.txt").write_text("test")
         (comp_defs_dir / "data.xml").write_text("<xml/>")
 
-        result = load_component_definitions_from_directory(comp_defs_dir)
+        result = _load_component_definitions_from_directory(comp_defs_dir)
         assert result == {}
 
 
@@ -169,7 +144,7 @@ class TestQueryComponentDefinitionTool:
     @pytest.fixture
     def setup_component_defs_dir(
         self, tmp_path, sample_component_def_data, monkeypatch
-    ):
+    ):  
         """Set up a temporary component definitions directory with test data."""
         comp_defs_dir = tmp_path / "component_definitions"
         comp_defs_dir.mkdir()
@@ -186,16 +161,12 @@ class TestQueryComponentDefinitionTool:
             config_module.config, "component_definitions_dir", str(comp_defs_dir)
         )
 
+        _load_component_definitions_from_directory()
+
         return comp_defs_dir
 
     def test_query_all_components_raw_format(self, mock_context, setup_component_defs_dir, monkeypatch):
         """Test querying all components with raw format (default)."""
-
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_path", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_uuid", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_title", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_uuid", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_title", {})
 
         result = query_component_definition(
             ctx=mock_context,
@@ -226,7 +197,7 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_by_uuid_success(self, mock_context, setup_component_defs_dir):
         """Test querying component by UUID successfully."""
-        result = query_component_definition(
+        result =  query_component_definition(
             ctx=mock_context,
             component_definition_filter=None,
             query_type="by_uuid",
@@ -241,7 +212,7 @@ class TestQueryComponentDefinitionTool:
     def test_query_by_uuid_not_found(self, mock_context, setup_component_defs_dir):
         """Test querying component by UUID that doesn't exist."""
         with pytest.raises(ValueError, match="not found"):
-            query_component_definition(
+             query_component_definition(
                 ctx=mock_context,
                 component_definition_filter=None,
                 query_type="by_uuid",
@@ -251,7 +222,7 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_by_title_success(self, mock_context, setup_component_defs_dir):
         """Test querying component by title successfully."""
-        result = query_component_definition(
+        result =  query_component_definition(
             ctx=mock_context,
             component_definition_filter=None,
             query_type="by_title",
@@ -266,7 +237,7 @@ class TestQueryComponentDefinitionTool:
     def test_query_by_title_not_found(self, mock_context, setup_component_defs_dir):
         """Test querying component by title that doesn't exist."""
         with pytest.raises(ValueError, match="not found"):
-            query_component_definition(
+             query_component_definition(
                 ctx=mock_context,
                 component_definition_filter=None,
                 query_type="by_title",
@@ -276,7 +247,7 @@ class TestQueryComponentDefinitionTool:
 
     def test_query_by_type_success(self, mock_context, setup_component_defs_dir):
         """Test querying components by type successfully."""
-        result = query_component_definition(
+        result =  query_component_definition(
             ctx=mock_context,
             component_definition_filter=None,
             query_type="by_type",
@@ -340,7 +311,7 @@ class TestQueryComponentDefinitionTool:
         )
 
         # Query with component definition filter
-        result = query_component_definition(
+        result =  query_component_definition(
             ctx=mock_context,
             component_definition_filter="a1b2c3d4-5678-4abc-8def-123456789012",
             query_type="all",
@@ -370,7 +341,7 @@ class TestQueryComponentDefinitionTool:
         )
 
         # Query with component definition filter
-        result = query_component_definition(
+        result =  query_component_definition(
             ctx=mock_context,
             component_definition_filter="Sample Component Definition",
             query_type="all",
@@ -401,7 +372,7 @@ class TestQueryComponentDefinitionTool:
 
         # Query with non-matching filter
         with pytest.raises(ValueError, match="No Component Definition found"):
-            query_component_definition(
+             query_component_definition(
                 ctx=mock_context,
                 component_definition_filter="Nonexistent Definition",
                 query_type="all",
@@ -420,16 +391,10 @@ class TestQueryComponentDefinitionTool:
             config_module.config, "component_definitions_dir", str(comp_defs_dir)
         )
 
-        # Flush globals of files leftover from prior tests
-        # TODO: this code is repeated all over the place; need a better solution ASAP
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_path", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_uuid", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._cdefs_by_title", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_uuid", {})
-        monkeypatch.setattr("mcp_server_for_oscal.tools.query_component_definition._components_by_title", {})
+        _load_component_definitions_from_directory(comp_defs_dir)
 
         # Query should fail with no component definitions
-        with pytest.raises(ValueError, match="No Component Definitions found"):
+        with pytest.raises(ValueError, match="No Component Definitions loaded"):
             query_component_definition(
                 ctx=mock_context,
                 component_definition_filter=None,
