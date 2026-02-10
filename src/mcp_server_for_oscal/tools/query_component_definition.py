@@ -3,11 +3,9 @@ Tool for querying OSCAL Component Definition documents.
 """
 import json
 import logging
-from urllib.parse import urlparse
-from urllib.request import urlopen
-from tempfile import TemporaryDirectory
 from pathlib import Path
 from typing import Any, Literal, cast
+from urllib.parse import urlparse
 
 import requests
 from mcp.server.fastmcp.server import Context
@@ -66,7 +64,7 @@ def _load_external_component_definition(source: str, ctx: Context) -> None:
         elif lf.is_file() and lf.name.endswith("zip"):
             _handle_zip_file(Path(source))
             _stats["processed_external_files"] += 1
-        
+
         return
 
     # Check if remote URIs are allowed
@@ -126,14 +124,14 @@ def _load_external_component_definition(source: str, ctx: Context) -> None:
 def _load_component_definitions_from_directory(directory_path: Path | None = None) -> dict[str, ComponentDefinition]:
     """
     Recursively scan a directory for Component Definition files and load them.
-    
+
     This function is called when this module is initialized. No need to call
     directly unless you want to load new files after initialization. 
 
     Searches for all .json and .zip files in the directory and subdirectories. For each file:
     - JSON files: Attempts to load as OSCAL Component Definitions using trestle's oscal_read
     - ZIP files: Extracts and processes contained JSON files
-    
+
     Successfully loaded definitions are stored in the global _cdefs_by_path dictionary and
     indexed in _cdefs_by_uuid and _cdefs_by_title for efficient querying.
 
@@ -198,7 +196,7 @@ def _process_zip_files(directory_path: Path) -> None:
         # loop through all discovered zip files
         for zf in zip_files:
             if any(zf.name in key for key in _cdefs_by_path):
-                continue # we've already processed this zip file            
+                continue # we've already processed this zip file
             _handle_zip_file(zf)
             _stats["processed_zip_files"] += 1
 
@@ -256,17 +254,17 @@ def _process_json_files(directory_path: Path) -> None:
 def _index_components(cdef: ComponentDefinition, path: str) -> None:
     """
     Index a ComponentDefinition and its child Components for efficient querying.
-    
+
     Adds the ComponentDefinition and its DefinedComponents to various global dictionaries:
     - _cdefs_by_uuid: Maps ComponentDefinition UUIDs to instances
     - _cdefs_by_title: Maps ComponentDefinition titles to instances
     - _components_by_uuid: Maps Component UUIDs to (component, parent_cdef) tuples
     - _components_by_title: Maps Component titles to (component, parent_cdef) tuples
-    
+
     Args:
         cdef: ComponentDefinition instance to index
         path: File path where the ComponentDefinition was loaded from
-        
+
     Note:
         - Updates global _stats dictionary with indexing counts
         - Called automatically by _load_component_definitions_from_directory
@@ -283,7 +281,7 @@ def _index_components(cdef: ComponentDefinition, path: str) -> None:
         # Store with relative path as key
         _cdefs_by_path[path] = cdef
 
-        if cdef.uuid in _cdefs_by_uuid.keys():
+        if cdef.uuid in _cdefs_by_uuid:
             logger.warning("Overwriting existing component def %s (%s) with content from %s", cdef.uuid, cdef.metadata.title, path)
 
         _cdefs_by_uuid[cdef.uuid] = cdef
@@ -518,7 +516,7 @@ def query_component_definition(
     # Format the components - always use raw format (full OSCAL Component objects)
     formatted_components = []
     for component in selected_components:
-        # TODO investigate whether we should be using component.oscal_dict() instead
+        # TODO: investigate whether we should be using component.oscal_dict() instead
         # Always return full Component as JSON OSCAL object using component.dict()
         component_data = component.dict(exclude_none=True)
         formatted_components.append(component_data)
