@@ -3,6 +3,9 @@ Tool for querying OSCAL Component Definition documents.
 """
 import json
 import logging
+from urllib.parse import urlparse
+from urllib.request import urlopen
+from tempfile import TemporaryDirectory
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -30,10 +33,11 @@ _stats: dict[str, int] = {
     "zip_file_contents": 0,
     "processed_json_files": 0,
     "component_definitions_indexed": 0,
-    "components_indexed": 0
+    "components_indexed": 0,
+    "processed_external_files": 0
 }
 
-def _load_external_component_definition(source: str, ctx: Context) -> ComponentDefinition:
+def _load_external_component_definition(source: str, ctx: Context) -> None:
     """
     Load and validate an OSCAL Component Definitions from a URI. The URI can be local or remote and may refer to a zip file that contains Component Definitions. 
 
@@ -41,16 +45,30 @@ def _load_external_component_definition(source: str, ctx: Context) -> ComponentD
     content via HTTP and validates it using trestle's ComponentDefinition.parse_obj method.
 
     Args:
-        source: Remote URI to the Component Definition JSON file
+        source: Remote URI to the Component Definition JSON file or a zip file containing component definitions
         ctx: MCP server context for error reporting
 
     Returns:
-        ComponentDefinition: Validated trestle ComponentDefinition Pydantic model instance
+        None
 
     Raises:
         ValueError: If remote URIs are not allowed or validation fails
         requests.RequestException: If HTTP request fails
     """
+    uri = urlparse(source)
+
+    if uri.scheme in ('', 'file'):
+        # should be a local path
+        lf = Path(source)
+        if lf.is_dir():
+            raise ValueError("URI must point to a zip file or JSON component definition")
+
+        elif lf.is_file() and lf.name.endswith("zip"):
+            _handle_zip_file(Path(source))
+            _stats["processed_external_files"] += 1
+        
+        return
+
     # Check if remote URIs are allowed
     if not config.allow_remote_uris:
         msg = (
@@ -61,7 +79,7 @@ def _load_external_component_definition(source: str, ctx: Context) -> ComponentD
         try_notify_client_error(msg, ctx)
         raise ValueError(msg)
 
-    logger.info("Fetching remote Component Definition from: %s", source)
+    logger.debug("Fetching remote Component Definition from: %s", source)
 
     try:
         # Fetch the remote content with timeout
@@ -75,9 +93,10 @@ def _load_external_component_definition(source: str, ctx: Context) -> ComponentD
 
         # Use trestle's parse_obj for validation and model instantiation
         component_def = ComponentDefinition.parse_obj(data)
-
+        _index_components(component_def, source)
+        _stats["processed_external_files"] += 1
         logger.info("Successfully loaded and validated remote component definition from: %s", source)
-        return component_def
+        logger.debug(_stats)
 
     except requests.Timeout as e:
         msg = f"Request timeout while fetching remote URI (timeout={config.request_timeout}s): {source}"
@@ -160,11 +179,11 @@ def _load_component_definitions_from_directory(directory_path: Path | None = Non
     if not directory_path.is_dir():
         logger.warning("Component definitions path is not a directory: %s", directory_path)
         return component_definitions
-    # logger.info("Loaded %d Component Definitions from directory; index contains", len(component_definitions))
-    logger.info(_stats)
 
     _process_zip_files(directory_path)
     _process_json_files(directory_path)
+
+    logger.info(_stats)
 
     return _cdefs_by_path
 
@@ -176,26 +195,30 @@ def _process_zip_files(directory_path: Path) -> None:
     zip_files = list(directory_path.rglob("**/*.zip"))
     if zip_files:
         logger.debug("found %s zip files.", len(zip_files))
-        import zipfile
         # loop through all discovered zip files
         for zf in zip_files:
             if any(zf.name in key for key in _cdefs_by_path):
-                continue # we've already processed this zip file
+                continue # we've already processed this zip file            
+            _handle_zip_file(zf)
             _stats["processed_zip_files"] += 1
-            with zipfile.ZipFile(zf, 'r') as zip_file:
-                file_list = zip_file.namelist()
-                _stats["zip_file_contents"] += len(file_list)
-                logger.debug("zip manifest includes %s files", len(file_list))
-                for innerfile in file_list:
-                    innerfile_path = zf.joinpath(innerfile).as_posix()
-                    if innerfile_path in _cdefs_by_path:
-                        continue # we've already processed this inner file
-                    if not innerfile.endswith("json"):
-                        continue # this also prevents errors when zip contains subdirectories
-                    with zip_file.open(innerfile) as f:
-                        data = json.load(f)
-                        _index_components(cast(ComponentDefinition, ComponentDefinition.parse_obj(data["component-definition"])), innerfile_path)
-                        _stats["loaded_files"] += 1
+
+
+def _handle_zip_file(zf: Path) -> None:
+    import zipfile
+    with zipfile.ZipFile(zf, 'r') as zip_file:
+        file_list = zip_file.namelist()
+        _stats["zip_file_contents"] += len(file_list)
+        logger.debug("zip manifest includes %s files", len(file_list))
+        for innerfile in file_list:
+            innerfile_path = zf.joinpath(innerfile).as_posix()
+            if innerfile_path in _cdefs_by_path:
+                continue # we've already processed this inner file
+            if not innerfile.endswith("json"):
+                continue # this also prevents errors when zip contains subdirectories
+            with zip_file.open(innerfile) as f:
+                data = json.load(f)
+                _index_components(cast(ComponentDefinition, ComponentDefinition.parse_obj(data["component-definition"])), innerfile_path)
+                _stats["loaded_files"] += 1
 
 def _process_json_files(directory_path: Path) -> None:
 
@@ -259,10 +282,14 @@ def _index_components(cdef: ComponentDefinition, path: str) -> None:
     try:
         # Store with relative path as key
         _cdefs_by_path[path] = cdef
+
+        if cdef.uuid in _cdefs_by_uuid.keys():
+            logger.warning("Overwriting existing component def %s (%s) with content from %s", cdef.uuid, cdef.metadata.title, path)
+
         _cdefs_by_uuid[cdef.uuid] = cdef
         _cdefs_by_title[cdef.metadata.title] = cdef
         _stats["component_definitions_indexed"] +=1
-        logger.info("Successfully loaded Component Definition: %s", path)
+        logger.debug("Successfully loaded Component Definition: %s", path)
 
 
         if cdef.components:
@@ -275,45 +302,6 @@ def _index_components(cdef: ComponentDefinition, path: str) -> None:
     except:
         logger.exception("Failed to index component %s from %s", cdef.metadata.title, path)
         raise
-
-
-
-# def find_component_by_uuid(components: list[DefinedComponent], uuid: str) -> DefinedComponent | None:
-#     """
-#     Find a component by its UUID.
-
-#     Performs an exact match on the component's UUID field.
-
-#     Args:
-#         components: List of DefinedComponent Pydantic model instances
-#         uuid: UUID string to search for
-
-#     Returns:
-#         DefinedComponent if found, None otherwise
-#     """
-#     for component in components:
-#         if str(component.uuid) == uuid:
-#             return component
-#     return None
-
-
-# def find_component_by_title(components: list[DefinedComponent], title: str) -> DefinedComponent | None:
-#     """
-#     Find a component by its title.
-
-#     Performs an exact match on the component's title field.
-
-#     Args:
-#         components: List of DefinedComponent Pydantic model instances
-#         title: Title string to search for
-
-#     Returns:
-#         DefinedComponent if found, None otherwise
-#     """
-#     for component in components:
-#         if component.title == title:
-#             return component
-#     return None
 
 
 def find_component_by_prop_value(components: list[DefinedComponent], value: str) -> DefinedComponent | None:
@@ -431,40 +419,29 @@ def query_component_definition(
         raise ValueError(msg)
 
     # Filter to specific Component Definition if filter is provided
-    comp_defs_searched: dict[str, ComponentDefinition] = {}
+    comp_defs_searched: list[ComponentDefinition] = []
     if component_definition_filter:
         # Try to match by UUID first
         if component_definition_filter in _cdefs_by_uuid:
-            comp_def = _cdefs_by_uuid[component_definition_filter]
-            # Find the path for this component definition
-            for path, cd in _cdefs_by_path.items():
-                if cd.uuid == comp_def.uuid:
-                    comp_defs_searched[path] = comp_def
-                    logger.info("Filtered to Component Definition with UUID: %s", component_definition_filter)
-                    break
+            comp_defs_searched = [_cdefs_by_uuid[component_definition_filter]]
+            logger.info("Filtered to Component Definition with UUID: %s", component_definition_filter)
         # Try to match by title
         elif component_definition_filter in _cdefs_by_title:
-            comp_def = _cdefs_by_title[component_definition_filter]
-            # Find the path for this component definition
-            for path, cd in _cdefs_by_path.items():
-                if cd.metadata.title == comp_def.metadata.title:
-                    comp_defs_searched[path] = comp_def
-                    logger.info("Filtered to Component Definition with title: %s", component_definition_filter)
-                    break
-
-        if not comp_defs_searched:
+            comp_defs_searched = [_cdefs_by_title[component_definition_filter]]
+            logger.info("Filtered to Component Definition with title: %s", component_definition_filter)
+        else:
             msg = f"No Component Definition found with UUID or title matching: {component_definition_filter}"
             logger.warning(msg)
             try_notify_client_error(msg, ctx)
             raise ValueError(msg)
     else:
-        comp_defs_searched = _cdefs_by_path
+        comp_defs_searched = list(_cdefs_by_path.values())
 
     # Build component indexes from filtered component definitions only
     filtered_components_by_uuid: dict[str, DefinedComponent] = {}
     filtered_components_by_title: dict[str, DefinedComponent] = {}
 
-    for comp_def in comp_defs_searched.values():
+    for comp_def in comp_defs_searched:
         if comp_def.components:
             for c in comp_def.components:
                 filtered_components_by_uuid[str(c.uuid)] = c
@@ -541,6 +518,7 @@ def query_component_definition(
     # Format the components - always use raw format (full OSCAL Component objects)
     formatted_components = []
     for component in selected_components:
+        # TODO investigate whether we should be using component.oscal_dict() instead
         # Always return full Component as JSON OSCAL object using component.dict()
         component_data = component.dict(exclude_none=True)
         formatted_components.append(component_data)
@@ -559,7 +537,7 @@ def query_component_definition(
 
 @tool()
 def list_component_definitions(ctx: Context) -> list[dict]:
-    """Use this tool to get a list of all loaded Component Definitions including the UUID, title, component-count, imported component-definition-count, and size of each.
+    """Use this tool to get a list of all loaded Component Definitions including the UUID, title, component count, imported component-definition count, and size of each.
 
     Args:
         ctx: MCP server context (injected automatically by MCP server)

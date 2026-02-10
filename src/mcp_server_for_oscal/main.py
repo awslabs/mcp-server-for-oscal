@@ -13,13 +13,6 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 from mcp_server_for_oscal.config import config
-
-# Import tools
-from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
-from mcp_server_for_oscal.tools.list_models import list_oscal_models
-from mcp_server_for_oscal.tools.list_oscal_resources import list_oscal_resources
-from mcp_server_for_oscal.tools.query_component_definition import query_component_definition, list_component_definitions, list_components
-from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
 from mcp_server_for_oscal.tools.utils import verify_package_integrity
 
 logger = logging.getLogger(__name__)
@@ -40,26 +33,38 @@ This server provides tools to support evaluation and implementation of NIST's OS
 )
 
 
-# Register tools with MCP server
-# don't register the query_oscal_documentation tool unless we have a KB ID
-# TODO: get rid of this after we have working implementation of local index
-if config.knowledge_base_id:
-    mcp.add_tool(query_oscal_documentation)
+def _setup_tools() -> None:
+    # these imports are here to ensure that logging is setup before the modules get initialized
+    from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
+    from mcp_server_for_oscal.tools.list_models import list_oscal_models
+    from mcp_server_for_oscal.tools.list_oscal_resources import list_oscal_resources
+    from mcp_server_for_oscal.tools.query_component_definition import (
+        list_component_definitions,
+        list_components,
+        query_component_definition,
+    )
+    from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
 
-mcp.add_tool(list_oscal_models)
-mcp.add_tool(get_oscal_schema)
-mcp.add_tool(list_oscal_resources)
-mcp.add_tool(query_component_definition)
-mcp.add_tool(list_component_definitions)
-mcp.add_tool(list_components)
+    # Register tools with MCP server
+    # don't register the query_oscal_documentation tool unless we have a KB ID
+    # TODO: get rid of this after we have working implementation of local index
+    if config.knowledge_base_id:
+        mcp.add_tool(query_oscal_documentation)
 
-@mcp.tool(name="about", description="Get metadata about the server itself")
-def about() -> dict:
-    return {
-        "version": meta.get("version"),
-        "keywords": meta.get("keywords"),
-        "oscal-version": "1.2.0"
-    }
+    mcp.add_tool(list_oscal_models)
+    mcp.add_tool(get_oscal_schema)
+    mcp.add_tool(list_oscal_resources)
+    mcp.add_tool(query_component_definition)
+    mcp.add_tool(list_component_definitions)
+    mcp.add_tool(list_components)
+
+    @mcp.tool(name="about", description="Get metadata about the server itself")
+    def about() -> dict:
+        return {
+            "version": meta.get("version"),
+            "keywords": meta.get("keywords"),
+            "oscal-version": "1.2.0",
+        }
 
 
 def main():
@@ -106,10 +111,12 @@ def main():
 
     # Configure logging
     try:
-        logging.basicConfig(level=args.log_level)
-        logging.getLogger("strands").setLevel(args.log_level)
-        logging.getLogger("mcp").setLevel(args.log_level)
-        logging.getLogger(__name__).setLevel(args.log_level)
+        logging.basicConfig(level=config.log_level)
+        logging.getLogger("strands").setLevel(config.log_level)
+        logging.getLogger("mcp.*").setLevel(config.log_level)
+        logging.getLogger("trestle.*").setLevel(config.log_level)
+        logging.getLogger(__package__ + ".*").setLevel(config.log_level)
+        logging.getLogger(__name__).setLevel(config.log_level)
     except ValueError:
         logger.warning("Failed to set log level to: %s", args.log_level)
 
@@ -117,7 +124,7 @@ def main():
     try:
         config.validate_transport()
     except ValueError as e:
-        logger.error("Transport configuration error: %s", e)
+        logger.exception("Transport configuration error: %s")
         raise SystemExit(1) from e
 
     # Log the selected transport method during startup
@@ -133,26 +140,32 @@ def main():
         my_dir = Path(__file__).parent
         verify_package_integrity(my_dir.joinpath("oscal_schemas"))
         verify_package_integrity(my_dir.joinpath("oscal_docs"))
-        
+
         # Verify component definitions directory if it exists
         component_defs_dir = my_dir.joinpath(config.component_definitions_dir)
         if component_defs_dir.exists():
             verify_package_integrity(component_defs_dir)
-            logger.info("Component definitions directory verified: %s", component_defs_dir)
+            logger.info(
+                "Component definitions directory verified: %s", component_defs_dir
+            )
         else:
-            logger.info("Component definitions directory does not exist (optional): %s", component_defs_dir)
-    except (RuntimeError, KeyError):
+            logger.info(
+                "Component definitions directory does not exist (optional): %s",
+                component_defs_dir,
+            )
+    except (RuntimeError, KeyError) as err:
         logger.exception("Bundled context files may have been tampered with; exiting.")
-        raise SystemExit(2)
+        raise SystemExit(2) from err
 
+    _setup_tools()
     # Run the MCP server with the configured transport
     try:
         mcp.run(transport=config.transport)
     except KeyboardInterrupt:
         logger.info("Shutdown due to keyboard interrupt")
-    except Exception as e:
+    except Exception:
         logger.exception(
-            "Error running MCP server with transport '%s': %s", config.transport, e
+            "Error running MCP server with transport '%s':", config.transport
         )
         raise
 

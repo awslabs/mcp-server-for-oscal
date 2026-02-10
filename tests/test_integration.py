@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 from mcp.server.fastmcp import FastMCP
 
-from mcp_server_for_oscal.main import mcp
+from mcp_server_for_oscal.main import mcp, _setup_tools
 from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
 from mcp_server_for_oscal.tools.list_models import list_oscal_models
 from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
@@ -32,6 +32,9 @@ class TestIntegration:
 
     def test_mcp_server_tools_registration(self):
         """Test that all expected tools are registered with the MCP server."""
+
+        _setup_tools()
+        
         # Get the registered tools
         tools = mcp._tool_manager._tools
 

@@ -149,6 +149,8 @@ rehash = [
   "git add src/mcp_server_for_oscal/oscal_schemas/hashes.json",
   "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_docs",
   "git add src/mcp_server_for_oscal/oscal_docs/hashes.json",
+  "hatch run bin/update_hashes.py src/mcp_server_for_oscal/component_definitions",
+  "git add src/mcp_server_for_oscal/component_definitions/hashes.json"
 ]
 
 # TODO: monitor OSCAL GitHub project for changes and trigger PRs in our project
