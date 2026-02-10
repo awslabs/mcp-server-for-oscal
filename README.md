@@ -184,7 +184,7 @@ You can customize this template by:
 ```
 
 ### Example 3: Discover open source OSCAL catalogs
-```
+```markdown
 > What are some open source OSCAL catalogs?
 
 Running tool list_oscal_resources with the param (from mcp server: oscal)
@@ -240,6 +240,118 @@ These catalogs provide ready-to-use OSCAL content for various compliance framewo
  ▸ Time: 15s
  ```
 
+### Example 4: Query component definitions for information about AWS services
+```markdown
+[OSCAL] > what components are available for Cognito?
+
+Running tool list_components with the param (from mcp server: oscal-dev)
+ ⋮  {}
+ - Completed in 0.49s
+
+> There are 3 Cognito-related components available:
+
+1. Cognito Identity - from "Cognito Identity Pools" component definition
+2. Cognito Sync - from "Amazon Cognito Sync" component definition  
+3. Cognito Identity Provider - from "Amazon Cognito Identity User Pools" component definition
+
+ ▸ Time: 7s
+
+[OSCAL] > show me the names and IDs from all 3 components
+
+Running tool query_component_definition with the param (from mcp server: oscal-dev)
+ ⋮  {
+ ⋮    "query_type": "by_uuid",
+ ⋮    "query_value": "7fd5d354-6ec4-4f8e-8c5f-2904086bb597"
+ ⋮  }
+Running tool query_component_definition with the param (from mcp server: oscal-dev)
+ ⋮  {
+ ⋮    "query_type": "by_uuid",
+ ⋮    "query_value": "a1d82e1d-3733-41f4-bc09-90ab47b9e82f"
+ ⋮  }
+Running tool query_component_definition with the param (from mcp server: oscal-dev)
+ ⋮  {
+ ⋮    "query_type": "by_uuid",
+ ⋮    "query_value": "2519deaf-4612-4c70-aba2-d9080ae3c816"
+ ⋮  }
+ - Completed in 0.13s
+
+ - Completed in 0.6s
+
+ - Completed in 0.6s
+
+> 1. Cognito Sync
+- Service ID: Cognito Sync
+- API Endpoint Prefix: cognito-sync
+- ARN Namespace: cognito-sync
+
+2. Cognito Identity Provider
+- Service ID: Cognito Identity Provider
+- API Endpoint Prefix: cognito-idp
+- ARN Namespace: cognito-idp
+
+3. Cognito Identity
+- Service ID: Cognito Identity
+- API Endpoint Prefix: cognito-identity
+- ARN Namespace: cognito-identity
+
+ ▸ Time: 12s
+
+[OSCAL] > show me everything in the EC2 component definition
+
+Running tool query_component_definition with the param (from mcp server: oscal-dev)
+ ⋮  {
+ ⋮    "component_definition_filter": "Elastic Compute Cloud (EC2)",
+ ⋮    "query_type": "all"
+ ⋮  }
+ - Completed in 0.14s
+
+> The EC2 component definition contains 1 component:
+
+Component: EC2
+- UUID: 66345eb9-7c0d-435c-b2b5-675fd977de80
+- Type: service
+- Description: Empty
+
+Properties:
+- Service ID: EC2
+- Version: 2016-11-15
+- Availability: REGIONAL and ZONAL
+- Full Name: Elastic Compute Cloud (EC2)
+- API Endpoint Prefix: ec2
+- ARN Namespace: ec2
+
+Regional Availability (34 regions):
+Africa (Cape Town), Asia Pacific (Hong Kong, Tokyo, Seoul, Osaka, Mumbai, Hyderabad, Singapore, Sydney, Jakarta, Melbourne, Malaysia), Canada (Central, Calgary), China (Beijing, Ningxia), 
+Europe (Frankfurt, Zurich, Stockholm, Milan, Spain, Ireland, London, Paris), Israel (Tel Aviv), Middle East (UAE, Bahrain), South America (Sao Paulo), US East (N. Virginia, Ohio), AWS 
+GovCloud (US-East, US-West), US West (N. California, Oregon)
+
+ ▸ Time: 10s
+
+[OSCAL] > what's the ID of the Jakarta region?
+
+> Based on the EC2 component data I just retrieved, the Jakarta region's resource fragment ID is:
+
+8041109b-0a0b-46cc-bddb-91d703667637
+
+This is the UUID for the "Asia Pacific (Jakarta)" region component.
+
+ ▸ Time: 3s
+
+[OSCAL] > get the region ID from that component
+
+Running tool query_component_definition with the param (from mcp server: oscal-dev)
+ ⋮  {
+ ⋮    "query_type": "by_uuid",
+ ⋮    "query_value": "8041109b-0a0b-46cc-bddb-91d703667637"
+ ⋮  }
+ - Completed in 0.13s
+
+> The region ID for Jakarta is: ap-southeast-3
+
+ ▸ Time: 7s
+
+[OSCAL] > /quit
+```
 
 ## Installation
 Follow these instructions to setup the MCP server for use with your preferred IDE, AI agent, chatbot, etc. The server is published as Python package on PyPI. The `uvx` command (shown below) automatically downloads the latest version of the server from PyPI on startup. 
@@ -335,6 +447,9 @@ See [DEVELOPING](DEVELOPING.md) to get started.
 ## Security
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+
+## Known limitations
+It's not yet possible to use this MCP server with ChatGPT due to limited MCP support by ChatGPT. 
 
 ## License
 
