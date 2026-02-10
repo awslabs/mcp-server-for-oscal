@@ -47,7 +47,7 @@ MCP (Model Context Protocol) is an [open-source standard][mcp-spec-url] for conn
 Examples below were created with kiro-cli, but should work with any AI assistant that supports MCP servers.
 
 ### Example 1: Learn about available OSCAL models
-```
+```markdown
  % kiro-cli
 
 > /tools trust get_oscal_schema list_oscal_models list_oscal_resources
@@ -85,7 +85,7 @@ All of these models have "GA" (Generally Available) status, meaning they are sta
 ```
 
 ### Example 2: OSCAL template generation
-```
+```markdown
 > generate a minimum, valid, OSCAL mapping in JSON for use as a template.
 
 > I'll help you create a minimal, valid OSCAL mapping in JSON. Let me first check what OSCAL models are available to understand the structure.
