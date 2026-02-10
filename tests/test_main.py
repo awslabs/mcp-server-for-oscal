@@ -149,7 +149,7 @@ class TestMain:
         def get_logger_side_effect(name):
             if name == "strands":
                 return mock_strands_logger
-            if name == "mcp":
+            if name == "mcp.*":
                 return mock_mcp_logger
             if name == "mcp_server_for_oscal.main":
                 return mock_main_logger
@@ -300,8 +300,8 @@ class TestMain:
         assert exc_info.value.code == 1
 
         # Verify error was logged
-        mock_logger.error.assert_called_once()
-        error_call_args = mock_logger.error.call_args[0]
+        mock_logger.exception.assert_called_once()
+        error_call_args = mock_logger.exception.call_args[0]
         assert "Transport configuration error" in error_call_args[0]
 
     @patch("mcp_server_for_oscal.main.mcp")
@@ -385,8 +385,8 @@ class TestMain:
         assert exc_info.value.code == 1
 
         # Verify error was logged
-        mock_logger.error.assert_called_once()
-        error_call_args = mock_logger.error.call_args[0]
+        mock_logger.exception.assert_called_once()
+        error_call_args = mock_logger.exception.call_args[0]
         assert "Transport configuration error" in error_call_args[0]
 
     @patch("mcp_server_for_oscal.main.mcp")
