@@ -20,3 +20,9 @@
 - **Tool**: `query_oscal_documentation`
 - Query authoritative OSCAL documentation using Amazon Bedrock Knowledge Base (KB). Note that this feature requires you to setup and maintain a Bedrock KB in your AWS account. In future, we hope to provide this as a service.
 - Get answers to questions about OSCAL concepts, best practices, and implementation guidance.
+
+## 5. Validate OSCAL Content
+- **Tool**: `validate_oscal_content`
+- Validate OSCAL JSON content through a multi-level pipeline: well-formedness, JSON Schema conformance, trestle semantic checks, and optionally oscal-cli full NIST validation
+- Auto-detects the OSCAL model type from the document's root key, or accepts an explicit override
+- Returns structured per-level results indicating validity, errors, and warnings

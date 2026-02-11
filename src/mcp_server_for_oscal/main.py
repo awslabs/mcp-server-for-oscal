@@ -20,6 +20,7 @@ from mcp_server_for_oscal.tools.list_models import list_oscal_models
 from mcp_server_for_oscal.tools.list_oscal_resources import list_oscal_resources
 from mcp_server_for_oscal.tools.query_component_definition import query_component_definition, list_component_definitions, list_components
 from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
+from mcp_server_for_oscal.tools.validate_oscal_content import validate_oscal_content
 from mcp_server_for_oscal.tools.utils import verify_package_integrity
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ mcp.add_tool(list_oscal_resources)
 mcp.add_tool(query_component_definition)
 mcp.add_tool(list_component_definitions)
 mcp.add_tool(list_components)
+mcp.add_tool(validate_oscal_content)
 
 @mcp.tool(name="about", description="Get metadata about the server itself")
 def about() -> dict:
