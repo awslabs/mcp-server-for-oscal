@@ -43,6 +43,27 @@ schema_names = {
     "complete": "oscal_complete_schema",
 }
 
+# Maps the root JSON key in an OSCAL document to its model type.
+# Used for auto-detecting the model type from document content.
+ROOT_KEY_TO_MODEL_TYPE: dict[str, OSCALModelType] = {
+    mt.value: mt for mt in OSCALModelType
+}
+
+
+def load_oscal_json_schema(model_type: OSCALModelType) -> dict:
+    """Load and parse a bundled OSCAL JSON schema by model type.
+
+    Args:
+        model_type: The OSCAL model type to load the schema for.
+
+    Returns:
+        The parsed JSON schema as a dict.
+    """
+    schema_base = schema_names[model_type]
+    schema_path = Path(__file__).parent.parent / "oscal_schemas" / f"{schema_base}.json"
+    with open(schema_path) as f:
+        return json.load(f)
+
 
 def try_notify_client_error(msg: str, ctx: Context) -> None:
     safe_log_mcp(msg, ctx, "error")

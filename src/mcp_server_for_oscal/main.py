@@ -44,6 +44,7 @@ def _setup_tools() -> None:
         query_component_definition,
     )
     from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
+    from mcp_server_for_oscal.tools.validate_oscal_content import validate_oscal_content
 
     # Register tools with MCP server
     # don't register the query_oscal_documentation tool unless we have a KB ID
@@ -57,6 +58,7 @@ def _setup_tools() -> None:
     mcp.add_tool(query_component_definition)
     mcp.add_tool(list_component_definitions)
     mcp.add_tool(list_components)
+    mcp.add_tool(validate_oscal_content)
 
     @mcp.tool(name="about", description="Get metadata about the server itself")
     def about() -> dict:

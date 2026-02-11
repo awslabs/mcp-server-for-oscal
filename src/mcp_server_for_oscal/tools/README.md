@@ -4,7 +4,7 @@ This package contains all tool implementations for the OSCAL MCP server. Each to
 
 ## Available Tools
 
-### 1. List OSCAL Models  
+### 1. List OSCAL Models
 **Tool**: `list_oscal_models`
 
 Returns metadata about all available OSCAL model types including:
@@ -120,7 +120,7 @@ Queries authoritative OSCAL documentation using Amazon Bedrock Knowledge Base. U
 
 **Returns**: Results from knowledge base as Bedrock RetrieveResponseTypeDef object
 
-**Requirements**: 
+**Requirements**:
 - Requires `OSCAL_KB_ID` environment variable to be set
 - Requires AWS credentials configured (via profile or environment)
 - Optional: Set `OSCAL_AWS_PROFILE` to use specific AWS profile
@@ -129,7 +129,36 @@ Queries authoritative OSCAL documentation using Amazon Bedrock Knowledge Base. U
 
 ---
 
-### 8. About
+### 8. Validate OSCAL Content
+**Tool**: `validate_oscal_content`
+
+Validates OSCAL JSON content through a multi-level pipeline:
+
+| Level | What it checks | Implementation |
+|-------|---------------|----------------|
+| 1. Well-formedness | Valid JSON, is a dict | `json.loads()` |
+| 2. JSON Schema | Conforms to NIST OSCAL schema | `jsonschema.Draft7Validator` with bundled schemas |
+| 3. Trestle | Semantic checks via Pydantic models | `trestle.oscal.*` model instantiation |
+| 4. oscal-cli | Full NIST validation | `subprocess.run()` if on PATH |
+
+**Parameters**:
+- `content` (str): OSCAL JSON content as a string
+- `model_type` (str, optional): OSCAL model type (e.g. "catalog", "profile"). Auto-detected from root key if omitted.
+
+**Returns**: Dictionary with:
+- `valid`: Overall validity (true only if all non-skipped levels pass)
+- `model_type`: Detected or provided model type
+- `levels`: Per-level results with `valid`, `errors`, `warnings`, `skipped`, and `skip_reason`
+
+**Key behaviors**:
+- If Level 1 fails, Levels 2-4 are skipped
+- If `oscal-cli` is not installed, Level 4 is gracefully skipped
+- `mapping-collection` skips Level 3 (trestle does not support it)
+- Errors capped at 20 per level
+
+---
+
+### 9. About
 **Tool**: `about`
 
 Returns metadata about the MCP server itself.
@@ -154,11 +183,14 @@ Tools are registered in `main.py` using the FastMCP framework. The `query_oscal_
 - **compliance-trestle**: OSCAL Pydantic models and utilities
 - **boto3**: AWS SDK (for documentation queries)
 - **requests**: HTTP client (for remote Component Definition loading)
+- **jsonschema**: JSON Schema validation (transitive dependency)
 
 ### Utilities
 The `utils.py` module provides shared functionality:
 - `OSCALModelType`: Enum of OSCAL model types
 - `schema_names`: Mapping of model names to schema file names
+- `ROOT_KEY_TO_MODEL_TYPE`: Reverse mapping from JSON root keys to model types
+- `load_oscal_json_schema()`: Load bundled OSCAL JSON schemas
 - `try_notify_client_error()`: Helper for error notifications
 - `verify_package_integrity()`: Package integrity verification
 
