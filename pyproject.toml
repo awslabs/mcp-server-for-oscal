@@ -50,6 +50,7 @@ source = "vcs"
 
 [tool.hatch.version.raw-options]
 version_scheme = "no-guess-dev"
+# local_scheme = "no-local-version"
 
 # see also: tool.hatch.build.hooks.vcs below
 [tool.hatch.build.hooks.vcs]
@@ -152,7 +153,7 @@ update-awesome-oscal = [
 
 # Aliases for backwards compatibility 
 typing = ["hatch run devtest:typing"]
-release = ["hatch run devtest:tests", "hatch build"]
+release = ["hatch run devtest:tests", "git status", "hatch build"]
 bandito = ["hatch run devtest:bandito"]
 tests = ["hatch run devtest:tests"]
 
