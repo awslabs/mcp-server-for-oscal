@@ -152,7 +152,7 @@ update-awesome-oscal = [
 
 # Aliases for backwards compatibility 
 typing = ["hatch run devtest:typing"]
-release = ["hatch run devtest:release"]
+release = ["hatch run devtest:tests", "hatch build"]
 bandito = ["hatch run devtest:bandito"]
 tests = ["hatch run devtest:tests"]
 
@@ -162,15 +162,6 @@ typing = [
   "mkdir -p .mypy_cache",
   "mypy --install-types --non-interactive src/mcp_server_for_oscal tests",
 ]
-
-release = [
-  "typing",
-  "hatch run bandito",
-  "hatch test --all --cover --junitxml private/docs/pytest.xml",
-  "hatch build",
-]
-
-
 
 # Start the MCP server for remote testing/development
 http-server = [
@@ -185,7 +176,7 @@ bandito = [
   "bandit -s B101 -r tests | tee private/docs/bandit/tests.txt",
 ]
 
-tests = ["typing", "hatch test --all --cover", "hatch run bandito"]
+tests = ["typing", "hatch test --all --cover --junitxml private/docs/pytest.xml", "hatch run bandito"]
 
 
 
