@@ -15,10 +15,6 @@ updates:
     groups:
       minor-updates:
         update-types: ["minor", "patch"]
-      major-updates-prod:
-        update-types: ["major"]
-        dependency-type: "production"
-      major-updates-dev:
-        update-types: ["major"]
-        dependency-type: "development"        
+    ignore:        
+      - update-types: ["version-update:semver-major"]
       
