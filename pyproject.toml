@@ -57,23 +57,11 @@ version_scheme = "no-guess-dev"
 version-file = "_version.py"
 
 [tool.hatch.envs.default]
-type = "pip-compile"
-pip-compile-resolver = "uv"
-pip-compile-installer = "pip-sync"
-pip-compile-verbose = true
 # This controls what version of Python you want to be the default
 # when running any scripts or tools to do things like debug test failures
 # or do general development. 
 python = "3.12"
-
-
-[tool.hatch.envs.devtest]
-# type = "pip-compile"
-# pip-compile-resolver = "uv"
-# pip-compile-installer = "pip-sync"
-# pip-compile-constraint = "default"
 dependency-groups = ["devtest"]
-# pip-compile-verbose = true
 
 [tool.pytest.ini_options]
 addopts = ["--durations=5", "--color=yes"]
@@ -124,17 +112,14 @@ directory = "./build"
 
 [tool.hatch.env]
 python = "3.12"
-requires = [
-    "hatch-pip-compile"
-]
 
 [tool.hatch.envs.default.scripts]
 # These are scripts you can run using `hatch run <script-name>`
 update = [
   # Update project dependencies in this file, then compile to requirements.txt
   # to ensure deterministic/reproducible builds.
-  # "uv pip install -U -r pyproject.toml",
-  "uv pip install -U -r pyproject.toml --group devtest",
+  "uv pip install -U -r pyproject.toml",
+  "uv pip compile -o requirements.txt pyproject.toml"
 ]
 
 rehash = [
@@ -157,13 +142,8 @@ update-awesome-oscal = [
   https://raw.githubusercontent.com/oscal-club/awesome-oscal/refs/heads/main/README.md''',
 ]
 
-# Aliases for backwards compatibility 
-typing = ["hatch run devtest:typing"]
-release = ["hatch run devtest:tests", "git status", "hatch build"]
-bandito = ["hatch run devtest:bandito"]
-tests = ["hatch run devtest:tests"]
+release = ["hatch run tests", "git status", "hatch build"]
 
-[tool.hatch.envs.devtest.scripts]
 typing = [
   # Type checking using mypy
   "mkdir -p .mypy_cache",
@@ -184,8 +164,6 @@ bandito = [
 ]
 
 tests = ["typing", "hatch test --all --cover --junitxml private/docs/pytest.xml", "hatch run bandito"]
-
-
 
 [tool.hatch.envs.hatch-test.scripts]
 run = "pytest{env:HATCH_TEST_ARGS:} {args}"
