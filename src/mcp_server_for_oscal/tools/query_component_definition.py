@@ -11,10 +11,10 @@ from urllib.parse import urlparse
 import requests
 from mcp.server.fastmcp.server import Context
 from strands import tool
-from trestle.oscal.component import ComponentDefinition, DefinedComponent, Capability
+from trestle.oscal.component import Capability, ComponentDefinition, DefinedComponent
 
 from mcp_server_for_oscal.config import config
-from mcp_server_for_oscal.tools.utils import try_notify_client_error, safe_log_mcp
+from mcp_server_for_oscal.tools.utils import safe_log_mcp, try_notify_client_error
 
 logger = logging.getLogger(__name__)
 logger.setLevel(config.log_level)
@@ -56,7 +56,7 @@ class ComponentDefinitionStore:
         self._capabilities_by_uuid.clear()
         self._capabilities_by_name.clear()
         self._capabilities_to_cdef_by_uuid.clear()
-        self._stats.update({key: 0 for key in self._stats})
+        self._stats.update(dict.fromkeys(self._stats, 0))
 
     # ------------------------------------------------------------------
     # Loading
@@ -202,7 +202,7 @@ class ComponentDefinitionStore:
                 with zip_file.open(innerfile) as f:
                     data = json.load(f)
                     self._index_components(
-                        cast(ComponentDefinition, ComponentDefinition.parse_obj(data["component-definition"])),
+                        cast("ComponentDefinition", ComponentDefinition.parse_obj(data["component-definition"])),
                         innerfile_path,
                     )
                     self._stats["loaded_files"] += 1
@@ -220,7 +220,7 @@ class ComponentDefinitionStore:
                 if relative_path in self._cdefs_by_path:
                     logger.info("Reprocessing Component Definition file %s", relative_path)
                 #     continue
-                component_def = cast(ComponentDefinition, ComponentDefinition.oscal_read(json_file))
+                component_def = cast("ComponentDefinition", ComponentDefinition.oscal_read(json_file))
                 self._stats["processed_json_files"] += 1
                 if component_def is None:
                     logger.debug("Skipping file (oscal_read returned None): %s", json_file)
@@ -358,8 +358,8 @@ class ComponentDefinitionStore:
         try:
             cape: Capability = None # type: ignore[assignment]
             foundit: bool = False
-            if query_type == "by_title":                
-                qvl = query_value.lower() # type: ignore[union-attr]               
+            if query_type == "by_title":
+                qvl = query_value.lower() # type: ignore[union-attr]
                 if qvl in _store._capabilities_by_name:
                     logger.debug("capability query by title: %s", qvl)
                     cape = _store._capabilities_by_name[qvl]
@@ -378,7 +378,7 @@ class ComponentDefinitionStore:
             elif cape:
                 foundit = True
 
-            if foundit:            
+            if foundit:
                 logger.debug("Returning capability")
                 return {
                     "capability": cape.oscal_dict(),
@@ -468,7 +468,7 @@ class ComponentDefinitionStore:
                 "name": cap.name,
                 "parentComponentDefinitionTitle": parent.metadata.title,
                 "parentComponentDefinitionUuid": parent.uuid,
-                "sizeInBytes": len(cap.oscal_serialize_json_bytes()),  
+                "sizeInBytes": len(cap.oscal_serialize_json_bytes()),
             })
         return rv
 
@@ -494,7 +494,7 @@ class ComponentDefinitionStore:
             return [self._cdefs_by_title[fvl]]
 
         msg = f"No Component Definition found with UUID or title matching: `{filter_value}`."
-        logger.debug(msg)        
+        logger.debug(msg)
         safe_log_mcp(msg+" Try again without a filter or lookup the filter value with the tool list_component_definitions.", ctx, "info")
         return []
         # raise ValueError(msg)

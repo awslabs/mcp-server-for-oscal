@@ -1,11 +1,10 @@
 """
 Tests for the query_component_definition tool.
 """
-import asyncio
 import json
 import zipfile
 from pathlib import Path
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import requests
@@ -113,7 +112,7 @@ class TestLoadComponentDefinitionsFromDirectory:
         assert result == {}
 
     def test_load_from_directory_no_json_files(self, tmp_path, monkeypatch):
-        """Test loading from directory with no JSON files."""        
+        """Test loading from directory with no JSON files."""
         comp_defs_dir = tmp_path / "component_definitions"
         comp_defs_dir.mkdir()
 
@@ -151,7 +150,7 @@ class TestQueryComponentDefinitionTool:
     @pytest.fixture
     def setup_component_defs_dir(
         self, tmp_path, sample_component_def_data, monkeypatch
-    ):  
+    ):
         """Set up a temporary component definitions directory with test data."""
         comp_defs_dir = tmp_path / "component_definitions"
         comp_defs_dir.mkdir()
@@ -877,8 +876,9 @@ class TestRemainingCoverageGaps:
 
     def test_find_component_by_prop_value_no_props(self):
         """Component with no props should not match."""
-        from trestle.oscal.component import DefinedComponent
         import uuid as uuid_mod
+
+        from trestle.oscal.component import DefinedComponent
         comp = DefinedComponent(
             uuid=str(uuid_mod.uuid4()),
             type="software",
