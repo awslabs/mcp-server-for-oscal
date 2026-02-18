@@ -108,7 +108,8 @@ mcp-server-for-oscal/
 │       ├── query_documentation.py
 │       ├── list_models.py
 │       ├── get_schema.py
-│       └── utils.py
+│       ├── utils.py
+│       └── ...
 ├── tests/                   # Test suite
 ├── bin/                     # Utility scripts
 └── requirements.txt         # Python dependencies

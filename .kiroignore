@@ -11,3 +11,5 @@
 .coverage
 private/
 .hatch/
+temp/
+tmp/

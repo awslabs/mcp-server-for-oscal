@@ -42,6 +42,8 @@ def _setup_tools() -> None:
         list_component_definitions,
         list_components,
         query_component_definition,
+        list_capabilities,
+        get_capability
     )
     from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
 
@@ -57,13 +59,15 @@ def _setup_tools() -> None:
     mcp.add_tool(query_component_definition)
     mcp.add_tool(list_component_definitions)
     mcp.add_tool(list_components)
+    mcp.add_tool(list_capabilities)
+    mcp.add_tool(get_capability)
 
     @mcp.tool(name="about", description="Get metadata about the server itself")
     def about() -> dict:
         return {
             "version": meta.get("version"),
             "keywords": meta.get("keywords"),
-            "oscal-version": "1.2.0",
+            "oscal-version": "1.2.0", #TODO: this shouldn't be hard coded
         }
 
 
