@@ -56,7 +56,7 @@ def safe_log_mcp(
     try:
         loop = asyncio.get_running_loop()
         # Already in async context - can't use asyncio.run()
-        loop.run_until_complete(ctx.log(level, msg))
+        loop.create_task(ctx.log(level, msg))
     except RuntimeError:
         # Not in async context - safe to use asyncio.run()
         asyncio.run(ctx.log(level, msg))

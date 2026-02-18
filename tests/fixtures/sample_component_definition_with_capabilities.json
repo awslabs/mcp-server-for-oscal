@@ -1,0 +1,26 @@
+{
+  "component-definition": {
+    "uuid": "c1d2e3f4-5678-4abc-8def-aabbccddeeff",
+    "metadata": {
+      "title": "Capability Test Definition",
+      "last-modified": "2024-01-01T00:00:00Z",
+      "version": "1.0",
+      "oscal-version": "1.0.4"
+    },
+    "capabilities": [
+      {
+        "uuid": "d1e2f3a4-5678-4abc-9def-112233445566",
+        "name": "Test Capability",
+        "description": "A capability for testing"
+      }
+    ],
+    "components": [
+      {
+        "uuid": "e1f2a3b4-5678-4abc-9def-aabbccddeeff",
+        "type": "software",
+        "title": "Capability Component",
+        "description": "A component within a capability test"
+      }
+    ]
+  }
+}
