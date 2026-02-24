@@ -19,3 +19,7 @@ export LOG_LEVEL=INFO
 
 # MCP transport (defaults to stdio)
 # OSCAL_MCP_TRANSPORT=streamable-http
+
+# Server network configuration (for streamable-http transport / AgentCore deployment)
+# OSCAL_MCP_HOST=127.0.0.1
+# OSCAL_MCP_STATELESS_HTTP=false

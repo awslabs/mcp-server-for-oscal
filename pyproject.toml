@@ -35,7 +35,7 @@ classifiers = [
 ]
 
 [dependency-groups]
-devtest = ["pytest", "mypy", "boto3-stubs", "bandit", "pytest-asyncio"]
+devtest = ["pytest", "mypy", "boto3-stubs", "bandit", "pytest-asyncio", "hypothesis", "bedrock-agentcore-starter-toolkit"]
 
 [project.scripts]
 server = "mcp_server_for_oscal.main:main"
@@ -164,6 +164,13 @@ bandito = [
 ]
 
 tests = ["typing", "hatch test --all --cover --junitxml private/docs/pytest.xml", "hatch run bandito"]
+
+build-agentcore-container = [
+  "finch build -f conf/agentcore/Dockerfile -t bedrock-agentcore-oscal --build-arg VERSION=$(hatch version) ."
+]
+
+[tool.hatch.envs.hatch-test]
+extra-dependencies = ["pytest-asyncio", "hypothesis"]
 
 [tool.hatch.envs.hatch-test.scripts]
 run = "pytest{env:HATCH_TEST_ARGS:} {args}"

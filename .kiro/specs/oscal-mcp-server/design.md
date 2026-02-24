@@ -2,9 +2,21 @@
 
 ## Overview
 
-The OSCAL MCP Server is a Model Context Protocol (MCP) server that provides AI assistants with specialized tools for working with NIST's Open Security Controls Assessment Language (OSCAL). The server acts as a bridge between AI assistants and OSCAL resources, enabling intelligent querying of OSCAL documentation, schema retrieval, and model information access.
+The OSCAL MCP Server is a Model Context Protocol (MCP) server that provides AI assistants with specialized tools for working with NIST's Open Security Controls Assessment Language (OSCAL). The server acts as a bridge between AI assistants and OSCAL resources, enabling intelligent querying of OSCAL documentation, schema retrieval, model information access, community resource listing, and pre-loaded Component Definition querying.
 
-The system is built using Python with the FastMCP framework and integrates with AWS Bedrock Knowledge Base for documentation queries. It leverages the **compliance-trestle** library for OSCAL document parsing, validation, and manipulation, providing type-safe Pydantic models for all OSCAL document types. The server provides five primary tools: documentation querying, model listing, schema retrieval, OSCAL community resources listing, and component definition querying.
+The system is built using Python with the FastMCP framework and integrates with AWS Bedrock Knowledge Base for documentation queries. It leverages the **compliance-trestle** library for OSCAL document parsing, validation, and serialization, providing type-safe Pydantic models for all OSCAL document types. A **Strands Agent** module provides a conversational OSCAL expert interface powered by Amazon Bedrock.
+
+The server provides these primary tools:
+- `query_oscal_documentation` — query Bedrock Knowledge Base (conditionally registered)
+- `list_oscal_models` — list OSCAL model types with metadata
+- `get_oscal_schema` — retrieve JSON/XSD schemas
+- `list_oscal_resources` — return curated community resources
+- `query_component_definition` — query pre-loaded components by UUID, title, or type
+- `list_component_definitions` — list loaded Component Definitions with summaries
+- `list_components` — list loaded Components with parent info
+- `list_capabilities` — list loaded Capabilities with parent info
+- `get_capability` — retrieve a specific Capability by UUID
+- `about` — return server metadata (version, keywords, OSCAL version)
 
 ## Architecture
 
@@ -15,232 +27,275 @@ graph TB
     subgraph "AI Assistant"
         A[AI Assistant Client]
     end
-    
+
     subgraph "MCP Protocol Layer"
         B[FastMCP Server]
         C[MCP Transport - stdio/streamable-http]
     end
-    
+
     subgraph "Application Layer"
-        D[Main Server Module]
-        E[Configuration Manager]
-        F[Tool Registry]
+        D[Main Server Module - main.py]
+        E[Configuration Manager - config.py]
+        F[Tool Registry - _setup_tools]
+        G[Integrity Verification - utils.verify_package_integrity]
     end
-    
+
     subgraph "Tool Layer"
-        G[Query Documentation Tool]
-        H[List Models Tool]
-        I[Get Schema Tool]
-        J[List OSCAL Resources Tool]
-        K[Query Component Definition Tool]
+        H[query_oscal_documentation]
+        I[list_oscal_models]
+        J[get_oscal_schema]
+        K[list_oscal_resources]
+        L[query_component_definition]
+        M[list_component_definitions]
+        N[list_components]
+        O[list_capabilities]
+        P[get_capability]
+        Q[about]
     end
-    
+
     subgraph "Data Layer"
-        L[AWS Bedrock Knowledge Base]
-        M[Local Schema Files]
-        N[OSCAL Model Definitions]
-        O[Local document index]
-        P[OSCAL Community Resources File]
-        Q[Component Definition Files]
+        R[ComponentDefinitionStore singleton]
+        S[AWS Bedrock Knowledge Base]
+        T[Local Schema Files - oscal_schemas/]
+        U[OSCAL Community Resources - oscal_docs/]
+        V[Bundled Component Definitions - component_definitions/]
     end
-    
+
+    subgraph "Agent Layer"
+        W[oscal_agent.py - Strands Agent]
+    end
+
     A <--> B
     B <--> C
     B --> D
     D --> E
     D --> F
-    F --> G
-    F --> H
-    F --> I
-    F --> J
-    F --> K
-    G --> L
-    G --> O
-    H --> N
-    I --> M
-    J --> P
-    K --> Q
+    D --> G
+    F --> H & I & J & K & L & M & N & O & P & Q
+    H --> S
+    J --> T
+    K --> U
+    L & M & N & O & P --> R
+    R --> V
+    W --> S
 ```
 
 ### Key Architectural Principles
 
 1. **Protocol Abstraction**: MCP protocol handling is abstracted through FastMCP framework
-2. **Tool-Based Design**: Functionality is exposed as discrete, composable tools
-3. **Configuration-Driven**: Behavior is controlled through environment variables and command line arguments
-4. **Error Resilience**: Comprehensive error handling with graceful degradation
-5. **Local-First Resource**: Schemas and other resources are stored locally for fast, reliable access. We should not query remote resources unless explicitly configured to do so.
-6. **Type-Safe OSCAL Handling**: Use compliance-trestle's Pydantic models for automatic validation and type safety
+2. **Tool-Based Design**: Functionality is exposed as discrete, composable tools registered in `_setup_tools()`
+3. **Configuration-Driven**: Behavior is controlled through environment variables (via dotenv) and CLI arguments
+4. **Singleton Store**: `ComponentDefinitionStore` is a module-level singleton (`_store`) that loads data at import time
+5. **Local-First Resources**: Schemas, docs, and component definitions are stored locally; remote URIs require explicit opt-in
+6. **Type-Safe OSCAL Handling**: Uses compliance-trestle's Pydantic models for automatic validation and type safety
+7. **Integrity Verification**: SHA-256 hash verification of bundled content at startup before any tools are registered
 
 ## Components and Interfaces
 
 ### Main Server Component (`main.py`)
 
 **Responsibilities:**
-- Initialize and configure the FastMCP server
-- Register OSCAL tools with the MCP framework
-- Handle command line argument parsing including transport selection
-- Configure logging and error handling
-- Manage server lifecycle with appropriate transport protocol
-- Validate and configure transport method (stdio or streamable-http)
+- Initialize and configure the FastMCP server instance (module-level `mcp` global)
+- Parse CLI arguments (`--aws-profile`, `--bedrock-model-id`, `--knowledge-base-id`, `--log-level`, `--transport`)
+- Update config from CLI args via `config.update_from_args()`
+- Configure logging for all components
+- Validate transport configuration via `config.validate_transport()`
+- Verify integrity of bundled content directories (oscal_schemas, oscal_docs, component_definitions)
+- Register tools via `_setup_tools()` — conditionally registers `query_oscal_documentation` based on `config.knowledge_base_id`
+- Define the `about` tool inline using `@mcp.tool` decorator
+- Run the MCP server with configured transport
 
 **Key Interfaces:**
 ```python
-def main() -> None
-    # Entry point for server execution
+def main() -> None:
+    """Entry point: parse args, configure, verify integrity, register tools, run server."""
 
-mcp: FastMCP
-    # Global MCP server instance with registered tools
+def _setup_tools() -> None:
+    """Import and register all tool functions with the MCP server.
+    Conditionally registers query_oscal_documentation if knowledge_base_id is set.
+    Defines the about tool inline."""
+
+mcp: FastMCP  # Module-level server instance
+
+@mcp.tool(name="about")
+def about() -> dict:
+    """Returns {"version": ..., "keywords": ..., "oscal-version": "1.2.0"}
+    from installed package metadata."""
 ```
 
 ### Configuration Manager (`config.py`)
 
 **Responsibilities:**
-- Load configuration from environment variables
-- Provide default values for all settings
-- Support runtime configuration updates from command line arguments
-- Manage AWS and Bedrock-specific settings
+- Load configuration from environment variables via `dotenv`
+- Provide sensible defaults for all settings
+- Support runtime updates from CLI arguments
+- Validate transport configuration
 
 **Key Interfaces:**
 ```python
 class Config:
-    bedrock_model_id: str
-    knowledge_base_id: str
-    aws_profile: str | None
-    aws_region: str | None
-    log_level: str
-    server_name: str
-    transport: str  # "stdio" or "streamable-http"
-    
-    def update_from_args(self, **kwargs) -> None
+    bedrock_model_id: str          # default: "us.anthropic.claude-sonnet-4-20250514-v1:0"
+    knowledge_base_id: str         # default: "" (empty disables doc query tool)
+    aws_profile: str | None        # from AWS_PROFILE
+    aws_region: str | None         # from AWS_REGION
+    log_level: str                 # default: "INFO"
+    server_name: str               # default: "OSCAL" (from OSCAL_MCP_SERVER_NAME)
+    transport: str                 # default: "stdio" (from OSCAL_MCP_TRANSPORT)
+    allow_remote_uris: bool        # default: False (from OSCAL_ALLOW_REMOTE_URIS)
+    request_timeout: int           # default: 30 (from OSCAL_REQUEST_TIMEOUT)
+    max_uri_depth: int             # default: 3 (from OSCAL_MAX_URI_DEPTH)
+    component_definitions_dir: str # default: "component_definitions" (from OSCAL_COMPONENT_DEFINITIONS_DIR)
+
+    def update_from_args(self, bedrock_model_id=None, knowledge_base_id=None,
+                         log_level=None, transport=None) -> None
+    def validate_transport(self) -> None  # raises ValueError for invalid transport
+
+config = Config()  # Module-level singleton instance
+```
+
+### ComponentDefinitionStore (`query_component_definition.py`)
+
+**Responsibilities:**
+- Load, parse, and index OSCAL Component Definitions from local directories and external URIs
+- Maintain multiple index dictionaries for efficient lookup by path, UUID, title
+- Index child Components and Capabilities with parent relationship tracking
+- Support querying by UUID, title, type, and "all"
+- Integrate capability lookup into the query flow (capability-first check before component search)
+- Track loading statistics
+
+**Key Interfaces:**
+```python
+class ComponentDefinitionStore:
+    # Index dictionaries
+    _cdefs_by_path: dict[str, ComponentDefinition]
+    _cdefs_by_uuid: dict[str, ComponentDefinition]
+    _cdefs_by_title: dict[str, ComponentDefinition]       # case-insensitive keys
+    _components_by_uuid: dict[str, DefinedComponent]
+    _components_by_title: dict[str, DefinedComponent]     # case-insensitive keys
+    _components_to_cdef_by_uuid: dict[str, str]           # component UUID → cdef UUID
+    _capabilities_by_uuid: dict[str, Capability]
+    _capabilities_by_name: dict[str, Capability]          # case-insensitive keys
+    _capabilities_to_cdef_by_uuid: dict[str, str]         # capability UUID → cdef UUID
+    _stats: dict[str, int]
+
+    def _reset(self) -> None
+    def load_from_directory(self, directory_path: Path | None = None) -> dict[str, ComponentDefinition]
+    def load_external_component_definition(self, source: str, ctx: Context) -> None
+    def query(self, ctx, component_definition_filter=None, query_type="all",
+              query_value=None, return_format="raw") -> dict[str, Any]
+    def list_component_definitions(self, ctx: Context) -> list[dict]
+    def list_components(self, ctx: Context) -> list[dict]
+    def list_capabilities(self, ctx: Context) -> list[dict]
+
+    # Static helpers
+    @staticmethod
+    def find_component_by_prop_value(components, value) -> DefinedComponent | None
+    @staticmethod
+    def filter_components_by_type(components, component_type) -> list[DefinedComponent]
+
+    # Private helpers
+    def _process_zip_files(self, directory_path: Path) -> None
+    def _handle_zip_file(self, zf: Path) -> None
+    def _process_json_files(self, directory_path: Path) -> None
+    def _index_components(self, cdef: ComponentDefinition, path: str) -> None
+    def _resolve_comp_defs(self, filter_value, ctx) -> list[ComponentDefinition]
+    @staticmethod
+    def _build_filtered_indexes(comp_defs) -> tuple[dict, dict]
+    def _select_components(self, query_type, query_value, by_uuid, by_title, ctx) -> list[DefinedComponent]
+
+_store = ComponentDefinitionStore()  # Module-level singleton
+_store.load_from_directory()         # Called at module import time
+```
+
+### MCP Tool Wrappers (`query_component_definition.py` module-level functions)
+
+Thin wrapper functions decorated with `@tool` that delegate to the `_store` singleton:
+
+```python
+@tool
+def query_component_definition(ctx, component_definition_filter=None,
+    query_type="all", query_value=None, return_format="raw") -> dict
+    # → _store.query(...)
+
+@tool
+def list_component_definitions(ctx) -> list[dict]
+    # → _store.list_component_definitions(ctx)
+
+@tool
+def list_components(ctx) -> list[dict]
+    # → _store.list_components(ctx)
+
+@tool
+def list_capabilities(ctx) -> list[dict]
+    # → _store.list_capabilities(ctx)
+
+@tool
+def get_capability(ctx, uuid: str) -> dict | None
+    # → direct dict lookup on _store._capabilities_by_uuid
 ```
 
 ### Query Documentation Tool (`query_documentation.py`)
 
 **Responsibilities:**
-- Interface with AWS Bedrock Knowledge Base
-- Handle AWS authentication and session management
-- Process documentation queries and return structured results
-- Provide fallback behavior when knowledge base is unavailable
+- Interface with AWS Bedrock Knowledge Base via boto3
+- Handle AWS authentication using configured profile
+- Provide `query_local()` fallback stub when KB is unavailable
 
-**Key Interfaces:**
 ```python
 @tool
 def query_oscal_documentation(query: str, ctx: Context) -> Any
-    # Main tool function for MCP integration
-
 def query_kb(query: str, ctx: Context) -> Any
-    # Bedrock Knowledge Base query implementation
-
-def query_local(query: str, ctx: Context) -> Any
-    # Local fallback implementation (placeholder)
+def query_local(query: str, ctx: Context) -> Any  # placeholder, returns error
 ```
 
 ### List Models Tool (`list_models.py`)
 
-**Responsibilities:**
-- Provide comprehensive information about OSCAL model types
-- Return structured data including descriptions, layers, and status
-- Maintain authoritative list of supported OSCAL models
-
-**Key Interfaces:**
 ```python
 @tool
 def list_oscal_models() -> dict
-    # Returns structured model information
+    # Returns dict keyed by OSCALModelType with description, layer, formalName, shortName, status
 ```
 
 ### Get Schema Tool (`get_schema.py`)
 
-**Responsibilities:**
-- Retrieve OSCAL schemas from local file system
-- Support both JSON and XSD schema formats
-- Handle model name validation and aliasing
-- Manage schema file path resolution
-
-**Key Interfaces:**
 ```python
 @tool
-def get_oscal_schema(ctx: Context, model_name: str, schema_type: str) -> str
-    # Main schema retrieval function
-
+def get_oscal_schema(ctx: Context, model_name: str = "complete", schema_type: str = "json") -> str
 def open_schema_file(file_name: str) -> Any
-    # File system interface for schema access
 ```
 
 ### List OSCAL Resources Tool (`list_oscal_resources.py`)
 
-**Responsibilities:**
-- Read and return the contents of the awesome-oscal.md community resources file
-- Handle file system access for local documentation files
-- Preserve markdown formatting in returned content
-- Provide error handling for file access issues
-
-**Key Interfaces:**
 ```python
 @tool
 def list_oscal_resources(ctx: Context) -> str
-    # Main tool function for returning OSCAL community resources
-
-def read_resources_file() -> str
-    # File system interface for reading awesome-oscal.md
-```
-
-### Query Component Definition Tool (`query_component_definition.py`)
-
-**Responsibilities:**
-- Parse OSCAL Component Definition documents from local files or URLs
-- Extract component information including metadata, control implementations, and properties
-- Support JSON format parsing
-- Provide summary and raw component object views
-- Resolve Link and Prop objects according to OSCAL extension patterns
-- Handle component queries by UUID, title, and type
-- Validate Component Definition documents against OSCAL schema
-- Process URI references when requested
-
-**Key Interfaces:**
-```python
-@tool
-def query_component_definition(
-    ctx: Context,
-    source: str,
-    query_type: Literal["all", "by_uuid", "by_title", "by_type"] = "all",
-    query_value: str | None = None,
-    return_format: Literal["summary", "raw"] = "summary",
-    resolve_uris: bool = False
-) -> dict
-    # Main tool function for querying component definitions
-
-def load_component_definition(source: str, ctx: Context) -> ComponentDefinition
-    # Load and validate using compliance-trestle's load_validate functions
-    # Returns: trestle.oscal.component.ComponentDefinition
-
-def extract_component_summary(component: DefinedComponent) -> dict
-    # Extract summary fields from compliance-trestle DefinedComponent model
-
-def resolve_links_and_props(component: DefinedComponent, ctx: Context) -> dict
-    # Process Link and Prop Pydantic objects from compliance-trestle
-
-def find_component_by_title(components: List[DefinedComponent], title: str) -> DefinedComponent | None
-    # Search for component by exact title match
-
-def find_component_by_prop_value(components: List[DefinedComponent], value: str) -> DefinedComponent | None
-    # Use ModelUtils.find_values_by_name() for prop value search
-
-def filter_components_by_type(components: List[DefinedComponent], component_type: str) -> List[DefinedComponent]
-    # Filter components by type field
+def read_resources_file() -> str  # reads oscal_docs/awesome-oscal.md with UTF-8, latin-1 fallback
 ```
 
 ### Utilities Module (`utils.py`)
 
-**Responsibilities:**
-- Define OSCAL model type enumeration
-- Provide shared constants and helper functions
-- Maintain type safety for model names
-
-**Key Interfaces:**
 ```python
 class OSCALModelType(StrEnum):
-    # Enumeration of all supported OSCAL model types
+    CATALOG, PROFILE, COMPONENT_DEFINITION, SYSTEM_SECURITY_PLAN,
+    ASSESSMENT_PLAN, ASSESSMENT_RESULTS, PLAN_OF_ACTION_AND_MILESTONES, MAPPING
+
+schema_names: dict[str, str]  # maps OSCALModelType → schema file base name
+
+def try_notify_client_error(msg: str, ctx: Context) -> None
+def safe_log_mcp(msg: str, ctx: Context, level: str) -> None
+def verify_package_integrity(directory: Path) -> None
+    # SHA-256 verification against hashes.json manifest; raises RuntimeError on mismatch
+```
+
+### OSCAL Agent (`oscal_agent.py`)
+
+```python
+agent: Agent  # Global variable
+
+def create_oscal_agent() -> Agent:
+    # Creates Strands Agent with BedrockModel using config.aws_profile/aws_region
+    # Sets system prompt describing OSCAL expertise
+    # Enables load_tools_from_directory=True
 ```
 
 ## Data Models
@@ -248,403 +303,387 @@ class OSCALModelType(StrEnum):
 ### Configuration Data Model
 
 ```python
-@dataclass
-class ServerConfig:
+class Config:
     bedrock_model_id: str = "us.anthropic.claude-sonnet-4-20250514-v1:0"
     knowledge_base_id: str = ""
     aws_profile: str | None = None
     aws_region: str | None = None
     log_level: str = "INFO"
-    server_name: str = "OSCAL MCP Server"
-    transport: str = "stdio"  # Default to stdio transport
+    server_name: str = "OSCAL"
+    transport: str = "stdio"
+    allow_remote_uris: bool = False
+    request_timeout: int = 30
+    max_uri_depth: int = 3
+    component_definitions_dir: str = "component_definitions"
 ```
 
-### OSCAL Model Information
+### OSCAL Model Information (from `list_models.py`)
+
+Each model entry contains:
+```python
+{
+    "description": str,
+    "layer": Literal["Control", "Implementation", "Assessment"],
+    "formalName": str,
+    "shortName": str,
+    "status": Literal["GA", "PROTOTYPE"],
+}
+```
+
+### ComponentDefinitionStore Index Structure
+
+The store maintains these indexes populated at startup:
+
+| Index | Key | Value | Case-Sensitive |
+|-------|-----|-------|----------------|
+| `_cdefs_by_path` | file path (str) | `ComponentDefinition` | Yes |
+| `_cdefs_by_uuid` | UUID (str) | `ComponentDefinition` | Yes |
+| `_cdefs_by_title` | title (str) | `ComponentDefinition` | No (lowercased) |
+| `_components_by_uuid` | UUID (str) | `DefinedComponent` | Yes |
+| `_components_by_title` | title (str) | `DefinedComponent` | No (lowercased) |
+| `_components_to_cdef_by_uuid` | component UUID | parent cdef UUID | Yes |
+| `_capabilities_by_uuid` | UUID (str) | `Capability` | Yes |
+| `_capabilities_by_name` | name (str) | `Capability` | No (lowercased) |
+| `_capabilities_to_cdef_by_uuid` | capability UUID | parent cdef UUID | Yes |
+
+### Stats Tracking
 
 ```python
-@dataclass
-class OSCALModelInfo:
-    description: str
-    layer: Literal["Control", "Implementation", "Assessment"]
-    status: Literal["GA", "PROTOTYPE"]
+_stats = {
+    "loaded_files": int,
+    "processed_zip_files": int,
+    "zip_file_contents": int,
+    "processed_json_files": int,
+    "component_definitions_indexed": int,
+    "components_indexed": int,
+    "processed_external_files": int,
+    "capabilities_indexed": int,
+}
 ```
 
 ### Tool Response Models
 
 ```python
-# Documentation Query Response (from Bedrock)
-class DocumentationResponse(TypedDict):
-    retrievalResults: List[RetrievalResult]
-    ResponseMetadata: Dict[str, Any]
+# Component Definition Query Response (from _store.query())
+{
+    "components": list[dict],           # serialized DefinedComponent dicts (exclude_none=True)
+    "total_count": int,
+    "query_type": str,
+    "component_definitions_searched": int,
+    "filtered_by": str | None,
+}
 
-class RetrievalResult(TypedDict):
-    content: Dict[str, str]
-    score: float
-    location: Dict[str, Any]
+# Capability Query Response (when query matches a capability)
+{
+    "capability": dict,                 # cap.oscal_dict()
+    "component_count": int,
+    "query_type": str,
+    "component_definitions_searched": int,
+    "filtered_by": str | None,
+}
 
-# Schema Response
-class SchemaResponse(TypedDict):
-    schema: str  # JSON-serialized schema content
-    model_name: str
-    schema_type: Literal["json", "xsd"]
+# List Component Definitions Response
+[{
+    "uuid": str,
+    "title": str,
+    "componentCount": int,
+    "importedComponentDefinitionsCount": int,
+    "sizeInBytes": int,
+}]
 
-# Component Definition Query Response
-class ComponentSummary(TypedDict):
-    uuid: str
-    title: str
-    description: str
-    type: str
-    purpose: str
+# List Components Response
+[{
+    "uuid": str,
+    "title": str,
+    "parentComponentDefinitionTitle": str,
+    "parentComponentDefinitionUuid": str,
+    "sizeInBytes": int,
+}]
 
-class ComponentQueryResponse(TypedDict):
-    components: List[ComponentSummary | dict]  # Summary or raw format
-    total_count: int
-    query_type: str
-    source: str
+# List Capabilities Response
+[{
+    "uuid": str,
+    "name": str,
+    "parentComponentDefinitionTitle": str,
+    "parentComponentDefinitionUuid": str,
+    "sizeInBytes": int,
+}]
 
-# Component Definition uses compliance-trestle Pydantic models
-# from trestle.oscal.component import ComponentDefinition, DefinedComponent
-# ComponentDefinition fields: uuid, metadata, import_component_definitions, components, capabilities, back_matter
-# DefinedComponent fields: uuid, type, title, description, purpose, props, links, responsible_roles, protocols, control_implementations, remarks
-```
-
-## Implementation Details
-
-### Component Definition Query Implementation
-
-The Component Definition Query tool leverages the **compliance-trestle** library, which provides comprehensive Pydantic models for all OSCAL document types and built-in validation capabilities.
-
-#### 1. Document Loading and Parsing
-
-**Using compliance-trestle Models:**
-- Import from `trestle.oscal.component`: `ComponentDefinition`, `DefinedComponent`
-- Use `trestle.common.model_utils.ModelUtils.load_model_for_class()` for file loading
-- Use `trestle.common.load_validate.load_validate_model_path()` for loading with validation
-- Direct instantiation from dict: `ComponentDefinition(**json_data)` with automatic validation
-
-**Parsing Approaches:**
-- **Local Files**: Use `ModelUtils.load_model_for_class(trestle_root, model_name, ComponentDefinition)`
-- **From JSON dict**: Parse JSON and instantiate: `ComponentDefinition(**data['component-definition'])`
-- **Remote URIs**: Fetch JSON, parse, and instantiate with validation (only when explicitly configured)
-- **Format Support**: JSON (primary format supported)
-
-**Benefits of compliance-trestle:**
-- Automatic schema validation via Pydantic models
-- Type safety with full IDE support
-- Built-in UUID format validation
-- Handles OSCAL versioning (supports 1.0.4 and 1.1.3)
-- No need for custom parsing or validation logic
-
-#### 2. Schema Validation
-
-**Using compliance-trestle Validation:**
-- Validation is automatic when instantiating models
-- Use `load_validate_model_path()` for file-based validation
-- Pydantic v1 validation provides detailed error messages
-- UUID format validation built-in (RFC 4122 compliant)
-- All OSCAL field constraints enforced automatically
-
-**No need for:**
-- Custom jsonschema validation
-- Manual schema file management
-- Custom validation logic
-
-#### 3. Component Extraction and Filtering
-
-**Access component data via Pydantic models:**
-```python
-comp_def = ComponentDefinition(**data)
-components = comp_def.components  # List[DefinedComponent]
-
-# Filter by UUID
-component = next((c for c in components if c.uuid == query_uuid), None)
-
-# Filter by title
-component = next((c for c in components if c.title == query_title), None)
-
-# Filter by type
-filtered = [c for c in components if c.type == query_type]
-```
-
-#### 4. Summary Generation
-
-Extract fields directly from DefinedComponent Pydantic model:
-```python
-summary = {
-    'uuid': component.uuid,
-    'title': component.title,
-    'description': component.description,
-    'purpose': component.purpose,
-    'type': component.type
+# About Response
+{
+    "version": str,
+    "keywords": str,
+    "oscal-version": "1.2.0",
 }
 ```
 
-#### 5. Link and Prop Resolution
+### OSCAL Types (from compliance-trestle)
 
-**Using compliance-trestle's built-in structures:**
-- `component.props`: List of Property objects with name, value, class, remarks
-- `component.links`: List of Link objects with href, rel, text
-- Use `ModelUtils.find_values_by_name()` for searching props
-- Props and Links are already parsed Pydantic models
+The system uses these Pydantic models from `trestle.oscal.component`:
+- `ComponentDefinition` — top-level document with uuid, metadata, components, capabilities, import_component_definitions, back_matter
+- `DefinedComponent` — a component with uuid, type, title, description, purpose, props, links, control_implementations
+- `Capability` — a capability grouping with uuid, name, description, incorporates_components
 
-**URI Resolution:**
-- When requested, fetch and process referenced resources
-- Use `component.links` to find href attributes
-- Handle relative and absolute URIs
-- Track visited URIs to prevent circular references
+Key trestle methods used:
+- `ComponentDefinition.oscal_read(path)` — load from JSON file
+- `ComponentDefinition.parse_obj(data)` — parse from dict
+- `.dict(exclude_none=True)` — serialize to dict
+- `.oscal_serialize_json_bytes()` — serialize to JSON bytes (used for size calculation)
+- `.oscal_dict()` — serialize to OSCAL-formatted dict (used for capability responses)
 
-#### 6. Control Implementation Extraction
+### Integrity Verification Data Model
 
-**Access via Pydantic model:**
 ```python
-if component.control_implementations:
-    for ctrl_impl in component.control_implementations:
-        # ctrl_impl.uuid, ctrl_impl.source
-        for req in ctrl_impl.implemented_requirements:
-            # req.uuid, req.control_id, req.description
-            for stmt in req.statements:
-                # stmt.statement_id, stmt.uuid, stmt.description
+# hashes.json format in each verified directory
+{
+    "commit": str,          # git commit hash
+    "file_hashes": {
+        "filename": str,    # SHA-256 hex digest
+    }
+}
 ```
 
-#### 7. Serialization
-
-**Convert to dict or JSON:**
-```python
-# To dict (for summary or raw format)
-component_dict = component.dict()
-
-# To JSON string
-component_json = component.json()
-
-# Exclude None values
-component_dict = component.dict(exclude_none=True)
-```
-
-### Configuration Requirements
-
-Add to `config.py`:
-```python
-allow_remote_uris: bool = False  # Security flag for remote URI processing
-request_timeout: int = 30  # Timeout for remote URI requests in seconds
-max_uri_depth: int = 3  # Maximum depth for URI reference resolution
-```
-
-### Dependencies
-
-**Primary dependency:**
-- `compliance-trestle>=3.0.0`: Provides Pydantic models for all OSCAL types, validation, and utilities
-
-**Additional dependencies:**
-- `requests`: HTTP client for remote URI fetching (already used by compliance-trestle)
-
-**Removed dependencies:**
-- ~~`jsonschema`~~: Not needed, validation handled by compliance-trestle
-- ~~Custom validation logic~~: Built into Pydantic models
 
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system-essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+*A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
 
-### Property Reflection
+### Property 1: Documentation Query Passthrough
 
-After reviewing the prework analysis, I identified several areas where properties can be consolidated:
+*For any* documentation query string, when the Bedrock Knowledge Base returns a response, the server should return that exact response without modification.
 
-- Properties 3.2 and 3.3 (JSON/XSD schema return) can be combined into a single property about schema format consistency
-- Properties 2.4 and 2.5 (layer and status validation) can be combined into a single property about model metadata validation
-- Properties 6.2, 6.3, 6.4, and 6.5 (various error handling scenarios) can be combined into a comprehensive error handling property
-- Properties 7.2, 7.3, 7.4, and 7.6 (schema file management) can be combined into properties about file system consistency
-
-### Correctness Properties
-
-Property 1: Documentation Query Passthrough\
-*For any* documentation query string, when the Bedrock Knowledge Base returns a response, the server should return that exact response without modification\
 **Validates: Requirements 1.1, 1.2**
 
-Property 2: AWS Profile Authentication\
-*For any* configured AWS profile, the server should create authentication sessions using that specific profile\
+### Property 2: AWS Profile Session Creation
+
+*For any* configured AWS profile string, the server should create a boto3 Session using that specific profile name for Bedrock Knowledge Base queries.
+
 **Validates: Requirements 1.5**
 
-Property 3: Error Logging and Exception Handling\
-*For any* error condition during tool execution, the server should both log detailed error information and raise an exception with descriptive details\
-**Validates: Requirements 1.6, 6.2, 6.3, 6.4, 6.5**
+### Property 3: Model Metadata Validity
 
-Property 4: Model Information Completeness\
-*For any* model returned by list_models, the response should include description, layer, and status fields with non-empty values\
-**Validates: Requirements 2.2**
+*For any* model returned by `list_oscal_models`, the response should include non-empty `description`, `layer`, and `status` fields, where `layer` is one of "Control", "Implementation", or "Assessment" and `status` is one of "GA" or "PROTOTYPE".
 
-Property 5: Model Metadata Validation\
-*For any* model in the list_models response, the layer should be one of "Control", "Implementation", or "Assessment" and status should be "GA" or "PROTOTYPE"\
-**Validates: Requirements 2.4, 2.5**
+**Validates: Requirements 2.2, 2.4, 2.5**
 
-Property 6: Schema Format Consistency\
-*For any* valid model name and schema type combination, the returned schema should match the requested format (JSON for "json" type, XSD for "xsd" type)\
-**Validates: Requirements 3.2, 3.3**
+### Property 4: Schema Format Consistency
 
-Property 7: Invalid Input Error Handling\
-*For any* invalid model name or schema type, the server should return an error message that provides guidance on valid options\
+*For any* valid model name and schema type combination, when `schema_type` is "json" the returned string should be parseable as valid JSON, and when `schema_type` is "xsd" the returned string should contain XSD content.
+
+**Validates: Requirements 3.1, 3.2, 3.3, 8.6**
+
+### Property 5: Invalid Schema Input Error Handling
+
+*For any* string that is not a valid OSCAL model name, `get_oscal_schema` should raise a `ValueError` referencing the `list_models` tool. *For any* string that is not "json" or "xsd" as `schema_type`, it should raise a `ValueError` specifying valid options.
+
 **Validates: Requirements 3.5, 3.6**
 
-Property 8: Configuration Override Precedence\
-*For any* configuration parameter that can be set via both environment variable and command line argument, the command line value should take precedence\
-**Validates: Requirements 4.6**
+### Property 6: Schema File System Consistency
 
-Property 9: Tool Context Propagation\
-*For any* tool invocation, the MCP context including session parameters should be properly passed to the tool function\
-**Validates: Requirements 5.6**
+*For any* supported OSCAL model type, both a JSON schema file and an XSD schema file should exist in the `oscal_schemas` directory following the naming convention `oscal_{model}_schema.{type}`.
 
-Property 10: MCP Protocol Error Handling\
-*For any* MCP protocol error, the server should handle it gracefully and provide an appropriate response to the client\
-**Validates: Requirements 5.7**
+**Validates: Requirements 8.2, 8.3**
 
-Property 11: Log Level Configuration\
-*For any* supported log level (DEBUG, INFO, WARNING, ERROR), setting that level should affect logging behavior across all components\
-**Validates: Requirements 6.1**
+### Property 7: Configuration Override Precedence
 
-Property 12: Input Validation Consistency\
-*For any* tool with invalid parameters, the server should validate inputs and return clear, descriptive error messages\
-**Validates: Requirements 6.7**
+*For any* configuration parameter that can be set via both environment variable and CLI argument, calling `update_from_args()` with a non-None value should override the environment variable value.
 
-Property 13: Schema File System Consistency\
-*For any* supported model type and schema format, the corresponding schema file should exist in the expected location with the correct naming convention\
-**Validates: Requirements 8.2, 8.3, 8.4**
+**Validates: Requirements 4.1, 4.6**
 
-Property 14: Component Definition Schema Validation\
-*For any* Component Definition document processed, the document should conform to the OSCAL Component Definition schema structure\
-**Validates: Requirements 10.3**
+### Property 8: Invalid Transport Rejection
 
-Property 15: Component Query Type Consistency\
-*For any* component query by UUID or title, when a match is found, the returned component should have the queried field matching the query value\
-**Validates: Requirements 10.7, 10.8**
+*For any* string that is not "stdio" or "streamable-http", `config.validate_transport()` should raise a `ValueError` listing the valid transport options.
 
-Property 16: Component Type Filtering Accuracy\
-*For any* component type filter, all returned components should have a type field matching the filter value\
-**Validates: Requirements 10.9**
-
-Property 17: Link and Prop Resolution Consistency\
-*For any* component with Link or Prop objects, when resolution is requested, the resolved objects should follow OSCAL extension patterns\
-**Validates: Requirements 10.6**
-
-Property 18: Component Not Found Error Handling\
-*For any* query for a non-existent component UUID or title, the server should return an appropriate error message indicating the component was not found\
-**Validates: Requirements 10.11**
-
-Property 19: Component Definition Parse Error Handling\
-*For any* malformed Component Definition document, the server should return an error with details about the parsing failure\
-**Validates: Requirements 10.10**
-
-Property 20: Remote URI Error Handling\
-*For any* network error or timeout when processing remote URIs, the server should handle the error gracefully and provide descriptive error information\
-**Validates: Requirements 10.4, 10.5**
-
-Property 14: Schema JSON Format Validation\
-*For any* schema returned by get_oscal_schema, the response should be a valid JSON string that can be parsed without errors\
-**Validates: Requirements 8.6**
-
-Property 15: File Error Handling\
-*For any* file operation that fails (file not found, permission denied, etc.), the server should provide descriptive error messages\
-**Validates: Requirements 8.5**
-
-Property 16: Transport Protocol Support\
-*For any* supported transport type ("stdio" or "streamable-http"), the server should start successfully and use the specified transport protocol\
-**Validates: Requirements 5.4, 7.3, 7.4**
-
-Property 17: Transport Configuration Override\
-*For any* explicit transport configuration, the server should use that transport instead of the default stdio transport\
-**Validates: Requirements 5.6**
-
-Property 18: Command Line Transport Argument\
-*For any* valid transport type provided via --transport argument, the server should parse and apply that configuration correctly\
-**Validates: Requirements 7.1**
-
-Property 19: Invalid Transport Error Handling\
-*For any* invalid transport type specification, the server should return an error message listing the valid transport options\
 **Validates: Requirements 7.5**
 
-Property 20: Transport Validation Before Startup\
-*For any* transport configuration, the server should validate the transport type before attempting to start the server\
-**Validates: Requirements 7.6**
+### Property 9: Log Level Configuration
 
-Property 21: Transport Method Logging\
-*For any* server startup, the selected transport method should be logged during the initialization process\
-**Validates: Requirements 7.7**
+*For any* valid log level (DEBUG, INFO, WARNING, ERROR), setting that level should be accepted and applied to logging configuration without error.
 
-Property 22: OSCAL Resources File Content Return\
-*For any* list_oscal_resources request, the server should return the complete contents of the awesome-oscal.md file from the oscal_docs directory with original markdown formatting preserved\
-**Validates: Requirements 9.1, 9.2, 9.3, 9.6**
+**Validates: Requirements 6.1, 6.6**
 
-Property 23: OSCAL Resources Error Handling\
-*For any* file access error (file not found, read failure), the server should log the error and raise an exception with descriptive information\
-**Validates: Requirements 9.4, 9.5**
+### Property 10: Error Logging and Client Notification
 
-Property 24: OSCAL Resources Encoding Handling\
-*For any* encoding issues when reading the awesome-oscal.md file, the server should handle them gracefully without crashing\
-**Validates: Requirements 9.7**
+*For any* error condition during tool execution, the server should both log the error and use the MCP context (`try_notify_client_error` / `safe_log_mcp`) to report the error to the client.
+
+**Validates: Requirements 1.6, 6.2, 6.5, 6.7**
+
+### Property 11: Invalid Tool Parameter Rejection
+
+*For any* tool invocation with invalid parameters (e.g., `query_type` of "by_uuid" without a `query_value`), the server should raise a `ValueError` with a clear, descriptive error message.
+
+**Validates: Requirements 6.7, 11.4**
+
+### Property 12: Component Definition Indexing Completeness
+
+*For any* valid Component Definition loaded into the store, it should be retrievable by its file path, UUID, and title (case-insensitive). Each of its child Components should be retrievable by UUID and title (case-insensitive). Each of its child Capabilities should be retrievable by UUID and name (case-insensitive).
+
+**Validates: Requirements 10.2, 10.3, 10.4**
+
+### Property 13: Parent Relationship Tracking
+
+*For any* indexed Component, `_components_to_cdef_by_uuid` should map its UUID to the correct parent Component Definition UUID. *For any* indexed Capability, `_capabilities_to_cdef_by_uuid` should map its UUID to the correct parent Component Definition UUID.
+
+**Validates: Requirements 10.5, 10.6**
+
+### Property 14: Directory Reset on Explicit Path
+
+*For any* store with previously loaded data, calling `load_from_directory()` with an explicit `directory_path` argument should clear all previously indexed data before loading from the new directory.
+
+**Validates: Requirements 10.11**
+
+### Property 15: Loading Statistics Accuracy
+
+*For any* loading operation, the `_stats` dictionary should accurately reflect the counts of loaded files, processed zip files, zip file contents, processed JSON files, indexed component definitions, indexed components, processed external files, and indexed capabilities.
+
+**Validates: Requirements 10.12**
+
+### Property 16: Component Definition Filter Scoping
+
+*For any* valid Component Definition UUID or title used as `component_definition_filter`, the query should only search components within that specific Component Definition.
+
+**Validates: Requirements 11.2**
+
+### Property 17: Capability Query Integration
+
+*For any* query where `query_value` matches a Capability (by name for `by_title`, by UUID for `by_uuid`), the query should return the matching Capability. When a `component_definition_filter` is also provided, the Capability should only be returned if it belongs to a matching Component Definition.
+
+**Validates: Requirements 11.5, 11.6, 11.7**
+
+### Property 18: Title Fallback to Prop Value Search
+
+*For any* `by_title` query where no exact Component title match is found, the query should search for an exact match in the `value` field of any `props` defined on Components in scope.
+
+**Validates: Requirements 11.8**
+
+### Property 19: Component Type Filtering Accuracy
+
+*For any* `by_type` query with a given type value, all returned components should have a `type` field exactly matching the query value.
+
+**Validates: Requirements 11.9**
+
+### Property 20: Query Response Structure
+
+*For any* component query response, it should contain the keys `components`, `total_count`, `query_type`, `component_definitions_searched`, and `filtered_by`.
+
+**Validates: Requirements 11.10**
+
+### Property 21: List Component Definitions Completeness
+
+*For any* set of loaded Component Definitions, `list_component_definitions` should return one entry per loaded cdef, each containing `uuid`, `title`, `componentCount`, `importedComponentDefinitionsCount`, and `sizeInBytes`.
+
+**Validates: Requirements 12.1, 12.2**
+
+### Property 22: List Components Completeness
+
+*For any* set of loaded Components, `list_components` should return one entry per loaded component, each containing `uuid`, `title`, `parentComponentDefinitionTitle`, `parentComponentDefinitionUuid`, and `sizeInBytes`.
+
+**Validates: Requirements 13.1, 13.2**
+
+### Property 23: List Capabilities Completeness
+
+*For any* set of loaded Capabilities, `list_capabilities` should return one entry per loaded capability, each containing `uuid`, `name`, `parentComponentDefinitionTitle`, `parentComponentDefinitionUuid`, and `sizeInBytes`.
+
+**Validates: Requirements 14.1, 14.2**
+
+### Property 24: Get Capability Correctness
+
+*For any* UUID, `get_capability` should return the full Capability dict if the UUID exists in the store, or `None` if it does not.
+
+**Validates: Requirements 15.1, 15.2**
+
+### Property 25: External URI Validation
+
+*For any* local directory path provided to `load_external_component_definition`, the store should raise a `ValueError`. *For any* remote URI when `allow_remote_uris` is `False`, the store should raise a `ValueError` indicating remote loading is not enabled.
+
+**Validates: Requirements 16.2, 16.3**
+
+### Property 26: Remote Component Definition Loading
+
+*For any* valid remote URI when `allow_remote_uris` is `True`, the store should fetch, parse via `ComponentDefinition.parse_obj()`, and index the Component Definition.
+
+**Validates: Requirements 16.4**
+
+### Property 27: Integrity Verification
+
+*For any* file in a verified directory whose computed SHA-256 hash does not match the expected hash in `hashes.json`, `verify_package_integrity` should raise a `RuntimeError`. *For any* file listed in the manifest that is missing from the directory, it should raise a `RuntimeError`. *For any* file present in the directory but not listed in the manifest, it should raise a `RuntimeError`.
+
+**Validates: Requirements 18.5, 18.6, 18.7**
+
+### Property 28: OSCAL Resources Content Preservation
+
+*For any* call to `list_oscal_resources`, the returned string should exactly match the contents of the `awesome-oscal.md` file, preserving all markdown formatting.
+
+**Validates: Requirements 9.1, 9.3, 9.6**
+
+### Property 29: Agent Profile and Region Configuration
+
+*For any* configured AWS profile and region, `create_oscal_agent` should create a boto3 Session using those values and pass it to the BedrockModel.
+
+**Validates: Requirements 19.2**
 
 ## Error Handling
 
 The system implements comprehensive error handling at multiple levels:
 
 ### Tool-Level Error Handling
-- **Input Validation**: All tools validate parameters and return descriptive errors for invalid inputs
-- **AWS Service Errors**: Boto3 exceptions are caught and handled gracefully with appropriate error messages
-- **File System Errors**: Schema file operations include proper error handling for missing or inaccessible files
-- **Context Reporting**: All errors are reported through MCP context for client visibility
-- **Component Definition Parsing**: Handle JSON parsing errors with descriptive messages about malformed documents
-- **Network Errors**: Handle timeouts and connection failures when processing remote URIs (when configured)
-- **Schema Validation Errors**: Provide detailed feedback when Component Definition documents fail schema validation
-- **Component Not Found**: Clear error messages when queried components don't exist in the definition
+- **Input Validation**: All tools validate parameters before execution. `get_oscal_schema` validates model_name against `OSCALModelType` and schema_type against `["json", "xsd"]`. `query()` validates that `query_value` is provided for non-"all" query types.
+- **AWS Service Errors**: `query_kb()` catches all exceptions from boto3 calls, logs them, notifies the client via `ctx.error()`, and re-raises.
+- **File System Errors**: `open_schema_file()` and `read_resources_file()` catch `FileNotFoundError`, `UnicodeDecodeError`, and `OSError` with descriptive messages. `read_resources_file()` includes a latin-1 encoding fallback.
+- **Context Reporting**: All error paths use `try_notify_client_error()` / `safe_log_mcp()` to report errors through the MCP context to the client. These helpers handle both async and sync contexts.
+- **Component Definition Parsing**: `_process_json_files()` catches exceptions per-file and continues loading remaining files. `load_external_component_definition()` catches `requests.Timeout`, `requests.RequestException`, `json.JSONDecodeError`, and general exceptions, wrapping each in `ValueError`.
+- **Empty Store**: `query()` raises `ValueError` when no cdefs are loaded. `list_component_definitions()` and `list_components()` raise `RuntimeError`. `list_capabilities()` returns an empty list without error.
 
 ### Configuration Error Handling
-- **Missing Configuration**: Graceful degradation when optional configuration is missing
-- **Invalid Values**: Validation of configuration values with clear error messages
-- **Environment Variable Parsing**: Robust parsing of environment variables with fallback to defaults
+- **Missing Configuration**: `Config.__init__()` provides defaults for all settings via `os.getenv()` with fallback values.
+- **Transport Validation**: `validate_transport()` raises `ValueError` for invalid transport types before server startup.
+- **Dotenv Loading**: `load_dotenv()` is called in `Config.__init__()` to load `.env` files.
 
-### Protocol-Level Error Handling
-- **MCP Protocol Errors**: Proper handling of MCP protocol-specific errors
-- **Transport Errors**: Error handling for communication transport issues
-- **Tool Registration Errors**: Validation of tool registration and schema compliance
+### Startup Error Handling
+- **Integrity Verification**: `verify_package_integrity()` raises `RuntimeError` for hash mismatches, missing files, or orphaned files. `main()` catches `RuntimeError` and `KeyError`, logs a tamper warning, and exits with code 2.
+- **Transport Validation**: `main()` catches `ValueError` from `validate_transport()` and exits with code 1.
+- **Logging Configuration**: Invalid log levels are caught and warned about without crashing.
 
 ### Logging Strategy
-- **Structured Logging**: Consistent log format across all components
-- **Configurable Levels**: Support for DEBUG, INFO, WARNING, and ERROR levels
-- **Component-Specific Loggers**: Separate loggers for different system components
-- **Error Context**: Rich error context including stack traces and relevant parameters
+- **Configurable Levels**: Support for DEBUG, INFO, WARNING, and ERROR via `LOG_LEVEL` env var or `--log-level` CLI arg.
+- **Component-Specific Loggers**: Each module creates its own logger via `logging.getLogger(__name__)`.
+- **Library Loggers**: `main()` configures log levels for `strands`, `mcp.*`, `trestle.*`, and package loggers.
 
 ## Testing Strategy
 
-The testing strategy employs both unit testing and property-based testing to ensure comprehensive coverage:
+The testing strategy employs both unit testing and property-based testing for comprehensive coverage.
 
 ### Unit Testing Approach
-- **Component Isolation**: Test individual components in isolation with mocked dependencies
-- **Configuration Testing**: Verify configuration loading and precedence rules
-- **Error Condition Testing**: Test specific error scenarios and edge cases
-- **Integration Points**: Test integration between MCP framework and OSCAL tools
-- **AWS Service Mocking**: Mock AWS Bedrock calls to test without external dependencies
+- **Component Isolation**: Test individual tools in isolation with mocked MCP Context, boto3 sessions, and file system
+- **Configuration Testing**: Verify `Config` loading from env vars, CLI override precedence, and transport validation
+- **Error Condition Testing**: Test specific error scenarios — empty store, missing files, invalid inputs, network failures
+- **Integration Points**: Test tool registration in `_setup_tools()`, conditional registration of `query_oscal_documentation`
+- **AWS Service Mocking**: Mock boto3 `bedrock-agent-runtime` client for documentation query tests
+- **Integrity Verification**: Test `verify_package_integrity()` with tampered files, missing files, orphaned files
 
 ### Property-Based Testing Configuration
-The system uses **pytest** with **Hypothesis** for property-based testing. Each property test runs a minimum of 100 iterations to ensure comprehensive input coverage.
+The system uses **pytest** with **Hypothesis** for property-based testing. Each property test runs a minimum of 100 iterations.
 
 **Property Test Implementation Requirements:**
 - Each correctness property must be implemented as a single property-based test
 - Tests must be tagged with: **Feature: oscal-mcp-server, Property {number}: {property_text}**
-- Property tests should generate realistic test data that exercises the full input space
-- Mock external dependencies (AWS Bedrock, file system) to focus on system logic
+- Property tests should generate realistic test data using Hypothesis strategies
+- Mock external dependencies (AWS Bedrock, file system, HTTP) to focus on system logic
+- Use `@given` decorator with appropriate strategies for input generation
 
 ### Test Data Generation Strategy
-- **Query Strings**: Generate varied documentation queries including edge cases
-- **Model Names**: Test with valid model names, invalid names, and edge cases
-- **Configuration Values**: Generate various configuration combinations
-- **Schema Types**: Test both supported and unsupported schema format requests
-- **AWS Responses**: Generate realistic Bedrock Knowledge Base response structures
-- **Component Definitions**: Generate valid and invalid Component Definition documents in JSON format
-- **Component Queries**: Generate queries by UUID, title, type, and property values
-- **Link and Prop Objects**: Generate components with various Link and Prop configurations
-- **URI References**: Generate components with local and remote URI references
+- **Query Strings**: `st.text()` for documentation queries, including empty and unicode strings
+- **Model Names**: `st.sampled_from(OSCALModelType)` for valid names, `st.text()` for invalid
+- **Configuration Values**: `st.fixed_dictionaries()` for env var combinations
+- **Schema Types**: `st.sampled_from(["json", "xsd"])` for valid, `st.text()` for invalid
+- **Component Definitions**: Generate valid `ComponentDefinition` dicts with random UUIDs, titles, components, and capabilities using Hypothesis strategies
+- **UUIDs**: `st.uuids()` for generating random UUIDs
+- **Component Queries**: Generate query parameters with `st.sampled_from(["all", "by_uuid", "by_title", "by_type"])` and corresponding values
+- **File Hashes**: Generate directory structures with `hashes.json` manifests for integrity testing
+- **URIs**: Generate local file paths and remote URLs for external loading tests
 
 ### Integration Testing
-- **End-to-End Tool Testing**: Test complete tool execution paths
-- **MCP Protocol Compliance**: Verify proper MCP protocol implementation
-- **Configuration Integration**: Test configuration loading and application
-- **Error Propagation**: Verify errors are properly propagated through all layers
-
-The dual testing approach ensures both specific functionality (unit tests) and universal correctness properties (property tests) are validated, providing confidence in system reliability and correctness.
+- **End-to-End Tool Testing**: Test complete tool execution paths through the MCP framework
+- **Store Loading**: Test `load_from_directory()` with real bundled component definitions
+- **Query Flow**: Test the full query path including capability-first check, cdef filtering, and prop fallback
+- **Startup Sequence**: Test the `main()` startup sequence including integrity verification, tool registration, and transport configuration

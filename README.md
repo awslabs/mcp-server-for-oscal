@@ -445,12 +445,15 @@ Run the `MCP: Open User Configuration` command, which opens the mcp.json file in
 See [DEVELOPING](DEVELOPING.md) to get started.
 
 ## Security
-
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
 
 ## Known limitations
 It's not yet possible to use this MCP server with ChatGPT due to limited MCP support by ChatGPT. 
 
-## License
+## Related projects
+Experimental Component Definitions for AWS services are bundled with this MCP server. You can find that content in the AWS Labs project [OSCAL Content for AWS Services](https://github.com/awslabs/oscal-content-for-aws-services).
 
+MCP Server for OSCAL uses [compliance-trestle](https://github.com/oscal-compass/compliance-trestle) for certain capabilities, including OSCAL content validation.
+
+## License
 This project is licensed under the [Apache-2.0](LICENSE) License.

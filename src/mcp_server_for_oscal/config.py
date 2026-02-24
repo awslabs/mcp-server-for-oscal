@@ -37,6 +37,10 @@ class Config:
         # Transport configuration
         self.transport: str = os.getenv("OSCAL_MCP_TRANSPORT", "stdio")
 
+        # Server network configuration (for streamable-http transport)
+        self.host: str = os.getenv("OSCAL_MCP_HOST", "127.0.0.1")
+        self.stateless_http: bool = os.getenv("OSCAL_MCP_STATELESS_HTTP", "false").lower() == "true"
+
         # Component Definition remote URI configuration
         self.allow_remote_uris: bool = os.getenv("OSCAL_ALLOW_REMOTE_URIS", "false").lower() == "true"
         self.request_timeout: int = int(os.getenv("OSCAL_REQUEST_TIMEOUT", "30"))
