@@ -2,513 +2,280 @@
 
 ## Overview
 
-This implementation plan reflects the current state of the OSCAL MCP Server implementation and identifies remaining gaps. Most core functionality is already implemented, but there are import issues and missing property-based tests that need to be addressed.
-
-## Current Implementation Status
-
-**✅ COMPLETED TASKS:**
-- Core project structure and configuration management
-- OSCAL model definitions and utilities  
-- All three main tools (list_models, get_schema, query_documentation)
-- FastMCP server integration and main entry point
-- Comprehensive unit test coverage
-- Schema file management system
-
-**❌ REMAINING TASKS:**
+This implementation plan reflects the current state of the OSCAL MCP Server. All core functionality is implemented and passing tests (262 passed, 1 skipped). The remaining work is adding property-based tests using Hypothesis to validate the 29 correctness properties from the design document.
 
 ## Tasks
 
-- [x] 1. Set up core project structure and configuration management *(COMPLETED)*
-  - ✅ Main package structure exists
-  - ✅ Config class fully implemented with env vars and CLI args  
-  - ✅ Logging configuration implemented
-  - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 6.1, 6.6_
+- [x] 1. Core project structure and configuration management
+  - Config class with all 11 fields (bedrock_model_id, knowledge_base_id, aws_profile, aws_region, log_level, server_name, transport, allow_remote_uris, request_timeout, max_uri_depth, component_definitions_dir)
+  - Environment variable loading via dotenv with sensible defaults
+  - CLI argument parsing and override via update_from_args()
+  - Transport validation via validate_transport()
+  - Logging configuration for all components
+  - _Requirements: 4.1-4.12, 6.1, 6.6, 7.1-7.7_
 
-- [x] 1.1 Fix import path issues *(COMPLETED)*
-  - ✅ Fixed imports in get_schema.py and list_models.py to use correct utils path
-  - ✅ All modules can now import correctly
-  - ✅ 90 out of 91 tests now pass (98.9% success rate)
-  - _Requirements: 5.1, 5.2_
+- [ ]* 1.1 Write property test for configuration override precedence
+  - **Property 7: Configuration Override Precedence**
+  - **Validates: Requirements 4.1, 4.6**
 
-- [x] 2. Implement OSCAL model definitions and utilities *(COMPLETED)*
-  - ✅ OSCALModelType enumeration implemented in tools/utils.py
-  - ✅ All supported model types included
-  - ✅ Comprehensive unit tests exist
-  - _Requirements: 2.3, 2.4, 2.5, 3.7_
-
-- [x] 3. Implement the list_oscal_models tool *(COMPLETED)*
-  - ✅ Tool function implemented with @tool decorator
-  - ✅ Model information dictionary with descriptions, layers, and status
-  - ✅ All required model types included with proper metadata
-  - ✅ Comprehensive unit tests exist
-  - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
-
-- [ ]* 3.1 Write property tests for model listing
-  - **Property 4: Model Information Completeness**
-  - **Validates: Requirements 2.2**
-
-- [ ]* 3.2 Write property tests for model metadata validation
-  - **Property 5: Model Metadata Validation**
-  - **Validates: Requirements 2.4, 2.5**
-
-- [x] 4. Implement schema file management system *(COMPLETED)*
-  - ✅ Schema file directory structure exists with all schemas
-  - ✅ open_schema_file function implemented with proper path resolution
-  - ✅ Schema file validation and error handling implemented
-  - ✅ Comprehensive unit tests exist
-  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
-
-- [ ]* 4.1 Write property tests for schema file system
-  - **Property 13: Schema File System Consistency**
-  - **Validates: Requirements 7.2, 7.3, 7.4**
-
-- [ ]* 4.2 Write property tests for file error handling
-  - **Property 15: File Error Handling**
+- [ ]* 1.2 Write property test for invalid transport rejection
+  - **Property 8: Invalid Transport Rejection**
   - **Validates: Requirements 7.5**
 
-- [x] 5. Implement the get_oscal_schema tool *(COMPLETED)*
-  - ✅ Tool function implemented with parameter validation
-  - ✅ Model name validation and aliasing logic implemented
-  - ✅ Schema type validation (json/xsd) implemented
-  - ✅ Schema file loading and JSON serialization implemented
-  - ✅ Comprehensive unit tests exist
-  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 7.6_
+- [ ]* 1.3 Write property test for log level configuration
+  - **Property 9: Log Level Configuration**
+  - **Validates: Requirements 6.1, 6.6**
 
-- [ ]* 5.1 Write property tests for schema format consistency
-  - **Property 6: Schema Format Consistency**
-  - **Validates: Requirements 3.2, 3.3**
+- [x] 2. OSCAL model definitions and utilities
+  - OSCALModelType enumeration in tools/utils.py
+  - schema_names mapping for all model types
+  - try_notify_client_error() and safe_log_mcp() helpers
+  - verify_package_integrity() for SHA-256 hash verification
+  - _Requirements: 2.3-2.5, 3.7, 18.1-18.8_
 
-- [ ]* 5.2 Write property tests for invalid input handling
-  - **Property 7: Invalid Input Error Handling**
+- [x] 3. Implement list_oscal_models tool
+  - Tool function with @tool decorator returning all 8 OSCAL model types
+  - Model metadata: description, layer, formalName, shortName, status
+  - Unit tests passing
+  - _Requirements: 2.1-2.5_
+
+- [ ]* 3.1 Write property test for model metadata validity
+  - **Property 3: Model Metadata Validity**
+  - **Validates: Requirements 2.2, 2.4, 2.5**
+
+- [x] 4. Implement get_oscal_schema tool
+  - Schema retrieval with model name and schema type validation
+  - Support for JSON and XSD formats
+  - Model name aliasing (complete, ssp, poam, etc.)
+  - open_schema_file() with path resolution relative to package
+  - Unit tests passing
+  - _Requirements: 3.1-3.8, 8.1-8.6_
+
+- [ ]* 4.1 Write property test for schema format consistency
+  - **Property 4: Schema Format Consistency**
+  - **Validates: Requirements 3.1, 3.2, 3.3, 8.6**
+
+- [ ]* 4.2 Write property test for invalid schema input error handling
+  - **Property 5: Invalid Schema Input Error Handling**
   - **Validates: Requirements 3.5, 3.6**
 
-- [ ]* 5.3 Write property tests for JSON format validation
-  - **Property 14: Schema JSON Format Validation**
-  - **Validates: Requirements 7.6**
+- [ ]* 4.3 Write property test for schema file system consistency
+  - **Property 6: Schema File System Consistency**
+  - **Validates: Requirements 8.2, 8.3**
 
-- [x] 6. Checkpoint - Fix import issues and ensure tests pass *(COMPLETED)*
-  - ✅ Import path issues resolved
-  - ✅ 90 out of 91 tests now pass (98.9% success rate)
-  - ✅ All tools can be imported and used correctly
-  - ⚠️ 1 minor test failure in error logging behavior (non-critical)
+- [x] 5. Implement query_oscal_documentation tool
+  - AWS Bedrock Knowledge Base integration via boto3
+  - AWS profile-based session management
+  - query_kb() and query_local() (placeholder) implementations
+  - Conditional tool registration based on knowledge_base_id
+  - Unit tests passing
+  - _Requirements: 1.1-1.6_
 
-- [x] 7. Implement AWS Bedrock integration for documentation queries *(COMPLETED)*
-  - ✅ AWS session management with profile support implemented
-  - ✅ Bedrock Knowledge Base query functionality implemented
-  - ✅ Proper error handling for AWS service calls implemented
-  - ✅ Fallback behavior for missing configuration implemented
-  - ✅ Comprehensive unit tests exist
-  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
-
-- [ ]* 7.1 Write property tests for documentation query passthrough
+- [ ]* 5.1 Write property test for documentation query passthrough
   - **Property 1: Documentation Query Passthrough**
   - **Validates: Requirements 1.1, 1.2**
 
-- [ ]* 7.2 Write property tests for AWS profile authentication
-  - **Property 2: AWS Profile Authentication**
+- [ ]* 5.2 Write property test for AWS profile session creation
+  - **Property 2: AWS Profile Session Creation**
   - **Validates: Requirements 1.5**
 
-- [x] 8. Implement the query_oscal_documentation tool *(COMPLETED)*
-  - ✅ Tool function implemented with @tool decorator
-  - ✅ AWS Bedrock Knowledge Base integration implemented
-  - ✅ Error handling and logging implemented
-  - ✅ MCP context integration for error reporting implemented
-  - ✅ Comprehensive unit tests exist
-  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 6.2, 6.3_
+- [x] 6. Implement list_oscal_resources tool
+  - Read and return awesome-oscal.md from oscal_docs directory
+  - UTF-8 encoding with latin-1 fallback
+  - Error handling for file not found, I/O errors, encoding issues
+  - Unit tests passing
+  - _Requirements: 9.1-9.7_
 
-- [ ]* 8.1 Write property tests for error logging and exception handling
-  - **Property 3: Error Logging and Exception Handling**
-  - **Validates: Requirements 1.6, 6.2, 6.3, 6.4, 6.5**
+- [ ]* 6.1 Write property test for OSCAL resources content preservation
+  - **Property 28: OSCAL Resources Content Preservation**
+  - **Validates: Requirements 9.1, 9.3, 9.6**
 
-- [x] 9. Implement FastMCP server integration *(COMPLETED)*
-  - ✅ Main MCP server instance created with FastMCP
-  - ✅ All OSCAL tools registered with MCP framework
-  - ✅ Server instructions and metadata implemented
-  - ✅ Integration tests exist
-  - _Requirements: 5.1, 5.2, 5.3, 5.5_
-
-- [ ]* 9.1 Write property tests for tool context propagation
-  - **Property 9: Tool Context Propagation**
-  - **Validates: Requirements 5.6**
-
-- [ ]* 9.2 Write property tests for MCP protocol error handling
-  - **Property 10: MCP Protocol Error Handling**
-  - **Validates: Requirements 5.7**
-
-- [x] 10. Implement main server entry point and command line interface *(COMPLETED)*
-  - ✅ main() function implemented with argument parsing
-  - ✅ Configuration update from command line arguments implemented
-  - ✅ Server lifecycle management implemented
-  - ✅ Logging configuration integrated
-  - ✅ Comprehensive unit tests exist
-  - _Requirements: 4.6, 4.7, 5.4, 6.1_
-
-- [ ]* 10.1 Write property tests for input validation consistency
-  - **Property 12: Input Validation Consistency**
-  - **Validates: Requirements 6.7**
-
-- [ ] 11. Add missing property-based tests using Hypothesis
-  - Install and configure Hypothesis for property-based testing
-  - Implement the 20 correctness properties identified in the design
-  - Ensure each property test runs minimum 100 iterations
-  - Tag tests with feature and property information
-  - _Requirements: All requirements covered by correctness properties_
-
-- [x] 12. Add stdio transport support to configuration
-  - Add transport field to Config class with default value "stdio"
-  - Update config.py to handle transport configuration from environment and CLI args
-  - Add --transport command line argument to argument parser
-  - Add transport validation logic to ensure only valid values are accepted
-  - _Requirements: 7.1, 7.2, 7.5, 7.6_
-
-- [ ]* 12.1 Write property tests for transport configuration
-  - **Property 18: Command Line Transport Argument**
-  - **Validates: Requirements 7.1**
-
-- [ ]* 12.2 Write property tests for transport validation
-  - **Property 19: Invalid Transport Error Handling**
-  - **Property 20: Transport Validation Before Startup**
-  - **Validates: Requirements 7.5, 7.6**
-
-- [x] 13. Update main server to support both transport types
-  - Modify main() function to use configured transport instead of hardcoded "streamable-http"
-  - Add transport selection logic based on configuration
-  - Add transport method logging during startup
-  - Update error handling for transport-specific failures
-  - _Requirements: 5.4, 5.5, 5.6, 7.3, 7.4, 7.7_
-
-- [ ]* 13.1 Write property tests for transport protocol support
-  - **Property 16: Transport Protocol Support**
-  - **Property 17: Transport Configuration Override**
-  - **Validates: Requirements 5.4, 5.6, 7.3, 7.4**
-
-- [ ]* 13.2 Write property tests for transport logging
-  - **Property 21: Transport Method Logging**
-  - **Validates: Requirements 7.7**
-
-- [x] 14. Update unit tests for transport functionality
-  - Add tests for transport configuration parsing
-  - Add tests for transport validation logic
-  - Add tests for main() function with different transport options
-  - Update existing tests to work with new transport parameter
-  - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7_
-
-- [x] 15. Implement the list_oscal_resources tool
-  - Create list_oscal_resources.py in the tools directory
-  - Implement tool function with @tool decorator
-  - Add file reading functionality for awesome-oscal.md from oscal_docs directory
-  - Implement proper error handling for file not found and read failures
-  - Add encoding handling for robust file reading
-  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
-
-- [ ]* 15.1 Write property tests for OSCAL resources file content return
-  - **Property 22: OSCAL Resources File Content Return**
-  - **Validates: Requirements 9.1, 9.2, 9.3, 9.6**
-
-- [ ]* 15.2 Write property tests for OSCAL resources error handling
-  - **Property 23: OSCAL Resources Error Handling**
-  - **Validates: Requirements 9.4, 9.5**
-
-- [ ]* 15.3 Write property tests for OSCAL resources encoding handling
-  - **Property 24: OSCAL Resources Encoding Handling**
-  - **Validates: Requirements 9.7**
-
-- [x] 15.4 Write unit tests for list_oscal_resources tool
-  - Test successful file reading and content return
-  - Test file not found error handling
-  - Test file read permission errors
-  - Test encoding edge cases
-  - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
-
-- [x] 15.5 Register the new tool with MCP server
-  - Update main.py to import and register list_oscal_resources tool
-  - Ensure tool is properly exposed through MCP protocol
-  - Update server instructions to mention the new tool
-  - _Requirements: 5.1, 5.2_
-
-- [ ] 16. Add missing property-based tests using Hypothesis
-  - Install and configure Hypothesis for property-based testing
-  - Implement the 20 correctness properties identified in the design (including new tool properties)
-  - Ensure each property test runs minimum 100 iterations
-  - Tag tests with feature and property information
-  - _Requirements: All requirements covered by correctness properties_
-
-- [x] 17. Add compliance-trestle dependency
-  - _Requirements: 10.1, 10.2, 10.3_
-
-- [x] 17.1 Add compliance-trestle to pyproject.toml dependencies
-  - _Requirements: 10.1, 10.2, 10.3_
-
-- [x] 17.2 Verify compliance-trestle installation and imports
-  - _Requirements: 10.1, 10.2_
-
-- [x] 18. Implement Component Definition loading and validation
-  - _Requirements: 10.1, 10.2, 10.3_
-
-- [x] 18.1 Create load_component_definition function using compliance-trestle
-  - _Requirements: 10.1, 10.2_
-  - Use `trestle.oscal.component.ComponentDefinition`
-  - Support local file paths
-  - Automatic validation via Pydantic models
-
-- [x] 18.2 Add remote URI loading support (when configured)
-  - _Requirements: 10.4, 10.5_
-  - Check `allow_remote_uris` configuration flag
-  - Implement HTTP fetching with timeout
-  - Handle network errors gracefully
-
-- [x] 18.3 Write unit tests for component definition loading
-  - _Requirements: 10.1, 10.2, 10.3, 10.10_
-
-- [ ]* 18.4 Write property tests for component definition validation
-  - **Property 14: Component Definition Schema Validation**
-  - **Validates: Requirements 10.3**
-
-- [x] 19. Implement component summary extraction
-  - _Requirements: 10.6, 10.7, 10.8_
-
-- [x] 19.1 Create extract_component_summary function
-  - _Requirements: 10.6, 10.8_
-  - Extract UUID, title, description, type, purpose from DefinedComponent
-  - Handle optional fields (responsible_roles, protocols)
-
-- [x] 19.2 Write unit tests for summary extraction
-  - _Requirements: 10.6, 10.8_
-
-- [ ]* 19.3 Write property tests for summary field completeness
-  - **Property 15: Component Query Type Consistency**
-  - **Validates: Requirements 10.7, 10.8**
-
-- [x] 20. Implement component querying and filtering
-  - _Requirements: 10.7, 10.8, 10.9_
-
-- [x] 20.1 Implement query by UUID
-  - _Requirements: 10.7, 10.11_
-  - Exact match on component.uuid
-  - Return error if not found
-
-- [x] 20.2 Implement query by title with prop fallback
-  - _Requirements: 10.7, 10.8, 10.11_
-  - Exact match on component.title
-  - Fallback to searching prop values using ModelUtils.find_values_by_name()
-
-- [x] 20.3 Implement query by type filtering
-  - _Requirements: 10.9_
-  - Filter components where type matches query value
-
-- [x] 20.4 Write unit tests for component querying
-  - _Requirements: 10.7, 10.8, 10.9, 10.11_
-
-- [ ]* 20.5 Write property tests for query type consistency
-  - **Property 15: Component Query Type Consistency**
-  - **Validates: Requirements 10.7, 10.8**
-
-- [ ]* 20.6 Write property tests for type filtering accuracy
-  - **Property 16: Component Type Filtering Accuracy**
-  - **Validates: Requirements 10.9**
-
-- [x] 21. Implement Link and Prop resolution
-  - _Requirements: 10.6_
-
-- [x] 21.1 Create resolve_links_and_props function
-  - _Requirements: 10.6_
-  - Access component.props and component.links (Pydantic models)
-  - Extract name-value pairs from props
-  - Extract href from links
-
-- [x] 21.2 Implement URI reference resolution (when requested)
-  - _Requirements: 10.4, 10.5_
-  - Fetch and process referenced URIs
-  - Track visited URIs to prevent circular references
-  - Respect max_uri_depth configuration
-
-- [x] 21.3 Write unit tests for link and prop resolution
-  - _Requirements: 10.6_
-
-- [ ]* 21.4 Write property tests for link and prop resolution consistency
-  - **Property 17: Link and Prop Resolution Consistency**
-  - **Validates: Requirements 10.6**
-
-- [x] 22. Implement control implementation extraction
-  - _Requirements: 10.6_
-
-- [x] 22.1 Extract control implementations from components
-  - _Requirements: 10.6_
-  - Access component.control_implementations
-  - Extract implemented requirements with UUIDs, control IDs, descriptions
-  - Extract implementation statements
-
-- [x] 22.2 Write unit tests for control implementation extraction
-  - _Requirements: 10.6_
-
-- [x] 23. Implement query_component_definition MCP tool
+- [x] 7. Implement ComponentDefinitionStore
+  - Singleton class with 9 index dictionaries (cdefs by path/UUID/title, components by UUID/title, capabilities by UUID/name, parent tracking)
+  - Case-insensitive title/name indexing
+  - Stats tracking dictionary
+  - _reset() method for clearing state
+  - _index_components() for indexing cdefs and their children
   - _Requirements: 10.1-10.12_
 
-- [x] 23.1 Create query_component_definition tool function
-  - _Requirements: 10.1, 10.7, 10.8_
-  - Accept source, query_type, query_value, return_format, resolve_uris parameters
-  - Integrate all component query functions
-  - Return ComponentQueryResponse with components and metadata
+- [ ]* 7.1 Write property test for component definition indexing completeness
+  - **Property 12: Component Definition Indexing Completeness**
+  - **Validates: Requirements 10.2, 10.3, 10.4**
 
-- [x] 23.2 Add configuration for remote URI processing
-  - _Requirements: 10.4, 10.5_
-  - Add allow_remote_uris, request_timeout, max_uri_depth to config.py
+- [ ]* 7.2 Write property test for parent relationship tracking
+  - **Property 13: Parent Relationship Tracking**
+  - **Validates: Requirements 10.5, 10.6**
 
-- [x] 23.3 Write unit tests for the complete tool
-  - _Requirements: 10.1-10.12_
-
-- [ ]* 23.4 Write property tests for component not found error handling
-  - **Property 18: Component Not Found Error Handling**
+- [ ]* 7.3 Write property test for directory reset on explicit path
+  - **Property 14: Directory Reset on Explicit Path**
   - **Validates: Requirements 10.11**
 
-- [ ]* 23.5 Write property tests for parse error handling
-  - **Property 19: Component Definition Parse Error Handling**
-  - **Validates: Requirements 10.10**
+- [ ]* 7.4 Write property test for loading statistics accuracy
+  - **Property 15: Loading Statistics Accuracy**
+  - **Validates: Requirements 10.12**
 
-- [ ]* 23.6 Write property tests for remote URI error handling
-  - **Property 20: Remote URI Error Handling**
-  - **Validates: Requirements 10.4, 10.5**
+- [x] 8. Implement directory loading (JSON and zip)
+  - load_from_directory() with recursive scanning
+  - _process_zip_files() and _handle_zip_file() for zip archives
+  - _process_json_files() using trestle ComponentDefinition.oscal_read()
+  - Graceful error handling per-file (log and continue)
+  - Module-level _store.load_from_directory() call at import time
+  - Unit tests passing
+  - _Requirements: 10.1, 10.7-10.10_
 
-- [x] 24. Register query_component_definition tool with MCP server
-  - _Requirements: 5.1, 5.2_
+- [x] 9. Implement external URI loading
+  - load_external_component_definition() for local zip and remote URIs
+  - Remote URI gating via config.allow_remote_uris
+  - HTTP fetching with configurable timeout
+  - Error handling for timeout, network errors, JSON parse errors
+  - Unit tests passing
+  - _Requirements: 16.1-16.7_
 
-- [x] 24.1 Add tool registration in main.py
-  - _Requirements: 5.1, 5.2_
+- [ ]* 9.1 Write property test for external URI validation
+  - **Property 25: External URI Validation**
+  - **Validates: Requirements 16.2, 16.3**
 
-- [x] 24.2 Update server instructions to include component definition querying
-  - _Requirements: 5.7_
+- [ ]* 9.2 Write property test for remote component definition loading
+  - **Property 26: Remote Component Definition Loading**
+  - **Validates: Requirements 16.4**
 
-- [x] 25. Integration testing for Component Definition Query
-  - _Requirements: 10.1-10.12_
+- [x] 10. Implement query_component_definition tool
+  - Thin MCP wrapper delegating to _store.query()
+  - component_definition_filter parameter (UUID or title)
+  - query_type: all, by_uuid, by_title, by_type
+  - Capability-first query integration (checks capabilities before components)
+  - Title fallback to prop value search via find_component_by_prop_value()
+  - Type filtering via filter_components_by_type()
+  - Raw-only return format
+  - Unit tests passing
+  - _Requirements: 11.1-11.12_
 
-- [x] 25.1 Test with sample OSCAL Component Definition files
-  - _Requirements: 10.1, 10.2_
+- [x] 10.1 Write property test for component definition filter scoping
+  - **Property 16: Component Definition Filter Scoping**
+  - **Validates: Requirements 11.2**
 
-- [x] 25.2 Test all query modes (all, by_uuid, by_title, by_type)
-  - _Requirements: 10.7, 10.9_
+- [ ]* 10.2 Write property test for capability query integration
+  - **Property 17: Capability Query Integration**
+  - **Validates: Requirements 11.5, 11.6, 11.7**
 
-- [x] 25.3 Test summary vs raw return formats
-  - _Requirements: 10.7_
+- [ ]* 10.3 Write property test for title fallback to prop value search
+  - **Property 18: Title Fallback to Prop Value Search**
+  - **Validates: Requirements 11.8**
 
-- [x] 25.4 Test error conditions (invalid files, not found, network errors)
-  - _Requirements: 10.4, 10.5, 10.10, 10.11_
+- [ ]* 10.4 Write property test for component type filtering accuracy
+  - **Property 19: Component Type Filtering Accuracy**
+  - **Validates: Requirements 11.9**
 
-- [x] 26. Final integration verification
-  - Ensure all tests pass including new property-based tests
-  - Verify end-to-end functionality works correctly with both transports
-  - Test MCP server can start with stdio transport (default)
-  - Test MCP server can start with streamable-http transport (explicit)
-  - Validate all error handling paths work as expected
-  - Test Component Definition Query tool with real OSCAL files
+- [ ]* 10.5 Write property test for query response structure
+  - **Property 20: Query Response Structure**
+  - **Validates: Requirements 11.10**
 
-- [x] 27. Refactor query_component_definition tool to align with simplified Requirement 10
-  - _Requirements: 10.1-10.12_
+- [ ]* 10.6 Write property test for invalid tool parameter rejection
+  - **Property 11: Invalid Tool Parameter Rejection**
+  - **Validates: Requirements 6.7, 11.4**
 
-- [x] 27.1 Update return_format parameter to always use 'raw' format
-  - _Requirements: 10.6, 10.7_
-  - Keep return_format parameter in signature for future extensibility
-  - Set default value to "raw" and document that only "raw" is currently supported
-  - Remove "summary" format option from Literal type hint (keep only "raw")
-  - Always return full Component as JSON OSCAL object using component.dict()
-  - Update tool docstring to clarify that full OSCAL Component objects are returned
+- [x] 11. Implement list_component_definitions tool
+  - Thin MCP wrapper delegating to _store.list_component_definitions()
+  - Returns uuid, title, componentCount, importedComponentDefinitionsCount, sizeInBytes
+  - RuntimeError when no cdefs loaded
+  - Unit tests passing
+  - _Requirements: 12.1-12.3_
 
-- [x] 27.2 Remove component summary extraction functionality
-  - _Requirements: 10.6, 10.7_
-  - Delete extract_component_summary helper function entirely
-  - Remove all summary format handling logic from main tool function
-  - Ensure all components are returned as full OSCAL objects via .dict()
-  - Update response to return complete DefinedComponent Pydantic models as dicts
+- [ ]* 11.1 Write property test for list component definitions completeness
+  - **Property 21: List Component Definitions Completeness**
+  - **Validates: Requirements 12.1, 12.2**
 
-- [x] 27.3 Remove resolve_uris parameter and URI resolution functionality
-  - _Requirements: 10.6_
-  - Remove resolve_uris parameter from tool signature
-  - Remove _resolve_uri_reference helper function
-  - Remove URI tracking and circular reference prevention logic
-  - Keep basic Link and Prop objects as part of the full Component object (they're in the OSCAL model)
-  - Simplify resolve_links_and_props or remove it entirely if not needed
-  - Update tool docstring to remove resolve_uris documentation
+- [x] 12. Implement list_components tool
+  - Thin MCP wrapper delegating to _store.list_components()
+  - Returns uuid, title, parentComponentDefinitionTitle, parentComponentDefinitionUuid, sizeInBytes
+  - RuntimeError when no components loaded
+  - Unit tests passing
+  - _Requirements: 13.1-13.3_
 
-- [x] 27.4 Remove control implementation extraction functionality
-  - _Requirements: 10.6_
-  - Delete extract_control_implementations helper function entirely
-  - Remove control implementation extraction logic from main tool function
-  - Control implementations are already part of the full Component OSCAL object
-  - No need for separate extraction since we're returning raw OSCAL objects
+- [ ]* 12.1 Write property test for list components completeness
+  - **Property 22: List Components Completeness**
+  - **Validates: Requirements 13.1, 13.2**
 
-- [x] 27.5 Implement recursive directory loading functionality
-  - _Requirements: 10.12_
-  - Create function to recursively scan directory for Component Definition files
-  - Load all .json files that contain valid Component Definitions
-  - Use trestle's file utilities for directory traversal if available
-  - Store loaded Component Definitions in memory/cache during server startup
-  - Add configuration for component definitions directory path
-  - Update main to verify integrity of component defintion files at startup, as done for other content
-  - Handle errors gracefully for invalid files in directory
-  - Log successful loads and any errors encountered
+- [x] 13. Implement list_capabilities tool
+  - Thin MCP wrapper delegating to _store.list_capabilities()
+  - Returns uuid, name, parentComponentDefinitionTitle, parentComponentDefinitionUuid, sizeInBytes
+  - Returns empty list (no error) when no capabilities loaded
+  - Unit tests passing
+  - _Requirements: 14.1-14.3_
 
-- [x] 27.6 Update unit tests for refactored tool
-  - _Requirements: 10.1-10.12_
-  - Remove tests for "summary" return format
-  - Remove tests for resolve_uris functionality
-  - Remove tests for extract_component_summary function
-  - Remove tests for extract_control_implementations function
-  - Update tests to expect full OSCAL Component objects in responses
-  - Add tests for recursive directory loading functionality
-  - Ensure all tests pass with refactored implementation
+- [ ]* 13.1 Write property test for list capabilities completeness
+  - **Property 23: List Capabilities Completeness**
+  - **Validates: Requirements 14.1, 14.2**
 
-- [x] 27.7 Update integration tests for refactored tool
-  - _Requirements: 10.1-10.12_
-  - Update test cases to expect full OSCAL Component objects
-  - Verify returned objects match OSCAL Component Definition schema
-  - Test recursive directory loading with sample directory structure
-  - Update expected response structures to include all OSCAL fields
-  - Verify error handling still works correctly
+- [x] 14. Implement get_capability tool
+  - Direct dict lookup on _store._capabilities_by_uuid
+  - Returns full Capability dict or None
+  - Unit tests passing
+  - _Requirements: 15.1-15.2_
 
-- [x] 27.8 Update tool documentation and examples
-  - _Requirements: 10.1-10.12_
-  - Update main.py server instructions to reflect that tool returns full OSCAL objects
-  - Update tool docstring to clarify return format is complete OSCAL Component
-  - Document recursive directory loading feature
-  - Update any inline documentation or comments
-  - Ensure tool schema accurately reflects simplified parameters
+- [ ]* 14.1 Write property test for get capability correctness
+  - **Property 24: Get Capability Correctness**
+  - **Validates: Requirements 15.1, 15.2**
+
+- [x] 15. Implement about tool
+  - Defined inline in _setup_tools() using @mcp.tool decorator
+  - Returns version, keywords from package metadata, oscal-version "1.2.0"
+  - Unit tests passing
+  - _Requirements: 17.1-17.3_
+
+- [x] 16. FastMCP server integration and tool registration
+  - Module-level mcp = FastMCP(...) instance
+  - _setup_tools() registers all tools, conditionally registers query_oscal_documentation
+  - Server instructions describing OSCAL capabilities
+  - Transport selection (stdio default, streamable-http)
+  - Integrity verification at startup (oscal_schemas, oscal_docs, component_definitions)
+  - Exit code 2 on integrity failure, exit code 1 on transport validation failure
+  - Unit and integration tests passing
+  - _Requirements: 5.1-5.9, 18.1-18.8_
+
+- [ ]* 16.1 Write property test for error logging and client notification
+  - **Property 10: Error Logging and Client Notification**
+  - **Validates: Requirements 1.6, 6.2, 6.5, 6.7**
+
+- [ ]* 16.2 Write property test for integrity verification
+  - **Property 27: Integrity Verification**
+  - **Validates: Requirements 18.5, 18.6, 18.7**
+
+- [x] 17. Implement OSCAL Agent module
+  - create_oscal_agent() in oscal_agent.py
+  - Strands Agent with BedrockModel using configured profile/region
+  - System prompt describing OSCAL expertise
+  - load_tools_from_directory=True
+  - _Requirements: 19.1-19.4_
+
+- [ ]* 17.1 Write property test for agent profile and region configuration
+  - **Property 29: Agent Profile and Region Configuration**
+  - **Validates: Requirements 19.2**
+
+- [x] 18. Comprehensive unit test suite
+  - 262 tests passing, 1 skipped
+  - Test files: test_config.py, test_file_integrity.py, test_file_integrity_integration.py, test_file_integrity_utils.py, test_integration.py, test_main.py, test_utils.py
+  - Tool tests: test_get_schema.py, test_list_models.py, test_list_oscal_resources.py, test_query_component_definition.py, test_query_documentation.py
+  - _Requirements: All_
+
+- [ ] 19. Add Hypothesis dependency and configure property-based testing
+  - Add hypothesis to devtest dependency group in pyproject.toml
+  - Configure Hypothesis settings for minimum 100 iterations per test
+  - Set up custom generators for OSCAL test data (ComponentDefinitions, Components, Capabilities, UUIDs)
+  - _Requirements: All requirements covered by correctness properties_
+
+- [ ] 20. Implement property-based tests for all 29 correctness properties
+  - Implement Properties 1-29 from the design document as Hypothesis property tests
+  - Tag each test with feature and property information
+  - Mock external dependencies (AWS Bedrock, HTTP, file system)
+  - Run with: `hatch test tests/test_properties.py`
+  - _Requirements: All requirements covered by correctness properties_
 
 ## Notes
 
-- Tasks marked with `*` are optional and can be skipped for faster MVP
-- Each task references specific requirements for traceability
-- Checkpoints ensure incremental validation
-- Property tests validate universal correctness properties
-- Unit tests validate specific examples and edge cases
-- The implementation builds incrementally from core infrastructure to complete functionality
-
-## Summary
-
-**Implementation Status: ~85% Complete**
-
-The OSCAL MCP Server implementation has most core functionality implemented but needs the new list_oscal_resources tool and stdio transport support added. The main remaining work involves:
-
-1. ✅ **RESOLVED**: Import path issues have been fixed - 90/91 tests now pass
-2. **New Feature**: Implement the list_oscal_resources tool for community resources
-3. **New Feature**: Add stdio transport support and make it the default
-4. **Enhancement**: Adding property-based tests to validate the 24 correctness properties  
-5. **Minor Fix**: One failing test in error logging behavior (non-critical)
-6. **Verification**: Final integration testing with both transport types
-
-**Key Accomplishments:**
-- ✅ Three of four MCP tools fully implemented (query_documentation, list_models, get_schema)
-- ✅ Complete configuration management with env vars and CLI args
-- ✅ FastMCP server integration with proper tool registration
-- ✅ Comprehensive unit test suite with high coverage
-- ✅ AWS Bedrock Knowledge Base integration
-- ✅ Local schema file management system
-- ✅ Proper error handling and logging throughout
-
-**Immediate Next Steps:**
-1. ✅ **COMPLETED**: Import paths fixed - tests now running successfully
-2. Implement the list_oscal_resources tool for community resources
-3. Add stdio transport support to configuration and main server
-4. Update unit tests for new transport functionality
-5. Add Hypothesis for property-based testing
-6. Implement the 24 correctness properties as property tests
-7. Fix minor test failure (optional)
-8. Verify end-to-end functionality with both transport types
+- Tasks marked with `*` are optional property-based tests that can be skipped for faster MVP
+- All core implementation is complete - only property-based tests remain
+- Run full test suite: `hatch test`
+- Run type checking + tests + coverage: `hatch run devtest:tests`
+- Run specific test: `hatch test <path/to/test::TestName>`
+- Run type checking alone: `hatch run devtest:typing`
