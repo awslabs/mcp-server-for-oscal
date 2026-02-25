@@ -120,7 +120,7 @@ update = [
   # Update project dependencies in this file, then compile to requirements.txt
   # to ensure deterministic/reproducible builds.
   "uv pip install -U -r pyproject.toml",
-  "uv pip compile -o requirements.txt pyproject.toml"
+  "uv pip compile --upgrade -o requirements.txt pyproject.toml"
 ]
 
 rehash = [
