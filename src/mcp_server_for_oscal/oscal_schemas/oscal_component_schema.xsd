@@ -4,11 +4,11 @@
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             elementFormDefault="qualified"
             targetNamespace="http://csrc.nist.gov/ns/oscal/1.0"
-            version="1.1.3">
+            version="1.2.1">
    <xs:annotation>
       <xs:appinfo>
          <m:schema-name>OSCAL Component Definition Model</m:schema-name>
-         <m:schema-version>1.1.3</m:schema-version>
+         <m:schema-version>1.2.1</m:schema-version>
          <m:short-name>oscal-component-definition</m:short-name>
          <m:remarks>
             <p>The OSCAL Component Definition Model can be used to describe the implementation of controls in a <code>component</code> or a set of components grouped as a <code>capability</code>. A component can be either a <em>technical component</em>, or a <em>documentary component</em>.</p>
@@ -73,6 +73,21 @@
          <xs:documentation>
             <b>Import Component Definition</b>: Loads a component definition from another resource.</xs:documentation>
       </xs:annotation>
+      <xs:sequence>
+         <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+            <xs:annotation>
+               <xs:appinfo>
+                  <m:formal-name>Remarks</m:formal-name>
+                  <m:description>Additional commentary about the containing object.</m:description>
+               </xs:appinfo>
+               <xs:documentation>
+                  <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+            </xs:annotation>
+            <xs:complexType>
+               <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
       <xs:attribute name="href" use="required" type="URIReferenceDatatype">
          <xs:annotation>
             <xs:appinfo>
@@ -725,6 +740,21 @@
          <xs:documentation>
             <b>Port Range</b>: Where applicable this is the transport layer protocol port range an IPv4-based or IPv6-based service uses.</xs:documentation>
       </xs:annotation>
+      <xs:sequence>
+         <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+            <xs:annotation>
+               <xs:appinfo>
+                  <m:formal-name>Remarks</m:formal-name>
+                  <m:description>Additional commentary about the containing object.</m:description>
+               </xs:appinfo>
+               <xs:documentation>
+                  <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+            </xs:annotation>
+            <xs:complexType>
+               <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
       <xs:attribute name="start" type="NonNegativeIntegerDatatype">
          <xs:annotation>
             <xs:appinfo>
@@ -2704,6 +2734,82 @@
          <xs:documentation>
             <b>Include All</b>: Include all controls from the imported catalog or profile resources.</xs:documentation>
       </xs:annotation>
+   </xs:complexType>
+   <xs:simpleType name="oscal-control-common-with-id-FIELD">
+      <xs:annotation>
+         <xs:appinfo>
+            <m:formal-name>Match Controls by Identifier</m:formal-name>
+            <m:description>Selecting a control by its ID given as a literal.</m:description>
+         </xs:appinfo>
+         <xs:documentation>
+            <b>Match Controls by Identifier</b>: Selecting a control by its ID given as a literal.</xs:documentation>
+      </xs:annotation>
+      <xs:restriction base="TokenDatatype"/>
+   </xs:simpleType>
+   <xs:complexType name="oscal-control-common-matching-ASSEMBLY">
+      <xs:annotation>
+         <xs:appinfo>
+            <m:formal-name>Match Controls by Pattern</m:formal-name>
+            <m:description>Selecting a set of controls by matching their IDs with a wildcard pattern.</m:description>
+         </xs:appinfo>
+         <xs:documentation>
+            <b>Match Controls by Pattern</b>: Selecting a set of controls by matching their IDs with a wildcard pattern.</xs:documentation>
+      </xs:annotation>
+      <xs:sequence>
+         <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+            <xs:annotation>
+               <xs:appinfo>
+                  <m:formal-name>Remarks</m:formal-name>
+                  <m:description>Additional commentary about the containing object.</m:description>
+               </xs:appinfo>
+               <xs:documentation>
+                  <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+            </xs:annotation>
+            <xs:complexType>
+               <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
+      <xs:attribute name="pattern" type="StringDatatype">
+         <xs:annotation>
+            <xs:appinfo>
+               <m:formal-name>Pattern</m:formal-name>
+               <m:description>A <a href="https://en.wikipedia.org/wiki/Glob_(programming)">glob expression</a> matching the IDs of one or more controls to be selected.</m:description>
+            </xs:appinfo>
+            <xs:documentation>
+               <b>Pattern</b>: A glob expression matching the IDs of one or more controls to be selected.</xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+   </xs:complexType>
+   <xs:complexType name="oscal-control-common-select-control-by-id-ASSEMBLY">
+      <xs:annotation>
+         <xs:appinfo>
+            <m:formal-name>Select Control</m:formal-name>
+            <m:description>Select a control or controls from an imported control set.</m:description>
+         </xs:appinfo>
+         <xs:documentation>
+            <b>Select Control</b>: Select a control or controls from an imported control set.</xs:documentation>
+      </xs:annotation>
+      <xs:sequence>
+         <xs:element name="with-id"
+                      type="oscal-control-common-with-id-FIELD"
+                      minOccurs="0"
+                      maxOccurs="unbounded"/>
+         <xs:element name="matching"
+                      type="oscal-control-common-matching-ASSEMBLY"
+                      minOccurs="0"
+                      maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="with-child-controls" type="TokenDatatype">
+         <xs:annotation>
+            <xs:appinfo>
+               <m:formal-name>Include Contained Controls with Control</m:formal-name>
+               <m:description>When a control is included, whether its child (dependent) controls are also included.</m:description>
+            </xs:appinfo>
+            <xs:documentation>
+               <b>Include Contained Controls with Control</b>: When a control is included, whether its child (dependent) controls are also included.</xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
    </xs:complexType>
    <xs:complexType name="MarkupMultilineDatatype">
       <xs:choice minOccurs="1" maxOccurs="unbounded">

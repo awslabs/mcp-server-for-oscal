@@ -28,6 +28,12 @@ This project leverages the `compliance-trestle` library (imported as `trestle`) 
 - Use `trestle.common.file_utils` for OSCAL file operations
 - Use `trestle.common.load_validate` for loading and validating OSCAL files
 
+### 5. To test OSCAL object equivalence
+- Use `ModelUtils.models_are_equivalent`
+
+### 6. UUID re/generation
+- Use `ModelUtils.regenerate_uuids` or similar functions - avoid manually setting UUID values
+
 ## Implementation Workflow
 
 1. **Before writing OSCAL code**: Search trestle's API for existing functionality
