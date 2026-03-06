@@ -4,11 +4,11 @@
             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
             elementFormDefault="qualified"
             targetNamespace="http://csrc.nist.gov/ns/oscal/1.0"
-            version="1.2.0">
+            version="1.2.1">
    <xs:annotation>
       <xs:appinfo>
          <m:schema-name>OSCAL Unified Model of Models</m:schema-name>
-         <m:schema-version>1.2.0</m:schema-version>
+         <m:schema-version>1.2.1</m:schema-version>
          <m:short-name>oscal-complete</m:short-name>
          <m:remarks>
             <p>This format represents a combination of all of the OSCAL models.</p>
@@ -535,6 +535,82 @@
          <xs:documentation>
             <b>Include All</b>: Include all controls from the imported catalog or profile resources.</xs:documentation>
       </xs:annotation>
+   </xs:complexType>
+   <xs:simpleType name="oscal-control-common-with-id-FIELD">
+      <xs:annotation>
+         <xs:appinfo>
+            <m:formal-name>Match Controls by Identifier</m:formal-name>
+            <m:description>Selecting a control by its ID given as a literal.</m:description>
+         </xs:appinfo>
+         <xs:documentation>
+            <b>Match Controls by Identifier</b>: Selecting a control by its ID given as a literal.</xs:documentation>
+      </xs:annotation>
+      <xs:restriction base="TokenDatatype"/>
+   </xs:simpleType>
+   <xs:complexType name="oscal-control-common-matching-ASSEMBLY">
+      <xs:annotation>
+         <xs:appinfo>
+            <m:formal-name>Match Controls by Pattern</m:formal-name>
+            <m:description>Selecting a set of controls by matching their IDs with a wildcard pattern.</m:description>
+         </xs:appinfo>
+         <xs:documentation>
+            <b>Match Controls by Pattern</b>: Selecting a set of controls by matching their IDs with a wildcard pattern.</xs:documentation>
+      </xs:annotation>
+      <xs:sequence>
+         <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+            <xs:annotation>
+               <xs:appinfo>
+                  <m:formal-name>Remarks</m:formal-name>
+                  <m:description>Additional commentary about the containing object.</m:description>
+               </xs:appinfo>
+               <xs:documentation>
+                  <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+            </xs:annotation>
+            <xs:complexType>
+               <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
+      <xs:attribute name="pattern" type="StringDatatype">
+         <xs:annotation>
+            <xs:appinfo>
+               <m:formal-name>Pattern</m:formal-name>
+               <m:description>A <a href="https://en.wikipedia.org/wiki/Glob_(programming)">glob expression</a> matching the IDs of one or more controls to be selected.</m:description>
+            </xs:appinfo>
+            <xs:documentation>
+               <b>Pattern</b>: A glob expression matching the IDs of one or more controls to be selected.</xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+   </xs:complexType>
+   <xs:complexType name="oscal-control-common-select-control-by-id-ASSEMBLY">
+      <xs:annotation>
+         <xs:appinfo>
+            <m:formal-name>Select Control</m:formal-name>
+            <m:description>Select a control or controls from an imported control set.</m:description>
+         </xs:appinfo>
+         <xs:documentation>
+            <b>Select Control</b>: Select a control or controls from an imported control set.</xs:documentation>
+      </xs:annotation>
+      <xs:sequence>
+         <xs:element name="with-id"
+                      type="oscal-control-common-with-id-FIELD"
+                      minOccurs="0"
+                      maxOccurs="unbounded"/>
+         <xs:element name="matching"
+                      type="oscal-control-common-matching-ASSEMBLY"
+                      minOccurs="0"
+                      maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="with-child-controls" type="TokenDatatype">
+         <xs:annotation>
+            <xs:appinfo>
+               <m:formal-name>Include Contained Controls with Control</m:formal-name>
+               <m:description>When a control is included, whether its child (dependent) controls are also included.</m:description>
+            </xs:appinfo>
+            <xs:documentation>
+               <b>Include Contained Controls with Control</b>: When a control is included, whether its child (dependent) controls are also included.</xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
    </xs:complexType>
    <xs:complexType name="oscal-metadata-metadata-ASSEMBLY">
       <xs:annotation>
@@ -1891,7 +1967,7 @@
                       minOccurs="0"
                       maxOccurs="1"/>
          <xs:element name="confidence-score"
-                      type="oscal-mapping-common-confidence-score-FIELD"
+                      type="oscal-mapping-common-confidence-score-ASSEMBLY"
                       minOccurs="0"
                       maxOccurs="1"/>
          <xs:element name="coverage"
@@ -1976,7 +2052,7 @@
                       minOccurs="0"
                       maxOccurs="unbounded"/>
          <xs:element name="confidence-score"
-                      type="oscal-mapping-common-confidence-score-FIELD"
+                      type="oscal-mapping-common-confidence-score-ASSEMBLY"
                       minOccurs="0"
                       maxOccurs="1"/>
          <xs:element name="coverage"
@@ -2233,7 +2309,7 @@
       </xs:annotation>
       <xs:sequence>
          <xs:element name="confidence-score"
-                      type="oscal-mapping-common-confidence-score-FIELD"
+                      type="oscal-mapping-common-confidence-score-ASSEMBLY"
                       minOccurs="0"
                       maxOccurs="1"/>
          <xs:element name="coverage"
@@ -2321,7 +2397,7 @@
       </xs:annotation>
       <xs:sequence>
          <xs:element name="unmapped-controls"
-                      type="oscal-mapping-common-select-control-by-id-ASSEMBLY"
+                      type="oscal-control-common-select-control-by-id-ASSEMBLY"
                       minOccurs="1"
                       maxOccurs="unbounded"/>
       </xs:sequence>
@@ -2336,66 +2412,7 @@
          </xs:annotation>
       </xs:attribute>
    </xs:complexType>
-   <xs:complexType name="oscal-mapping-common-select-control-by-id-ASSEMBLY">
-      <xs:annotation>
-         <xs:appinfo>
-            <m:formal-name>Select Control</m:formal-name>
-            <m:description>Select a control or controls from an imported control set.</m:description>
-         </xs:appinfo>
-         <xs:documentation>
-            <b>Select Control</b>: Select a control or controls from an imported control set.</xs:documentation>
-      </xs:annotation>
-      <xs:sequence>
-         <xs:element name="with-id" minOccurs="0" maxOccurs="unbounded">
-            <xs:simpleType>
-               <xs:annotation>
-                  <xs:appinfo>
-                     <m:formal-name>Match Controls by Identifier</m:formal-name>
-                     <m:description>Selecting a control by its ID given as a literal.</m:description>
-                  </xs:appinfo>
-                  <xs:documentation>
-                     <b>Match Controls by Identifier</b>: Selecting a control by its ID given as a literal.</xs:documentation>
-               </xs:annotation>
-               <xs:restriction base="TokenDatatype"/>
-            </xs:simpleType>
-         </xs:element>
-         <xs:element name="matching"
-                      type="oscal-mapping-common-matching-ASSEMBLY"
-                      minOccurs="0"
-                      maxOccurs="unbounded"/>
-      </xs:sequence>
-      <xs:attribute name="with-child-controls" type="TokenDatatype">
-         <xs:annotation>
-            <xs:appinfo>
-               <m:formal-name>Include Contained Controls with Control</m:formal-name>
-               <m:description>When a control is included, whether its child (dependent) controls are also included.</m:description>
-            </xs:appinfo>
-            <xs:documentation>
-               <b>Include Contained Controls with Control</b>: When a control is included, whether its child (dependent) controls are also included.</xs:documentation>
-         </xs:annotation>
-      </xs:attribute>
-   </xs:complexType>
-   <xs:complexType name="oscal-mapping-common-matching-ASSEMBLY">
-      <xs:annotation>
-         <xs:appinfo>
-            <m:formal-name>Match Controls by Pattern</m:formal-name>
-            <m:description>Selecting a set of controls by matching their IDs with a wildcard pattern.</m:description>
-         </xs:appinfo>
-         <xs:documentation>
-            <b>Match Controls by Pattern</b>: Selecting a set of controls by matching their IDs with a wildcard pattern.</xs:documentation>
-      </xs:annotation>
-      <xs:attribute name="pattern" type="StringDatatype">
-         <xs:annotation>
-            <xs:appinfo>
-               <m:formal-name>Pattern</m:formal-name>
-               <m:description>A <a href="https://en.wikipedia.org/wiki/Glob_(programming)">glob expression</a> matching the IDs of one or more controls to be selected.</m:description>
-            </xs:appinfo>
-            <xs:documentation>
-               <b>Pattern</b>: A glob expression matching the IDs of one or more controls to be selected.</xs:documentation>
-         </xs:annotation>
-      </xs:attribute>
-   </xs:complexType>
-   <xs:complexType name="oscal-mapping-common-confidence-score-FIELD">
+   <xs:complexType name="oscal-mapping-common-confidence-score-ASSEMBLY">
       <xs:annotation>
          <xs:appinfo>
             <m:formal-name>Confidence Score</m:formal-name>
@@ -2404,12 +2421,19 @@
          <xs:documentation>
             <b>Confidence Score</b>: This records either a string category or a decimal value from 0-1 representing a percentage. Both of these values describe an estimation of the author's confidence that this mapping is correct and accurate. </xs:documentation>
       </xs:annotation>
-      <xs:simpleContent>
-         <xs:extension base="StringDatatype">
-            <xs:attribute name="category" type="StringDatatype"/>
-            <xs:attribute name="percentage" type="DecimalDatatype"/>
-         </xs:extension>
-      </xs:simpleContent>
+      <xs:sequence>
+         <xs:choice>
+            <xs:element name="category" minOccurs="0" maxOccurs="1">
+               <xs:simpleType>
+                  <xs:restriction base="StringDatatype"/>
+               </xs:simpleType>
+            </xs:element>
+            <xs:element name="percentage"
+                         type="oscal-mapping-common-percentage-FIELD"
+                         minOccurs="0"
+                         maxOccurs="1"/>
+         </xs:choice>
+      </xs:sequence>
    </xs:complexType>
    <xs:complexType name="oscal-mapping-common-coverage-FIELD">
       <xs:annotation>
@@ -2422,10 +2446,30 @@
       </xs:annotation>
       <xs:simpleContent>
          <xs:extension base="DecimalDatatype">
-            <xs:attribute name="generation-method" type="StringDatatype"/>
+            <xs:attribute name="generation-method" type="StringDatatype">
+               <xs:annotation>
+                  <xs:appinfo>
+                     <m:formal-name>Coverage Generation Method</m:formal-name>
+                     <m:description>The method used to determine the coverage value.</m:description>
+                  </xs:appinfo>
+                  <xs:documentation>
+                     <b>Coverage Generation Method</b>: The method used to determine the coverage value.</xs:documentation>
+               </xs:annotation>
+            </xs:attribute>
          </xs:extension>
       </xs:simpleContent>
    </xs:complexType>
+   <xs:simpleType name="oscal-mapping-common-percentage-FIELD">
+      <xs:annotation>
+         <xs:appinfo>
+            <m:formal-name>Percentage</m:formal-name>
+            <m:description>A decimal value from 0-1, representing a percentage.</m:description>
+         </xs:appinfo>
+         <xs:documentation>
+            <b>Percentage</b>: A decimal value from 0-1, representing a percentage.</xs:documentation>
+      </xs:annotation>
+      <xs:restriction base="DecimalDatatype"/>
+   </xs:simpleType>
    <xs:complexType name="oscal-mapping-common-mapping-description-FIELD">
       <xs:annotation>
          <xs:appinfo>
@@ -2498,12 +2542,12 @@
                          minOccurs="1"
                          maxOccurs="1"/>
             <xs:element name="include-controls"
-                         type="oscal-profile-select-control-by-id-ASSEMBLY"
+                         type="oscal-control-common-select-control-by-id-ASSEMBLY"
                          minOccurs="1"
                          maxOccurs="unbounded"/>
          </xs:choice>
          <xs:element name="exclude-controls"
-                      type="oscal-profile-select-control-by-id-ASSEMBLY"
+                      type="oscal-control-common-select-control-by-id-ASSEMBLY"
                       minOccurs="0"
                       maxOccurs="unbounded"/>
       </xs:sequence>
@@ -2805,6 +2849,21 @@
                            <xs:documentation>
                               <b>Removal</b>: Specifies objects to be removed from a control based on specific aspects of the object that must all match.</xs:documentation>
                         </xs:annotation>
+                        <xs:sequence>
+                           <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+                              <xs:annotation>
+                                 <xs:appinfo>
+                                    <m:formal-name>Remarks</m:formal-name>
+                                    <m:description>Additional commentary about the containing object.</m:description>
+                                 </xs:appinfo>
+                                 <xs:documentation>
+                                    <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+                              </xs:annotation>
+                              <xs:complexType>
+                                 <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+                              </xs:complexType>
+                           </xs:element>
+                        </xs:sequence>
                         <xs:attribute name="by-name" type="TokenDatatype">
                            <xs:annotation>
                               <xs:appinfo>
@@ -2953,12 +3012,12 @@
                          minOccurs="1"
                          maxOccurs="1"/>
             <xs:element name="include-controls"
-                         type="oscal-profile-select-control-by-id-ASSEMBLY"
+                         type="oscal-control-common-select-control-by-id-ASSEMBLY"
                          minOccurs="1"
                          maxOccurs="unbounded"/>
          </xs:choice>
          <xs:element name="exclude-controls"
-                      type="oscal-profile-select-control-by-id-ASSEMBLY"
+                      type="oscal-control-common-select-control-by-id-ASSEMBLY"
                       minOccurs="0"
                       maxOccurs="unbounded"/>
       </xs:sequence>
@@ -2970,67 +3029,6 @@
             </xs:appinfo>
             <xs:documentation>
                <b>Order</b>: A designation of how a selection of controls in a profile is to be ordered.</xs:documentation>
-         </xs:annotation>
-      </xs:attribute>
-   </xs:complexType>
-   <xs:complexType name="oscal-profile-select-control-by-id-ASSEMBLY">
-      <xs:annotation>
-         <xs:appinfo>
-            <m:formal-name>Select Control</m:formal-name>
-            <m:description>Select a control or controls from an imported control set.</m:description>
-         </xs:appinfo>
-         <xs:documentation>
-            <b>Select Control</b>: Select a control or controls from an imported control set.</xs:documentation>
-      </xs:annotation>
-      <xs:sequence>
-         <xs:element name="with-id"
-                      type="oscal-profile-with-id-FIELD"
-                      minOccurs="0"
-                      maxOccurs="unbounded"/>
-         <xs:element name="matching"
-                      type="oscal-profile-matching-ASSEMBLY"
-                      minOccurs="0"
-                      maxOccurs="unbounded"/>
-      </xs:sequence>
-      <xs:attribute name="with-child-controls" type="TokenDatatype">
-         <xs:annotation>
-            <xs:appinfo>
-               <m:formal-name>Include Contained Controls with Control</m:formal-name>
-               <m:description>When a control is included, whether its child (dependent) controls are also included.</m:description>
-            </xs:appinfo>
-            <xs:documentation>
-               <b>Include Contained Controls with Control</b>: When a control is included, whether its child (dependent) controls are also included.</xs:documentation>
-         </xs:annotation>
-      </xs:attribute>
-   </xs:complexType>
-   <xs:simpleType name="oscal-profile-with-id-FIELD">
-      <xs:annotation>
-         <xs:appinfo>
-            <m:formal-name>Match Controls by Identifier</m:formal-name>
-            <m:description>Selecting a control by its ID given as a literal.</m:description>
-         </xs:appinfo>
-         <xs:documentation>
-            <b>Match Controls by Identifier</b>: Selecting a control by its ID given as a literal.</xs:documentation>
-      </xs:annotation>
-      <xs:restriction base="TokenDatatype"/>
-   </xs:simpleType>
-   <xs:complexType name="oscal-profile-matching-ASSEMBLY">
-      <xs:annotation>
-         <xs:appinfo>
-            <m:formal-name>Match Controls by Pattern</m:formal-name>
-            <m:description>Selecting a set of controls by matching their IDs with a wildcard pattern.</m:description>
-         </xs:appinfo>
-         <xs:documentation>
-            <b>Match Controls by Pattern</b>: Selecting a set of controls by matching their IDs with a wildcard pattern.</xs:documentation>
-      </xs:annotation>
-      <xs:attribute name="pattern" type="StringDatatype">
-         <xs:annotation>
-            <xs:appinfo>
-               <m:formal-name>Pattern</m:formal-name>
-               <m:description>A <a href="https://en.wikipedia.org/wiki/Glob_(programming)">glob expression</a> matching the IDs of one or more controls to be selected.</m:description>
-            </xs:appinfo>
-            <xs:documentation>
-               <b>Pattern</b>: A glob expression matching the IDs of one or more controls to be selected.</xs:documentation>
          </xs:annotation>
       </xs:attribute>
    </xs:complexType>
@@ -3087,6 +3085,21 @@
          <xs:documentation>
             <b>Import Component Definition</b>: Loads a component definition from another resource.</xs:documentation>
       </xs:annotation>
+      <xs:sequence>
+         <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+            <xs:annotation>
+               <xs:appinfo>
+                  <m:formal-name>Remarks</m:formal-name>
+                  <m:description>Additional commentary about the containing object.</m:description>
+               </xs:appinfo>
+               <xs:documentation>
+                  <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+            </xs:annotation>
+            <xs:complexType>
+               <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
       <xs:attribute name="href" use="required" type="URIReferenceDatatype">
          <xs:annotation>
             <xs:appinfo>
@@ -3739,6 +3752,21 @@
          <xs:documentation>
             <b>Port Range</b>: Where applicable this is the transport layer protocol port range an IPv4-based or IPv6-based service uses.</xs:documentation>
       </xs:annotation>
+      <xs:sequence>
+         <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+            <xs:annotation>
+               <xs:appinfo>
+                  <m:formal-name>Remarks</m:formal-name>
+                  <m:description>Additional commentary about the containing object.</m:description>
+               </xs:appinfo>
+               <xs:documentation>
+                  <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+            </xs:annotation>
+            <xs:complexType>
+               <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
       <xs:attribute name="start" type="NonNegativeIntegerDatatype">
          <xs:annotation>
             <xs:appinfo>
@@ -6079,6 +6107,21 @@
                               <xs:documentation>
                                  <b>On Date Condition</b>: The task is intended to occur on the specified date.</xs:documentation>
                            </xs:annotation>
+                           <xs:sequence>
+                              <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+                                 <xs:annotation>
+                                    <xs:appinfo>
+                                       <m:formal-name>Remarks</m:formal-name>
+                                       <m:description>Additional commentary about the containing object.</m:description>
+                                    </xs:appinfo>
+                                    <xs:documentation>
+                                       <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+                                 </xs:annotation>
+                                 <xs:complexType>
+                                    <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+                                 </xs:complexType>
+                              </xs:element>
+                           </xs:sequence>
                            <xs:attribute name="date" use="required" type="DateTimeWithTimezoneDatatype">
                               <xs:annotation>
                                  <xs:appinfo>
@@ -6101,6 +6144,21 @@
                               <xs:documentation>
                                  <b>On Date Range Condition</b>: The task is intended to occur within the specified date range.</xs:documentation>
                            </xs:annotation>
+                           <xs:sequence>
+                              <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+                                 <xs:annotation>
+                                    <xs:appinfo>
+                                       <m:formal-name>Remarks</m:formal-name>
+                                       <m:description>Additional commentary about the containing object.</m:description>
+                                    </xs:appinfo>
+                                    <xs:documentation>
+                                       <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+                                 </xs:annotation>
+                                 <xs:complexType>
+                                    <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+                                 </xs:complexType>
+                              </xs:element>
+                           </xs:sequence>
                            <xs:attribute name="start" use="required" type="DateTimeWithTimezoneDatatype">
                               <xs:annotation>
                                  <xs:appinfo>
@@ -6133,6 +6191,21 @@
                               <xs:documentation>
                                  <b>Frequency Condition</b>: The task is intended to occur at the specified frequency.</xs:documentation>
                            </xs:annotation>
+                           <xs:sequence>
+                              <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+                                 <xs:annotation>
+                                    <xs:appinfo>
+                                       <m:formal-name>Remarks</m:formal-name>
+                                       <m:description>Additional commentary about the containing object.</m:description>
+                                    </xs:appinfo>
+                                    <xs:documentation>
+                                       <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+                                 </xs:annotation>
+                                 <xs:complexType>
+                                    <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+                                 </xs:complexType>
+                              </xs:element>
+                           </xs:sequence>
                            <xs:attribute name="period" use="required" type="PositiveIntegerDatatype">
                               <xs:annotation>
                                  <xs:appinfo>
@@ -6518,6 +6591,21 @@
          <xs:documentation>
             <b>Select Objective</b>: Used to select a control objective for inclusion/exclusion based on the control objective's identifier.</xs:documentation>
       </xs:annotation>
+      <xs:sequence>
+         <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+            <xs:annotation>
+               <xs:appinfo>
+                  <m:formal-name>Remarks</m:formal-name>
+                  <m:description>Additional commentary about the containing object.</m:description>
+               </xs:appinfo>
+               <xs:documentation>
+                  <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+            </xs:annotation>
+            <xs:complexType>
+               <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
       <xs:attribute name="objective-id" use="required" type="TokenDatatype">
          <xs:annotation>
             <xs:appinfo>
@@ -6564,6 +6652,21 @@
                   <xs:documentation>
                      <b>Assessment Subject Source</b>: Assessment subjects will be identified while conducting the referenced activity-instance.</xs:documentation>
                </xs:annotation>
+               <xs:sequence>
+                  <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+                     <xs:annotation>
+                        <xs:appinfo>
+                           <m:formal-name>Remarks</m:formal-name>
+                           <m:description>Additional commentary about the containing object.</m:description>
+                        </xs:appinfo>
+                        <xs:documentation>
+                           <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+                     </xs:annotation>
+                     <xs:complexType>
+                        <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+                     </xs:complexType>
+                  </xs:element>
+               </xs:sequence>
                <xs:attribute name="task-uuid" use="required" type="UUIDDatatype">
                   <xs:annotation>
                      <xs:appinfo>
@@ -7130,50 +7233,14 @@
                <xs:restriction base="UUIDDatatype"/>
             </xs:simpleType>
          </xs:element>
-         <xs:element name="related-observation" minOccurs="0" maxOccurs="unbounded">
-            <xs:complexType>
-               <xs:annotation>
-                  <xs:appinfo>
-                     <m:formal-name>Related Observation</m:formal-name>
-                     <m:description>Relates the finding to a set of referenced observations that were used to determine the finding.</m:description>
-                  </xs:appinfo>
-                  <xs:documentation>
-                     <b>Related Observation</b>: Relates the finding to a set of referenced observations that were used to determine the finding.</xs:documentation>
-               </xs:annotation>
-               <xs:attribute name="observation-uuid" use="required" type="UUIDDatatype">
-                  <xs:annotation>
-                     <xs:appinfo>
-                        <m:formal-name>Observation Universally Unique Identifier Reference</m:formal-name>
-                        <m:description>A <a href="https://pages.nist.gov/OSCAL/concepts/identifier-use/#machine-oriented">machine-oriented</a> identifier reference to an observation defined in the list of observations.</m:description>
-                     </xs:appinfo>
-                     <xs:documentation>
-                        <b>Observation Universally Unique Identifier Reference</b>: A machine-oriented identifier reference to an observation defined in the list of observations.</xs:documentation>
-                  </xs:annotation>
-               </xs:attribute>
-            </xs:complexType>
-         </xs:element>
-         <xs:element name="associated-risk" minOccurs="0" maxOccurs="unbounded">
-            <xs:complexType>
-               <xs:annotation>
-                  <xs:appinfo>
-                     <m:formal-name>Associated Risk</m:formal-name>
-                     <m:description>Relates the finding to a set of referenced risks that were used to determine the finding.</m:description>
-                  </xs:appinfo>
-                  <xs:documentation>
-                     <b>Associated Risk</b>: Relates the finding to a set of referenced risks that were used to determine the finding.</xs:documentation>
-               </xs:annotation>
-               <xs:attribute name="risk-uuid" use="required" type="UUIDDatatype">
-                  <xs:annotation>
-                     <xs:appinfo>
-                        <m:formal-name>Risk Universally Unique Identifier Reference</m:formal-name>
-                        <m:description>A <a href="https://pages.nist.gov/OSCAL/concepts/identifier-use/#machine-oriented">machine-oriented</a> identifier reference to a risk defined in the list of risks.</m:description>
-                     </xs:appinfo>
-                     <xs:documentation>
-                        <b>Risk Universally Unique Identifier Reference</b>: A machine-oriented identifier reference to a risk defined in the list of risks.</xs:documentation>
-                  </xs:annotation>
-               </xs:attribute>
-            </xs:complexType>
-         </xs:element>
+         <xs:element name="related-observation"
+                      type="oscal-assessment-common-related-observation-ASSEMBLY"
+                      minOccurs="0"
+                      maxOccurs="unbounded"/>
+         <xs:element name="associated-risk"
+                      type="oscal-assessment-common-associated-risk-ASSEMBLY"
+                      minOccurs="0"
+                      maxOccurs="unbounded"/>
          <xs:element name="remarks" minOccurs="0" maxOccurs="1">
             <xs:annotation>
                <xs:appinfo>
@@ -7196,6 +7263,76 @@
             </xs:appinfo>
             <xs:documentation>
                <b>Finding Universally Unique Identifier</b>: A machine-oriented, globally unique identifier with cross-instance scope that can be used to reference this finding in this or other OSCAL instances. The locally defined UUID of the finding can be used to reference the data item locally or globally (e.g., in an imported OSCAL instance). This UUID should be assigned per-subject, which means it should be consistently used to identify the same subject across revisions of the document.</xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+   </xs:complexType>
+   <xs:complexType name="oscal-assessment-common-related-observation-ASSEMBLY">
+      <xs:annotation>
+         <xs:appinfo>
+            <m:formal-name>Related Observation</m:formal-name>
+            <m:description>Relates the identified element to a set of referenced observations that were used to support its determination.</m:description>
+         </xs:appinfo>
+         <xs:documentation>
+            <b>Related Observation</b>: Relates the identified element to a set of referenced observations that were used to support its determination.</xs:documentation>
+      </xs:annotation>
+      <xs:sequence>
+         <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+            <xs:annotation>
+               <xs:appinfo>
+                  <m:formal-name>Remarks</m:formal-name>
+                  <m:description>Additional commentary about the containing object.</m:description>
+               </xs:appinfo>
+               <xs:documentation>
+                  <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+            </xs:annotation>
+            <xs:complexType>
+               <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
+      <xs:attribute name="observation-uuid" use="required" type="UUIDDatatype">
+         <xs:annotation>
+            <xs:appinfo>
+               <m:formal-name>Observation Universally Unique Identifier Reference</m:formal-name>
+               <m:description>A <a href="https://pages.nist.gov/OSCAL/concepts/identifier-use/#machine-oriented">machine-oriented</a> identifier reference to an observation defined in the list of observations.</m:description>
+            </xs:appinfo>
+            <xs:documentation>
+               <b>Observation Universally Unique Identifier Reference</b>: A machine-oriented identifier reference to an observation defined in the list of observations.</xs:documentation>
+         </xs:annotation>
+      </xs:attribute>
+   </xs:complexType>
+   <xs:complexType name="oscal-assessment-common-associated-risk-ASSEMBLY">
+      <xs:annotation>
+         <xs:appinfo>
+            <m:formal-name>Associated Risk</m:formal-name>
+            <m:description>Relates the finding to a set of referenced risks that were used to determine the finding.</m:description>
+         </xs:appinfo>
+         <xs:documentation>
+            <b>Associated Risk</b>: Relates the finding to a set of referenced risks that were used to determine the finding.</xs:documentation>
+      </xs:annotation>
+      <xs:sequence>
+         <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+            <xs:annotation>
+               <xs:appinfo>
+                  <m:formal-name>Remarks</m:formal-name>
+                  <m:description>Additional commentary about the containing object.</m:description>
+               </xs:appinfo>
+               <xs:documentation>
+                  <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+            </xs:annotation>
+            <xs:complexType>
+               <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
+      <xs:attribute name="risk-uuid" use="required" type="UUIDDatatype">
+         <xs:annotation>
+            <xs:appinfo>
+               <m:formal-name>Risk Universally Unique Identifier Reference</m:formal-name>
+               <m:description>A <a href="https://pages.nist.gov/OSCAL/concepts/identifier-use/#machine-oriented">machine-oriented</a> identifier reference to a risk defined in the list of risks.</m:description>
+            </xs:appinfo>
+            <xs:documentation>
+               <b>Risk Universally Unique Identifier Reference</b>: A machine-oriented identifier reference to a risk defined in the list of risks.</xs:documentation>
          </xs:annotation>
       </xs:attribute>
    </xs:complexType>
@@ -7904,28 +8041,10 @@
                </xs:sequence>
             </xs:complexType>
          </xs:element>
-         <xs:element name="related-observation" minOccurs="0" maxOccurs="unbounded">
-            <xs:complexType>
-               <xs:annotation>
-                  <xs:appinfo>
-                     <m:formal-name>Related Observation</m:formal-name>
-                     <m:description>Relates the finding to a set of referenced observations that were used to determine the finding.</m:description>
-                  </xs:appinfo>
-                  <xs:documentation>
-                     <b>Related Observation</b>: Relates the finding to a set of referenced observations that were used to determine the finding.</xs:documentation>
-               </xs:annotation>
-               <xs:attribute name="observation-uuid" use="required" type="UUIDDatatype">
-                  <xs:annotation>
-                     <xs:appinfo>
-                        <m:formal-name>Observation Universally Unique Identifier Reference</m:formal-name>
-                        <m:description>A <a href="https://pages.nist.gov/OSCAL/concepts/identifier-use/#machine-oriented">machine-oriented</a> identifier reference to an observation defined in the list of observations.</m:description>
-                     </xs:appinfo>
-                     <xs:documentation>
-                        <b>Observation Universally Unique Identifier Reference</b>: A machine-oriented identifier reference to an observation defined in the list of observations.</xs:documentation>
-                  </xs:annotation>
-               </xs:attribute>
-            </xs:complexType>
-         </xs:element>
+         <xs:element name="related-observation"
+                      type="oscal-assessment-common-related-observation-ASSEMBLY"
+                      minOccurs="0"
+                      maxOccurs="unbounded"/>
       </xs:sequence>
       <xs:attribute name="uuid" use="required" type="UUIDDatatype">
          <xs:annotation>
@@ -7947,6 +8066,21 @@
          <xs:documentation>
             <b>Logged By</b>: Used to indicate who created a log entry in what role.</xs:documentation>
       </xs:annotation>
+      <xs:sequence>
+         <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+            <xs:annotation>
+               <xs:appinfo>
+                  <m:formal-name>Remarks</m:formal-name>
+                  <m:description>Additional commentary about the containing object.</m:description>
+               </xs:appinfo>
+               <xs:documentation>
+                  <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+            </xs:annotation>
+            <xs:complexType>
+               <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+            </xs:complexType>
+         </xs:element>
+      </xs:sequence>
       <xs:attribute name="party-uuid" use="required" type="UUIDDatatype">
          <xs:annotation>
             <xs:appinfo>
@@ -8894,6 +9028,21 @@
                   <xs:documentation>
                      <b>Related Finding</b>: Relates the poam-item to referenced finding(s).</xs:documentation>
                </xs:annotation>
+               <xs:sequence>
+                  <xs:element name="remarks" minOccurs="0" maxOccurs="1">
+                     <xs:annotation>
+                        <xs:appinfo>
+                           <m:formal-name>Remarks</m:formal-name>
+                           <m:description>Additional commentary about the containing object.</m:description>
+                        </xs:appinfo>
+                        <xs:documentation>
+                           <b>Remarks</b>: Additional commentary about the containing object.</xs:documentation>
+                     </xs:annotation>
+                     <xs:complexType>
+                        <xs:group ref="blockElementGroup" maxOccurs="unbounded" minOccurs="0"/>
+                     </xs:complexType>
+                  </xs:element>
+               </xs:sequence>
                <xs:attribute name="finding-uuid" use="required" type="UUIDDatatype">
                   <xs:annotation>
                      <xs:appinfo>
@@ -8906,50 +9055,14 @@
                </xs:attribute>
             </xs:complexType>
          </xs:element>
-         <xs:element name="related-observation" minOccurs="0" maxOccurs="unbounded">
-            <xs:complexType>
-               <xs:annotation>
-                  <xs:appinfo>
-                     <m:formal-name>Related Observation</m:formal-name>
-                     <m:description>Relates the poam-item to a set of referenced observations that were used to determine the finding.</m:description>
-                  </xs:appinfo>
-                  <xs:documentation>
-                     <b>Related Observation</b>: Relates the poam-item to a set of referenced observations that were used to determine the finding.</xs:documentation>
-               </xs:annotation>
-               <xs:attribute name="observation-uuid" use="required" type="UUIDDatatype">
-                  <xs:annotation>
-                     <xs:appinfo>
-                        <m:formal-name>Observation Universally Unique Identifier Reference</m:formal-name>
-                        <m:description>A <a href="https://pages.nist.gov/OSCAL/concepts/identifier-use/#machine-oriented">machine-oriented</a> identifier reference to an observation defined in the list of observations.</m:description>
-                     </xs:appinfo>
-                     <xs:documentation>
-                        <b>Observation Universally Unique Identifier Reference</b>: A machine-oriented identifier reference to an observation defined in the list of observations.</xs:documentation>
-                  </xs:annotation>
-               </xs:attribute>
-            </xs:complexType>
-         </xs:element>
-         <xs:element name="associated-risk" minOccurs="0" maxOccurs="unbounded">
-            <xs:complexType>
-               <xs:annotation>
-                  <xs:appinfo>
-                     <m:formal-name>Associated Risk</m:formal-name>
-                     <m:description>Relates the finding to a set of referenced risks that were used to determine the finding.</m:description>
-                  </xs:appinfo>
-                  <xs:documentation>
-                     <b>Associated Risk</b>: Relates the finding to a set of referenced risks that were used to determine the finding.</xs:documentation>
-               </xs:annotation>
-               <xs:attribute name="risk-uuid" use="required" type="UUIDDatatype">
-                  <xs:annotation>
-                     <xs:appinfo>
-                        <m:formal-name>Risk Universally Unique Identifier Reference</m:formal-name>
-                        <m:description>A <a href="https://pages.nist.gov/OSCAL/concepts/identifier-use/#machine-oriented">machine-oriented</a> identifier reference to a risk defined in the list of risks.</m:description>
-                     </xs:appinfo>
-                     <xs:documentation>
-                        <b>Risk Universally Unique Identifier Reference</b>: A machine-oriented identifier reference to a risk defined in the list of risks.</xs:documentation>
-                  </xs:annotation>
-               </xs:attribute>
-            </xs:complexType>
-         </xs:element>
+         <xs:element name="related-observation"
+                      type="oscal-assessment-common-related-observation-ASSEMBLY"
+                      minOccurs="0"
+                      maxOccurs="unbounded"/>
+         <xs:element name="associated-risk"
+                      type="oscal-assessment-common-associated-risk-ASSEMBLY"
+                      minOccurs="0"
+                      maxOccurs="unbounded"/>
          <xs:element name="remarks" minOccurs="0" maxOccurs="1">
             <xs:annotation>
                <xs:appinfo>
