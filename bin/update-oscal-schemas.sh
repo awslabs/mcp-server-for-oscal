@@ -24,13 +24,13 @@
 # This ensures the script works regardless of where it's called from
 SCRIPT_DIR="$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-CURRENT_RELEASE_VERSION="1.2.0"
+CURRENT_RELEASE_VERSION="1.2.1"
 
 # Define the target directory where OSCAL schemas will be stored
 # This is where the MCP server will look for schema definitions
 SCHEMAS_DIR="$PROJECT_ROOT/src/mcp_server_for_oscal/oscal_schemas"
 
-# OSCAL release URL - points to official NIST OSCAL v1.1.3 release
+# OSCAL release URL - points to official NIST OSCAL release
 # Contains JSON schemas, XSD files, and other OSCAL model definitions
 OSCAL_RELEASE_URL="https://github.com/usnistgov/OSCAL/releases/download/v$CURRENT_RELEASE_VERSION/oscal-$CURRENT_RELEASE_VERSION.zip"
 

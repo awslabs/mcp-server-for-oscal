@@ -74,7 +74,7 @@ def _setup_tools() -> None:
         return {
             "version": meta.get("version"),
             "keywords": meta.get("keywords"),
-            "oscal-version": "1.2.0", #TODO: this shouldn't be hard coded
+            "oscal-version": "1.2.1", #TODO: this shouldn't be hard coded
         }
 
 def main():
