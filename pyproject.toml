@@ -11,7 +11,7 @@ dependencies = [
   "boto3>=1.42.7",
   "mcp>=1.23.3",
   "strands-agents>=1.19.0",
-  "compliance-trestle>=3.12.0",
+  "compliance-trestle>=4.0.1",
   "regex>=2024.0.0",
 ]
 requires-python = ">=3.11"
@@ -162,6 +162,11 @@ bandito = [
   "mkdir -p private/docs/bandit",
   "bandit -r src/mcp_server_for_oscal | tee private/docs/bandit/src.txt",
   "bandit -s B101 -r tests | tee private/docs/bandit/tests.txt",
+]
+
+checkout-oscal-steering = [
+  "git submodule update --init --depth 1 conf/powers/oscal/steering/oscal-pages",
+  "cd conf/powers/oscal/steering/oscal-pages && git sparse-checkout set --no-cone && git sparse-checkout set src/content/learn/concepts"
 ]
 
 tests = ["typing", "hatch test --all --cover --junitxml private/docs/pytest.xml", "hatch run bandito"]
