@@ -182,3 +182,39 @@ def verify_package_integrity(directory: Path) -> None:
                 )
                 raise
             logger.debug("Hash for file %s matches", fn.name)
+
+
+def paginate(
+    items: list[dict],
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """Slice a list into a single page and return a Page_Response envelope.
+
+    Args:
+        items: The full, ordered list of result dicts.
+        offset: Zero-based index of the first item to return.
+        limit: Maximum number of items to return (1-100).
+
+    Returns:
+        dict with keys: items, total, offset, limit, hasMore.
+
+    Raises:
+        ValueError: If offset < 0 or limit < 1 or limit > 100.
+    """
+    if offset < 0:
+        raise ValueError(f"offset must be non-negative, got {offset}")
+    if limit < 1 or limit > 100:
+        raise ValueError(f"limit must be between 1 and 100, got {limit}")
+
+    total = len(items)
+    sliced = items[offset : offset + limit]
+    has_more = offset + limit < total
+
+    return {
+        "items": sliced,
+        "total": total,
+        "offset": offset,
+        "limit": limit,
+        "hasMore": has_more,
+    }
