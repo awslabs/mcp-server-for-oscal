@@ -94,20 +94,20 @@ class TestServerJsonPackages:
         ]
         assert len(pypi_entries) >= 1
 
-    def test_pypi_package_name(self, server_data):
+    def test_pypi_package_identifier(self, server_data):
         pypi_entry = next(
             p for p in server_data["packages"]
             if p.get("registryType") == "pypi"
         )
-        assert pypi_entry["name"] == "mcp-server-for-oscal"
+        assert pypi_entry["identifier"] == "mcp-server-for-oscal"
 
     def test_pypi_package_has_stdio_transport(self, server_data):
         pypi_entry = next(
             p for p in server_data["packages"]
             if p.get("registryType") == "pypi"
         )
-        transport_types = [t["type"] for t in pypi_entry["transport"]]
-        assert "stdio" in transport_types
+        transport = pypi_entry["transport"]
+        assert transport["type"] == "stdio"
 
 
 class TestServerJsonEnvironmentVariables:
