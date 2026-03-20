@@ -1,3 +1,4 @@
+<!-- mcp-name: io.github.awslabs/mcp-server-for-oscal -->
 <div align="center">
 
 ![Build Status](https://github.com/awslabs/mcp-server-for-oscal/workflows/CI/badge.svg)
