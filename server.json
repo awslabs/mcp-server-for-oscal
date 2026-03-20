@@ -1,0 +1,46 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.awslabs/mcp-server-for-oscal",
+  "title": "MCP Server for OSCAL",
+  "description": "AI agent tools for Open Security Controls Assessment Language (OSCAL)",
+  "version": "0.0.0",
+  "repository": {
+    "url": "https://github.com/awslabs/mcp-server-for-oscal",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "mcp-server-for-oscal",
+      "version": "0.0.0",
+      "transport": { "type": "stdio" },
+      "environmentVariables": [
+        {
+          "name": "BEDROCK_MODEL_ID",
+          "description": "AWS Bedrock model ID for OSCAL documentation queries",
+          "required": false
+        },
+        {
+          "name": "OSCAL_KB_ID",
+          "description": "AWS Bedrock Knowledge Base ID for OSCAL documentation",
+          "required": false
+        },
+        {
+          "name": "AWS_PROFILE",
+          "description": "AWS CLI profile name for credential resolution",
+          "required": false
+        },
+        {
+          "name": "AWS_REGION",
+          "description": "AWS region for Bedrock API calls",
+          "required": false
+        },
+        {
+          "name": "LOG_LEVEL",
+          "description": "Logging verbosity level (DEBUG, INFO, WARNING, ERROR)",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

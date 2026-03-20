@@ -36,3 +36,52 @@ jobs:
             # uncomment for testing
             # with:
             #     repository-url: https://test.pypi.org/legacy/
+
+    mcp-registry-publish:
+
+        name: Publish to MCP Registry
+        runs-on: ubuntu-latest
+        needs: [pypi-publish]
+
+        permissions:
+            id-token: write  # Required for GitHub OIDC authentication with MCP Registry
+            contents: read
+
+        steps:
+        -   name: Check out the repository
+            uses: actions/checkout@v4
+
+        -   name: Set up Node.js
+            uses: actions/setup-node@v4
+            with:
+                node-version: '20'
+
+        -   name: Extract version from release tag
+            id: version
+            run: |
+                TAG="${{ github.event.release.tag_name }}"
+                VERSION="${TAG#v}"
+                echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+                echo "Extracted version: ${VERSION}"
+
+        -   name: Update server.json version fields
+            run: |
+                VERSION="${{ steps.version.outputs.version }}"
+                jq --arg v "$VERSION" '.version = $v | .packages[].version = $v' server.json > server.tmp.json
+                mv server.tmp.json server.json
+
+        -   name: Validate server.json version update
+            run: |
+                VERSION="${{ steps.version.outputs.version }}"
+                TOP_VERSION=$(jq -r '.version' server.json)
+                PKG_VERSION=$(jq -r '.packages[0].version' server.json)
+                if [ "$TOP_VERSION" != "$VERSION" ] || [ "$PKG_VERSION" != "$VERSION" ]; then
+                    echo "::error::Version mismatch: expected ${VERSION}, got top-level=${TOP_VERSION}, package=${PKG_VERSION}"
+                    exit 1
+                fi
+                echo "server.json version fields updated to ${VERSION}"
+                cat server.json
+
+        -   name: Publish to MCP Registry
+            continue-on-error: true
+            run: npx -y @anthropic-ai/mcp-publisher publish
