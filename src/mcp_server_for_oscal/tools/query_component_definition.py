@@ -22,7 +22,7 @@ from strands import tool
 from trestle.oscal.component import Capability, ComponentDefinition, DefinedComponent
 
 from mcp_server_for_oscal.config import config
-from mcp_server_for_oscal.tools.utils import safe_log_mcp, try_notify_client_error
+from mcp_server_for_oscal.tools.utils import paginate, safe_log_mcp, try_notify_client_error
 
 logger = logging.getLogger(__name__)
 logger.setLevel(config.log_level)
@@ -673,8 +673,10 @@ def query_component_definition(
 
 
 @tool()
-def list_component_definitions(ctx: Context) -> list[dict]:
-    """List all loaded Component Definitions with summary metadata.
+def list_component_definitions(
+    ctx: Context, offset: int = 0, limit: int = 10
+) -> dict:
+    """List loaded Component Definitions with summary metadata.
 
     A Component Definition is the top-level OSCAL document that contains
     Capabilities and Components. Use this tool to discover available
@@ -683,18 +685,24 @@ def list_component_definitions(ctx: Context) -> list[dict]:
 
     Args:
         ctx: MCP server context (injected automatically by MCP server)
+        offset: Zero-based index of the first item to return (default 0).
+        limit: Maximum number of items to return, 1-100 (default 10).
 
     Returns:
-        list[dict]: One entry per Component Definition with keys:
+        dict: Page_Response with keys ``items``, ``total``, ``offset``,
+            ``limit``, ``hasMore``. Each item in ``items`` has keys:
             uuid, title, componentCount, importedComponentDefinitionsCount,
             sizeInBytes.
     """
-    return _store.list_component_definitions(ctx)
+    items = _store.list_component_definitions(ctx)
+    return paginate(items, offset, limit)
 
 
 @tool()
-def list_components(ctx: Context) -> list[dict]:
-    """List all loaded Components with summary metadata.
+def list_components(
+    ctx: Context, offset: int = 0, limit: int = 10
+) -> dict:
+    """List loaded Components with summary metadata.
 
     Components are leaf-level elements within a Component Definition that
     represent individual services, software, regions, or similar items.
@@ -704,35 +712,45 @@ def list_components(ctx: Context) -> list[dict]:
 
     Args:
         ctx: MCP server context (injected automatically by MCP server)
+        offset: Zero-based index of the first item to return (default 0).
+        limit: Maximum number of items to return, 1-100 (default 10).
 
     Returns:
-        list[dict]: One entry per Component with keys:
+        dict: Page_Response with keys ``items``, ``total``, ``offset``,
+            ``limit``, ``hasMore``. Each item in ``items`` has keys:
             uuid, title, parentComponentDefinitionTitle,
             parentComponentDefinitionUuid, sizeInBytes.
     """
-    return _store.list_components(ctx)
+    items = _store.list_components(ctx)
+    return paginate(items, offset, limit)
 
 @tool()
-def list_capabilities(ctx: Context) -> list[dict]:
-    """List all loaded Capabilities with summary metadata.
+def list_capabilities(
+    ctx: Context, offset: int = 0, limit: int = 10
+) -> dict:
+    """List loaded Capabilities with summary metadata.
 
-    Capabilities sit above Components but are optional in the OSCAL hierarchy. 
+    Capabilities sit above Components but are optional in the OSCAL hierarchy.
     Each Capability groups related Components and describes a collection
-    or higher-level offering. Start here when exploring what a Component Definition
-    provides — then drill into individual Components as needed.
+    or higher-level offering. Start here when exploring what a Component
+    Definition provides — then drill into individual Components as needed.
 
     Use the returned UUIDs or names as query_value in
     query_component_definition() to retrieve full Capability details.
 
     Args:
         ctx: MCP server context (injected automatically by MCP server)
+        offset: Zero-based index of the first item to return (default 0).
+        limit: Maximum number of items to return, 1-100 (default 10).
 
     Returns:
-        list[dict]: One entry per Capability with keys:
+        dict: Page_Response with keys ``items``, ``total``, ``offset``,
+            ``limit``, ``hasMore``. Each item in ``items`` has keys:
             uuid, name, parentComponentDefinitionTitle,
             parentComponentDefinitionUuid, sizeInBytes.
     """
-    return _store.list_capabilities(ctx)
+    items = _store.list_capabilities(ctx)
+    return paginate(items, offset, limit)
 
 @tool()
 def get_capability(ctx: Context, uuid: str) -> dict | None:

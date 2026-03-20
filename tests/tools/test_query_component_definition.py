@@ -668,11 +668,17 @@ class TestListMethods:
 
     def test_list_component_definitions(self, mock_context, setup_store):
         result = list_component_definitions(mock_context)
-        assert len(result) == 1
-        assert result[0]["title"] == "Sample Component Definition"
-        assert "uuid" in result[0]
-        assert "componentCount" in result[0]
-        assert "sizeInBytes" in result[0]
+        assert isinstance(result, dict)
+        assert set(result.keys()) == {"items", "total", "offset", "limit", "hasMore"}
+        assert result["total"] == 1
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
+        assert len(result["items"]) == 1
+        assert result["items"][0]["title"] == "Sample Component Definition"
+        assert "uuid" in result["items"][0]
+        assert "componentCount" in result["items"][0]
+        assert "sizeInBytes" in result["items"][0]
 
     def test_list_component_definitions_empty(self, mock_context):
         _store._reset()
@@ -681,9 +687,15 @@ class TestListMethods:
 
     def test_list_components(self, mock_context, setup_store):
         result = list_components(mock_context)
-        assert len(result) == 1
-        assert result[0]["title"] == "Sample Component"
-        assert "parentComponentDefinitionTitle" in result[0]
+        assert isinstance(result, dict)
+        assert set(result.keys()) == {"items", "total", "offset", "limit", "hasMore"}
+        assert result["total"] == 1
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
+        assert len(result["items"]) == 1
+        assert result["items"][0]["title"] == "Sample Component"
+        assert "parentComponentDefinitionTitle" in result["items"][0]
 
     def test_list_components_empty(self, mock_context):
         _store._reset()
@@ -693,7 +705,12 @@ class TestListMethods:
     def test_list_capabilities_empty(self, mock_context):
         _store._reset()
         result = list_capabilities(mock_context)
-        assert result == []
+        assert isinstance(result, dict)
+        assert result["items"] == []
+        assert result["total"] == 0
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_list_capabilities_with_data(self, mock_context, tmp_path, monkeypatch):
         _store._reset()
@@ -712,9 +729,94 @@ class TestListMethods:
         _store.load_from_directory(comp_defs_dir)
 
         result = list_capabilities(mock_context)
-        assert len(result) == 1
-        assert result[0]["name"] == "Test Capability"
-        assert "parentComponentDefinitionTitle" in result[0]
+        assert isinstance(result, dict)
+        assert set(result.keys()) == {"items", "total", "offset", "limit", "hasMore"}
+        assert result["total"] == 1
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
+        assert len(result["items"]) == 1
+        assert result["items"][0]["name"] == "Test Capability"
+        assert "parentComponentDefinitionTitle" in result["items"][0]
+
+
+class TestDefaultPaginationParameters:
+    """Verify each wrapper returns offset=0, limit=10 when called without explicit params."""
+
+    @pytest.fixture
+    def mock_context(self):
+        ctx = AsyncMock()
+        ctx.log = AsyncMock()
+        return ctx
+
+    @pytest.fixture
+    def sample_component_def_data(self):
+        sample_path = (
+            Path(__file__).parent.parent
+            / "fixtures"
+            / "sample_component_definition.json"
+        )
+        with open(sample_path) as f:
+            return json.load(f)
+
+    @pytest.fixture
+    def setup_store(self, tmp_path, sample_component_def_data, monkeypatch):
+        _store._reset()
+        comp_defs_dir = tmp_path / "component_definitions"
+        comp_defs_dir.mkdir()
+        with open(comp_defs_dir / "sample.json", "w") as f:
+            json.dump(sample_component_def_data, f)
+
+        from mcp_server_for_oscal import config as config_module
+
+        monkeypatch.setattr(
+            config_module.config,
+            "component_definitions_dir",
+            str(comp_defs_dir),
+        )
+        _store.load_from_directory(comp_defs_dir)
+
+    def test_list_component_definitions_default_pagination(
+        self, mock_context, setup_store
+    ):
+        result = list_component_definitions(mock_context)
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+
+    def test_list_components_default_pagination(
+        self, mock_context, setup_store
+    ):
+        result = list_components(mock_context)
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+
+    def test_list_capabilities_default_pagination(
+        self, mock_context, tmp_path, monkeypatch
+    ):
+        _store._reset()
+        cap_path = (
+            Path(__file__).parent.parent
+            / "fixtures"
+            / "sample_component_definition_with_capabilities.json"
+        )
+        comp_defs_dir = tmp_path / "component_definitions"
+        comp_defs_dir.mkdir()
+        import shutil
+
+        shutil.copy(cap_path, comp_defs_dir / "cap.json")
+
+        from mcp_server_for_oscal import config as config_module
+
+        monkeypatch.setattr(
+            config_module.config,
+            "component_definitions_dir",
+            str(comp_defs_dir),
+        )
+        _store.load_from_directory(comp_defs_dir)
+
+        result = list_capabilities(mock_context)
+        assert result["offset"] == 0
+        assert result["limit"] == 10
 
 
 class TestGetCapability:
