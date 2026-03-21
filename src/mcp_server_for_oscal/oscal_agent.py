@@ -246,13 +246,25 @@ def main() -> None:
         type=int,
         help="Maximum tokens for agent responses",
     )
+    parser.add_argument(
+        "--query",
+        type=str,
+        help="Run a single query and exit (non-interactive mode)",
+    )
     args = parser.parse_args()
+
+    # In single-query mode, suppress all logs except errors
+    # so only the agent response goes to stdout.
+    if args.query:
+        log_level = "ERROR"
+    else:
+        log_level = args.log_level
 
     # Update configuration with CLI arguments
     config.update_from_args(
         bedrock_model_id=args.bedrock_model_id,
         knowledge_base_id=args.knowledge_base_id,
-        log_level=args.log_level,
+        log_level=log_level,
     )
     if args.max_tokens is not None:
         config.agent_max_tokens = args.max_tokens
@@ -265,7 +277,7 @@ def main() -> None:
         logging.getLogger(__package__ + ".*").setLevel(config.log_level)
         logging.getLogger(__name__).setLevel(config.log_level)
     except ValueError:
-        logger.warning("Failed to set log level to: %s", args.log_level)
+        logger.warning("Failed to set log level to: %s", log_level)
 
     # Verify bundled content integrity
     try:
@@ -294,6 +306,12 @@ def main() -> None:
     except ValueError as err:
         logger.exception("Failed to create OSCAL agent")
         raise SystemExit(1) from err
+
+    # Single-query mode: run one query and exit
+    if args.query:
+        response = agent(args.query)
+        print(response)  # noqa: T201
+        return
 
     # Interactive stdin/stdout loop
     logger.info("OSCAL Agent ready. Type your questions below.")
