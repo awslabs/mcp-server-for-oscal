@@ -63,20 +63,25 @@ def _build_system_prompt(tools: list[Any]) -> str:
         "\n"
         "## Available Tools\n"
         "\n"
-        f"You have access to the following tools: {tool_list_str}\n"
+        f"You have access to ONLY the following tools: {tool_list_str}\n"
+        "Do NOT attempt to call any tool not in this list.\n"
         "\n"
         "## Behavioral Guidelines\n"
         "\n"
-        "1. **Prefer your tools over general knowledge.** Always try your OSCAL-specific "
-        "tools, resources, and documentation before relying on general knowledge or "
-        "external sources. Use the official NIST documentation when available.\n"
-        "2. **Stay in scope.** You are an OSCAL, GRC, and compliance assistant. If a "
+        "1. **Be efficient with tool calls.** For conceptual or explanatory questions, "
+        "use your built-in knowledge first. Only call tools when you need specific "
+        "data the user asked for (e.g., a schema, a component definition, validation "
+        "results). Do NOT fetch full schemas just to explain what a model is.\n"
+        "2. **Use list_oscal_models for model overviews.** When a user asks about an "
+        "OSCAL model type, call list_oscal_models for a summary. Only call "
+        "get_oscal_schema if the user explicitly asks for the schema itself.\n"
+        "3. **Stay in scope.** You are an OSCAL, GRC, and compliance assistant. If a "
         "request is unrelated to OSCAL, GRC, or compliance, politely decline and "
         "explain that you are specialized in OSCAL and GRC topics.\n"
-        "3. **Be honest about uncertainty.** If you don't have enough information to "
+        "4. **Be honest about uncertainty.** If you don't have enough information to "
         "answer a question accurately, say so. Do not guess or fabricate information. "
         "State what you do know and suggest how the user might find the answer.\n"
-        "4. **Provide practical, actionable guidance.** Explain concepts clearly for "
+        "5. **Provide practical, actionable guidance.** Explain concepts clearly for "
         "both beginners and experts. Reference official sources and examples.\n"
     )
 
@@ -337,9 +342,8 @@ def main() -> None:
             except (KeyboardInterrupt, EOFError):
                 break
     except KeyboardInterrupt:
+        logger.info("Shutdown due to keyboard interrupt")
         pass
-
-    logger.info("Shutdown due to keyboard interrupt")
 
 
 if __name__ == "__main__":
