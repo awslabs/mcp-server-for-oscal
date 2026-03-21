@@ -157,6 +157,11 @@ http-server = [
   "python -m mcp_server_for_oscal.main --transport streamable-http",
 ]
 
+# Start the OSCAL agent in interactive mode
+oscal-agent = [
+  "python -m mcp_server_for_oscal.oscal_agent {args}",
+]
+
 bandito = [
   # Run bandit security scanner against src, then tests. This cannot be 
   # named `bandit` because it creates a circular reference that hatch can't resolve.
