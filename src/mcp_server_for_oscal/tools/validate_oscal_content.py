@@ -250,7 +250,7 @@ def _validate_oscal_cli(content: str, model_type: OSCALModelType) -> dict:
 def validate_oscal_file(
     file_uri: str,
     model_type: str | None = None,
-    ctx: Context = None,
+    ctx: Context | None = None,
 ) -> dict:
     """
     Validate OSCAL JSON file through a multi-level validation pipeline.
@@ -283,7 +283,7 @@ def validate_oscal_file(
 
         try:
             with open(lf) as oftv:
-                return validate_oscal_content(ctx, oftv.read(), model_type)
+                return validate_oscal_content(oftv.read(), model_type, ctx=ctx)
         except Exception as e:
             logger.exception("OSCAL validation error.")
             raise
@@ -301,7 +301,7 @@ def validate_oscal_file(
     try:
         response = requests.get(file_uri, timeout=config.request_timeout)
         response.raise_for_status()
-        return validate_oscal_content(ctx, response.text, model_type)
+        return validate_oscal_content(response.text, model_type, ctx=ctx)
     except requests.Timeout as e:
         msg = f"Request timeout while fetching remote URI (timeout={config.request_timeout}s): {file_uri}"
         logger.exception(msg)
@@ -318,7 +318,7 @@ def validate_oscal_file(
 def validate_oscal_content(
     content: str,
     model_type: str | None = None,
-    ctx: Context = None,
+    ctx: Context | None = None,
 ) -> dict:
     """
     Validate OSCAL JSON content through a multi-level validation pipeline.

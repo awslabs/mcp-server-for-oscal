@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 @tool
 def get_oscal_schema(
-    ctx: Context = None, model_name: str = "complete", schema_type: str = "json"
+    ctx: Context | None = None, model_name: str = "complete", schema_type: str = "json"
 ) -> str:
     """
     A tool that returns the schema for specified OSCAL model. Try this tool first for any questions about the structure of OSCAL models.
@@ -40,7 +40,7 @@ def get_oscal_schema(
         "get_oscal_model_schema(model_name: %s, syntax: %s, session client params: %s)",
         model_name,
         schema_type,
-        ctx.session.client_params,
+        ctx.session.client_params if ctx else None,
     )
 
     if schema_type not in ["json", "xsd"]:

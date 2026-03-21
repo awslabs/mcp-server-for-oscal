@@ -64,12 +64,12 @@ def load_oscal_json_schema(model_type: OSCALModelType) -> dict:
         return json.load(f)
 
 
-def try_notify_client_error(msg: str, ctx: Context) -> None:
+def try_notify_client_error(msg: str, ctx: Context | None) -> None:
     safe_log_mcp(msg, ctx, "error")
 
 
 def safe_log_mcp(
-    msg: str, ctx: Context, level: Literal["debug", "info", "warning", "error"]
+    msg: str, ctx: Context | None, level: Literal["debug", "info", "warning", "error"]
 ) -> None:
     if not ctx or not msg:
         return
