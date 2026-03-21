@@ -49,6 +49,12 @@ class Config:
         # Component Definition directory configuration
         self.component_definitions_dir: str = os.getenv("OSCAL_COMPONENT_DEFINITIONS_DIR", "component_definitions")
 
+        # Agent configuration
+        self.agent_max_tokens: int = int(os.getenv("OSCAL_AGENT_MAX_TOKENS", "4096"))
+        self.agent_max_retry_attempts: int = int(os.getenv("OSCAL_AGENT_MAX_RETRY_ATTEMPTS", "4"))
+        self.agent_retry_initial_delay: int = int(os.getenv("OSCAL_AGENT_RETRY_INITIAL_DELAY", "2"))
+        self.agent_retry_max_delay: int = int(os.getenv("OSCAL_AGENT_RETRY_MAX_DELAY", "60"))
+
     def update_from_args(
         self,
         bedrock_model_id: str | None = None,
