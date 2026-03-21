@@ -142,11 +142,16 @@ class AgentObservabilityHook(HookProvider):
             self._logger.debug("Invocation complete")
 
 
-def create_oscal_agent(tools: list[Any] | None = None) -> Agent:
+def create_oscal_agent(
+    tools: list[Any] | None = None,
+    callback_handler: Any = "default",
+) -> Agent:
     """Create a production-ready OSCAL Strands agent.
 
     Args:
         tools: Optional list of tool functions. Defaults to get_tool_list().
+        callback_handler: Callback handler for streaming output. Pass None
+            to suppress all streaming output. Defaults to the SDK default.
 
     Returns:
         Configured Agent instance.
@@ -194,13 +199,17 @@ def create_oscal_agent(tools: list[Any] | None = None) -> Agent:
     system_prompt = _build_system_prompt(tools)
 
     # Create the agent
-    agent = Agent(
-        model=model,
-        tools=list(tools),
-        system_prompt=system_prompt,
-        retry_strategy=retry_strategy,
-        hooks=[AgentObservabilityHook()],
-    )
+    agent_kwargs: dict[str, Any] = {
+        "model": model,
+        "tools": list(tools),
+        "system_prompt": system_prompt,
+        "retry_strategy": retry_strategy,
+        "hooks": [AgentObservabilityHook()],
+    }
+    if callback_handler != "default":
+        agent_kwargs["callback_handler"] = callback_handler
+
+    agent = Agent(**agent_kwargs)
 
     logger.info(
         "OSCAL agent created: model_id=%s, region=%s, tools=%d, retry_enabled=True",
@@ -273,8 +282,8 @@ def main() -> None:
     try:
         logging.basicConfig(level=config.log_level)
         logging.getLogger("strands").setLevel(config.log_level)
-        logging.getLogger("trestle.*").setLevel(config.log_level)
-        logging.getLogger(__package__ + ".*").setLevel(config.log_level)
+        logging.getLogger("trestle").setLevel(config.log_level)
+        logging.getLogger(__package__).setLevel(config.log_level)
         logging.getLogger(__name__).setLevel(config.log_level)
     except ValueError:
         logger.warning("Failed to set log level to: %s", log_level)
@@ -302,7 +311,9 @@ def main() -> None:
 
     # Create agent
     try:
-        agent = create_oscal_agent()
+        agent = create_oscal_agent(
+            callback_handler=None if args.query else "default",
+        )
     except ValueError as err:
         logger.exception("Failed to create OSCAL agent")
         raise SystemExit(1) from err
