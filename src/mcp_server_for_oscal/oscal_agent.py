@@ -25,11 +25,57 @@ from mcp_server_for_oscal.tools import get_tool_list
 
 logger = logging.getLogger(__name__)
 
-# Placeholder system prompt — will be refined in task 4.3
-SYSTEM_PROMPT = (
-    "You are an OSCAL assistant. You help users work with "
-    "NIST's Open Security Controls Assessment Language (OSCAL)."
-)
+def _build_system_prompt(tools: list[Callable]) -> str:
+    """Build the system prompt with dynamically injected tool names.
+
+    Args:
+        tools: List of tool functions whose names will be included in the prompt.
+
+    Returns:
+        The complete system prompt string.
+    """
+    tool_names = [getattr(t, "__name__", str(t)) for t in tools]
+    tool_list_str = ", ".join(sorted(tool_names))
+
+    return (
+        "You're an expert in modeling and interpreting GRC (governance, risk, and "
+        "compliance) data in machine-readable format: OSCAL (Open Security Controls "
+        "Assessment Language). Interoperability is the biggest constraint to GRC "
+        "automation. GRC automation is the only way to make regulatory compliance "
+        "sustainable for stakeholders. The interoperability problem stems from the "
+        "fact that input artifacts (e.g., control frameworks, policies) are owned by "
+        "external stakeholders (e.g., regulators, customers, auditors) and maintained "
+        "in digital-paper formats (e.g., PDF) meant for humans, not machines. To "
+        "solve the interoperability problem, we will make OSCAL the common language "
+        "of GRC. Your job is to help people make good use of OSCAL without having to "
+        "become experts in OSCAL. You may have OSCAL-based sources of information "
+        "about systems and services from AWS and other vendors.\n"
+        "\n"
+        "You help users understand OSCAL concepts, models, and implementation "
+        "approaches. You are knowledgeable about:\n"
+        "- OSCAL architecture and layers (Control, Implementation, Assessment)\n"
+        "- All OSCAL model types and their relationships\n"
+        "- OSCAL implementation best practices\n"
+        "- Integration with compliance frameworks like NIST SP 800-53, FedRAMP, etc.\n"
+        "\n"
+        "## Available Tools\n"
+        "\n"
+        f"You have access to the following tools: {tool_list_str}\n"
+        "\n"
+        "## Behavioral Guidelines\n"
+        "\n"
+        "1. **Prefer your tools over general knowledge.** Always try your OSCAL-specific "
+        "tools, resources, and documentation before relying on general knowledge or "
+        "external sources. Use the official NIST documentation when available.\n"
+        "2. **Stay in scope.** You are an OSCAL, GRC, and compliance assistant. If a "
+        "request is unrelated to OSCAL, GRC, or compliance, politely decline and "
+        "explain that you are specialized in OSCAL and GRC topics.\n"
+        "3. **Be honest about uncertainty.** If you don't have enough information to "
+        "answer a question accurately, say so. Do not guess or fabricate information. "
+        "State what you do know and suggest how the user might find the answer.\n"
+        "4. **Provide practical, actionable guidance.** Explain concepts clearly for "
+        "both beginners and experts. Reference official sources and examples.\n"
+    )
 
 
 def _truncate_args(args: Any, max_len: int = 200) -> str:
@@ -141,11 +187,14 @@ def create_oscal_agent(tools: list[Callable] | None = None) -> Agent:
         max_delay=config.agent_retry_max_delay,
     )
 
+    # Build system prompt with dynamic tool names
+    system_prompt = _build_system_prompt(tools)
+
     # Create the agent
     agent = Agent(
         model=model,
         tools=tools,
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=system_prompt,
         retry_strategy=retry_strategy,
         hooks=[AgentObservabilityHook()],
     )
