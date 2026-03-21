@@ -28,7 +28,7 @@ from mcp_server_for_oscal.tools.utils import verify_package_integrity
 
 logger = logging.getLogger(__name__)
 
-def _build_system_prompt(tools: list[Callable]) -> str:
+def _build_system_prompt(tools: list[Any]) -> str:
     """Build the system prompt with dynamically injected tool names.
 
     Args:
@@ -142,7 +142,7 @@ class AgentObservabilityHook(HookProvider):
             self._logger.debug("Invocation complete")
 
 
-def create_oscal_agent(tools: list[Callable] | None = None) -> Agent:
+def create_oscal_agent(tools: list[Any] | None = None) -> Agent:
     """Create a production-ready OSCAL Strands agent.
 
     Args:
@@ -196,7 +196,7 @@ def create_oscal_agent(tools: list[Callable] | None = None) -> Agent:
     # Create the agent
     agent = Agent(
         model=model,
-        tools=tools,
+        tools=list(tools),
         system_prompt=system_prompt,
         retry_strategy=retry_strategy,
         hooks=[AgentObservabilityHook()],
