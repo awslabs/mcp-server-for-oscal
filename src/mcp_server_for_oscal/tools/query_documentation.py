@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def query_oscal_documentation(query: str, ctx: Context) -> Any:
+def query_oscal_documentation(query: str, ctx: Context | None = None) -> Any:
     """
     A tool to query OSCAL-related documentation. Use this tool when a question about OSCAL cannot be answered just by analyzing model schemas. In case the question is about an explicit property of an OSCAL model, try to find the answer using the get_schema tool first.
 
@@ -35,7 +35,7 @@ def query_oscal_documentation(query: str, ctx: Context) -> Any:
     return query_kb(query, ctx)
 
 
-def query_kb(query: str, ctx: Context) -> Any:
+def query_kb(query: str, ctx: Context | None) -> Any:
     """Query Amazon Bedrock Knowledgebase using Boto SDK."""
     try:
         # Initialize boto session with the configured profile
@@ -64,7 +64,7 @@ def query_kb(query: str, ctx: Context) -> Any:
         raise
 
 
-def query_local(query: str, ctx: Context) -> Any:
+def query_local(query: str, ctx: Context | None) -> Any:
     msg = "Not yet implemented"
     logger.error(msg)
     if ctx is not None:

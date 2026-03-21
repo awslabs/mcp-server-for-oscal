@@ -69,7 +69,7 @@ class ComponentDefinitionStore:
     # Loading
     # ------------------------------------------------------------------
 
-    def load_external_component_definition(self, source: str, ctx: Context) -> None:
+    def load_external_component_definition(self, source: str, ctx: Context | None) -> None:
         """
         Load and validate an OSCAL Component Definition from a URI.
 
@@ -311,7 +311,7 @@ class ComponentDefinitionStore:
 
     def query(
         self,
-        ctx: Context,
+        ctx: Context | None,
         component_definition_filter: str | None = None,
         query_type: Literal["all", "by_uuid", "by_title", "by_type"] = "all",
         query_value: str | None = None,
@@ -426,7 +426,7 @@ class ComponentDefinitionStore:
             "filtered_by": component_definition_filter,
         }
 
-    def list_component_definitions(self, ctx: Context) -> list[dict]:
+    def list_component_definitions(self, ctx: Context | None) -> list[dict]:
         """Return summary info for every loaded Component Definition."""
         if not self._cdefs_by_title:
             msg = "No Component Definitions loaded"
@@ -446,7 +446,7 @@ class ComponentDefinitionStore:
             })
         return rv
 
-    def list_components(self, ctx: Context) -> list[dict]:
+    def list_components(self, ctx: Context | None) -> list[dict]:
         """Return summary info for every loaded Component."""
         if not self._components_by_title:
             msg = "No Components loaded"
@@ -465,7 +465,7 @@ class ComponentDefinitionStore:
             })
         return rv
 
-    def list_capabilities(self, ctx: Context) -> list[dict]:
+    def list_capabilities(self, ctx: Context | None) -> list[dict]:
         # no errors in case there are no capabilities, as they are not required
         rv = []
         for cap in self._capabilities_by_uuid.values():
@@ -484,7 +484,7 @@ class ComponentDefinitionStore:
     # ------------------------------------------------------------------
 
     def _resolve_comp_defs(
-        self, filter_value: str | None, ctx: Context,
+        self, filter_value: str | None, ctx: Context | None,
     ) -> list[ComponentDefinition]:
         """Resolve which ComponentDefinitions to search based on an optional filter."""
         if not filter_value:
@@ -525,7 +525,7 @@ class ComponentDefinitionStore:
         query_value: str | None,
         by_uuid: dict[str, DefinedComponent],
         by_title: dict[str, DefinedComponent],
-        ctx: Context,
+        ctx: Context | None,
     ) -> list[DefinedComponent]:
         """Select components based on query_type and query_value."""
         if query_type == "all":
@@ -599,7 +599,7 @@ _load_component_definitions_from_directory = _store.load_from_directory
 
 @tool()
 def query_component_definition(
-    ctx: Context,
+    ctx: Context | None = None,
     component_definition_filter: str | None = None,
     query_type: Literal["all", "by_uuid", "by_title", "by_type"] = "all",
     query_value: str | None = None,
@@ -673,7 +673,7 @@ def query_component_definition(
 
 @tool()
 def list_component_definitions(
-    ctx: Context, offset: int = 0, limit: int = 10
+    ctx: Context | None = None, offset: int = 0, limit: int = 10
 ) -> dict:
     """List loaded Component Definitions with summary metadata.
 
@@ -699,7 +699,7 @@ def list_component_definitions(
 
 @tool()
 def list_components(
-    ctx: Context, offset: int = 0, limit: int = 10
+    ctx: Context | None = None, offset: int = 0, limit: int = 10
 ) -> dict:
     """List loaded Components with summary metadata.
 
@@ -725,7 +725,7 @@ def list_components(
 
 @tool()
 def list_capabilities(
-    ctx: Context, offset: int = 0, limit: int = 10
+    ctx: Context | None = None, offset: int = 0, limit: int = 10
 ) -> dict:
     """List loaded Capabilities with summary metadata.
 
@@ -752,7 +752,7 @@ def list_capabilities(
     return paginate(items, offset, limit)
 
 @tool()
-def get_capability(ctx: Context, uuid: str) -> dict | None:
+def get_capability(ctx: Context | None = None, uuid: str = "") -> dict | None:
     """Retrieve a single Capability by UUID, returning its full OSCAL representation.
 
     A Capability groups related Components and may include control

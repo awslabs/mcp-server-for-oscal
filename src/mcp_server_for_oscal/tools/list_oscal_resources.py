@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def list_oscal_resources(ctx: Context) -> str:
+def list_oscal_resources(ctx: Context | None = None) -> str:
     """
     Retrieve a comprehensive directory of OSCAL community resources and tools.
 
