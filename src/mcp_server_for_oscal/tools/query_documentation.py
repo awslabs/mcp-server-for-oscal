@@ -13,7 +13,6 @@ from strands import tool
 from mcp_server_for_oscal.config import config
 
 logger = logging.getLogger(__name__)
-logger.setLevel(config.log_level)
 
 
 @tool

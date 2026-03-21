@@ -14,7 +14,6 @@ from mcp.server.fastmcp.server import Context
 from mcp_server_for_oscal.config import config
 
 logger = logging.getLogger(__name__)
-logger.setLevel(config.log_level)
 
 
 class OSCALModelType(StrEnum):
