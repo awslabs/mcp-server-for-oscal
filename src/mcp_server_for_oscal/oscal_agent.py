@@ -5,8 +5,10 @@ Provides a factory function to create a production-ready Strands agent
 configured with OSCAL-specific tools, retry strategy, and observability.
 """
 
+import argparse
 import logging
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import boto3
@@ -22,6 +24,7 @@ from strands.models import BedrockModel
 
 from mcp_server_for_oscal.config import config
 from mcp_server_for_oscal.tools import get_tool_list
+from mcp_server_for_oscal.tools.utils import verify_package_integrity
 
 logger = logging.getLogger(__name__)
 
@@ -207,3 +210,108 @@ def create_oscal_agent(tools: list[Callable] | None = None) -> Agent:
     )
 
     return agent
+
+
+def main() -> None:
+    """Standalone agent entry point.
+
+    Parses CLI args, configures logging, verifies integrity,
+    creates agent, runs interactive loop.
+    """
+    parser = argparse.ArgumentParser(description="OSCAL Agent")
+    parser.add_argument(
+        "--aws-profile",
+        type=str,
+        default=config.aws_profile,
+        help="AWS profile name to use for authentication",
+    )
+    parser.add_argument(
+        "--log-level",
+        type=str,
+        default=config.log_level,
+        help="Log level for the application (defaults to INFO)",
+    )
+    parser.add_argument(
+        "--bedrock-model-id",
+        type=str,
+        help="Bedrock model ID to use (overrides BEDROCK_MODEL_ID env var)",
+    )
+    parser.add_argument(
+        "--knowledge-base-id",
+        type=str,
+        help="Knowledge base ID to use (overrides OSCAL_KB_ID env var)",
+    )
+    parser.add_argument(
+        "--max-tokens",
+        type=int,
+        help="Maximum tokens for agent responses",
+    )
+    args = parser.parse_args()
+
+    # Update configuration with CLI arguments
+    config.update_from_args(
+        bedrock_model_id=args.bedrock_model_id,
+        knowledge_base_id=args.knowledge_base_id,
+        log_level=args.log_level,
+    )
+    if args.max_tokens is not None:
+        config.agent_max_tokens = args.max_tokens
+
+    # Configure logging (same pattern as main.py)
+    try:
+        logging.basicConfig(level=config.log_level)
+        logging.getLogger("strands").setLevel(config.log_level)
+        logging.getLogger("trestle.*").setLevel(config.log_level)
+        logging.getLogger(__package__ + ".*").setLevel(config.log_level)
+        logging.getLogger(__name__).setLevel(config.log_level)
+    except ValueError:
+        logger.warning("Failed to set log level to: %s", args.log_level)
+
+    # Verify bundled content integrity
+    try:
+        my_dir = Path(__file__).parent
+        verify_package_integrity(my_dir.joinpath("oscal_schemas"))
+        verify_package_integrity(my_dir.joinpath("oscal_docs"))
+
+        component_defs_dir = my_dir.joinpath(config.component_definitions_dir)
+        if component_defs_dir.exists():
+            verify_package_integrity(component_defs_dir)
+            logger.info(
+                "Component definitions directory verified: %s", component_defs_dir
+            )
+        else:
+            logger.info(
+                "Component definitions directory does not exist (optional): %s",
+                component_defs_dir,
+            )
+    except (RuntimeError, KeyError) as err:
+        logger.exception("Bundled context files may have been tampered with; exiting.")
+        raise SystemExit(2) from err
+
+    # Create agent
+    try:
+        agent = create_oscal_agent()
+    except ValueError as err:
+        logger.exception("Failed to create OSCAL agent")
+        raise SystemExit(1) from err
+
+    # Interactive stdin/stdout loop
+    logger.info("OSCAL Agent ready. Type your questions below.")
+    try:
+        while True:
+            try:
+                user_input = input("You: ")
+                if not user_input.strip():
+                    continue
+                response = agent(user_input)
+                print(f"\nAgent: {response}\n")  # noqa: T201
+            except (KeyboardInterrupt, EOFError):
+                break
+    except KeyboardInterrupt:
+        pass
+
+    logger.info("Shutdown due to keyboard interrupt")
+
+
+if __name__ == "__main__":
+    main()

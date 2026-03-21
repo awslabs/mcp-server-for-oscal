@@ -18,9 +18,6 @@ logger = logging.getLogger(__name__)
 
 meta = metadata(__package__)
 
-# Global variables (will be initialized in main)
-agent = None
-
 # Create MCP server using configuration
 mcp = FastMCP(
     config.server_name,
@@ -34,47 +31,17 @@ This server provides tools to support evaluation and implementation of NIST's OS
 
 
 def _setup_tools() -> None:
-    # these imports are here to ensure that logging is setup before the modules get initialized
-    from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
-    from mcp_server_for_oscal.tools.list_models import list_oscal_models
-    from mcp_server_for_oscal.tools.list_oscal_resources import list_oscal_resources
-    from mcp_server_for_oscal.tools.query_component_definition import (
-        get_capability,
-        list_capabilities,
-        list_component_definitions,
-        list_components,
-        query_component_definition,
-    )
-    from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
-    from mcp_server_for_oscal.tools.validate_oscal_content import (
-        validate_oscal_content,
-        validate_oscal_file,
-    )
+    from mcp_server_for_oscal.tools import get_tool_list
 
-    # Register tools with MCP server
-    # don't register the query_oscal_documentation tool unless we have a KB ID
-    # TODO: get rid of this after we have working implementation of local index
-    if config.knowledge_base_id:
-        from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
-        mcp.add_tool(query_oscal_documentation)
-
-    mcp.add_tool(list_oscal_models)
-    mcp.add_tool(get_oscal_schema)
-    mcp.add_tool(list_oscal_resources)
-    mcp.add_tool(query_component_definition)
-    mcp.add_tool(list_component_definitions)
-    mcp.add_tool(list_components)
-    mcp.add_tool(list_capabilities)
-    mcp.add_tool(get_capability)
-    mcp.add_tool(validate_oscal_content)
-    mcp.add_tool(validate_oscal_file)
+    for tool_fn in get_tool_list():
+        mcp.add_tool(tool_fn)
 
     @mcp.tool(name="about", description="Get metadata about the server itself")
     def about() -> dict:
         return {
             "version": meta.get("version"),
             "keywords": meta.get("keywords"),
-            "oscal-version": "1.2.1", #TODO: this shouldn't be hard coded
+            "oscal-version": "1.2.1",
         }
 
 def main():
