@@ -7,9 +7,14 @@ configured with OSCAL-specific tools, retry strategy, and observability.
 
 import argparse
 import logging
+import warnings
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
+
+# Suppress cosmetic RequestsDependencyWarning from requests library
+# (urllib3/charset_normalizer version check is overly strict)
+warnings.filterwarnings("ignore", message=".*urllib3.*charset.*")
 
 import boto3
 from strands import Agent, ModelRetryStrategy
