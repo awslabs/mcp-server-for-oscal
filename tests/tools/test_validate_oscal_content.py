@@ -293,7 +293,7 @@ class TestValidateOscalContentEndToEnd:
         mock_trestle.return_value = {"level": "trestle", "valid": True, "errors": [], "warnings": [], "skipped": False, "skip_reason": None}
         mock_cli.return_value = {"level": "oscal_cli", "valid": True, "errors": [], "warnings": [], "skipped": True, "skip_reason": "oscal-cli not found in PATH"}
 
-        result = validate_oscal_content(mock_context, valid_catalog_json)
+        result = validate_oscal_content(valid_catalog_json, ctx=mock_context)
 
         assert result["valid"] is True
         assert result["model_type"] == "catalog"
@@ -310,7 +310,7 @@ class TestValidateOscalContentEndToEnd:
         mock_trestle.return_value = {"level": "trestle", "valid": True, "errors": [], "warnings": [], "skipped": False, "skip_reason": None}
         mock_cli.return_value = {"level": "oscal_cli", "valid": True, "errors": [], "warnings": [], "skipped": True, "skip_reason": "oscal-cli not found in PATH"}
 
-        result = validate_oscal_content(mock_context, valid_catalog_json, model_type="profile")
+        result = validate_oscal_content(valid_catalog_json, model_type="profile", ctx=mock_context)
 
         assert result["model_type"] == "profile"
         # Schema validation called with profile type, not catalog
@@ -320,7 +320,7 @@ class TestValidateOscalContentEndToEnd:
 
     def test_invalid_json_skips_levels_2_3_4(self, mock_context):
         """If JSON is invalid, levels 2-4 are skipped."""
-        result = validate_oscal_content(mock_context, "{invalid json}")
+        result = validate_oscal_content("{invalid json}", ctx=mock_context)
 
         assert result["valid"] is False
         assert result["levels"][0]["level"] == "well_formedness"
@@ -333,7 +333,7 @@ class TestValidateOscalContentEndToEnd:
     def test_invalid_model_type(self, mock_context):
         """Invalid model_type parameter returns error with 4 levels."""
         result = validate_oscal_content(
-            mock_context, '{"catalog": {}}', model_type="not-a-model"
+            '{"catalog": {}}', model_type="not-a-model", ctx=mock_context
         )
         assert result["valid"] is False
         assert "error" in result
@@ -344,7 +344,7 @@ class TestValidateOscalContentEndToEnd:
 
     def test_undetectable_model_type(self, mock_context):
         """Unknown root key fails model type detection with 4 levels."""
-        result = validate_oscal_content(mock_context, '{"unknown": {}}')
+        result = validate_oscal_content('{"unknown": {}}', ctx=mock_context)
         assert result["valid"] is False
         assert "error" in result
         assert len(result["levels"]) == 4
@@ -363,7 +363,7 @@ class TestValidateOscalContentEndToEnd:
         mock_trestle.return_value = {"level": "trestle", "valid": True, "errors": [], "warnings": [], "skipped": False, "skip_reason": None}
         mock_cli.return_value = {"level": "oscal_cli", "valid": True, "errors": [], "warnings": [], "skipped": True, "skip_reason": "not found"}
 
-        result = validate_oscal_content(mock_context, valid_catalog_json)
+        result = validate_oscal_content(valid_catalog_json, ctx=mock_context)
         assert result["valid"] is False
 
     @patch("mcp_server_for_oscal.tools.validate_oscal_content._validate_oscal_cli")
@@ -377,18 +377,18 @@ class TestValidateOscalContentEndToEnd:
         mock_trestle.return_value = {"level": "trestle", "valid": True, "errors": [], "warnings": [], "skipped": True, "skip_reason": "no model"}
         mock_cli.return_value = {"level": "oscal_cli", "valid": True, "errors": [], "warnings": [], "skipped": True, "skip_reason": "not found"}
 
-        result = validate_oscal_content(mock_context, valid_catalog_json)
+        result = validate_oscal_content(valid_catalog_json, ctx=mock_context)
         assert result["valid"] is True
 
     def test_empty_content(self, mock_context):
         """Empty string fails well-formedness."""
-        result = validate_oscal_content(mock_context, "")
+        result = validate_oscal_content("", ctx=mock_context)
         assert result["valid"] is False
         assert result["levels"][0]["valid"] is False
 
     def test_none_content(self, mock_context):
         """None content produces well-formedness failure, not a crash."""
-        result = validate_oscal_content(mock_context, None)
+        result = validate_oscal_content(None, ctx=mock_context)
         assert result["valid"] is False
         assert result["levels"][0]["level"] == "well_formedness"
         assert result["levels"][0]["valid"] is False

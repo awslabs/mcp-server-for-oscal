@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 @tool
 def get_oscal_schema(
-    ctx: Context, model_name: str = "complete", schema_type: str = "json"
+    ctx: Context = None, model_name: str = "complete", schema_type: str = "json"
 ) -> str:
     """
     A tool that returns the schema for specified OSCAL model. Try this tool first for any questions about the structure of OSCAL models.

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @tool
-def query_oscal_documentation(query: str, ctx: Context) -> Any:
+def query_oscal_documentation(query: str, ctx: Context = None) -> Any:
     """
     A tool to query OSCAL-related documentation. Use this tool when a question about OSCAL cannot be answered just by analyzing model schemas. In case the question is about an explicit property of an OSCAL model, try to find the answer using the get_schema tool first.
 

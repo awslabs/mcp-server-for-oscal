@@ -599,7 +599,7 @@ _load_component_definitions_from_directory = _store.load_from_directory
 
 @tool()
 def query_component_definition(
-    ctx: Context,
+    ctx: Context = None,
     component_definition_filter: str | None = None,
     query_type: Literal["all", "by_uuid", "by_title", "by_type"] = "all",
     query_value: str | None = None,
@@ -673,7 +673,7 @@ def query_component_definition(
 
 @tool()
 def list_component_definitions(
-    ctx: Context, offset: int = 0, limit: int = 10
+    ctx: Context = None, offset: int = 0, limit: int = 10
 ) -> dict:
     """List loaded Component Definitions with summary metadata.
 
@@ -699,7 +699,7 @@ def list_component_definitions(
 
 @tool()
 def list_components(
-    ctx: Context, offset: int = 0, limit: int = 10
+    ctx: Context = None, offset: int = 0, limit: int = 10
 ) -> dict:
     """List loaded Components with summary metadata.
 
@@ -725,7 +725,7 @@ def list_components(
 
 @tool()
 def list_capabilities(
-    ctx: Context, offset: int = 0, limit: int = 10
+    ctx: Context = None, offset: int = 0, limit: int = 10
 ) -> dict:
     """List loaded Capabilities with summary metadata.
 
@@ -752,7 +752,7 @@ def list_capabilities(
     return paginate(items, offset, limit)
 
 @tool()
-def get_capability(ctx: Context, uuid: str) -> dict | None:
+def get_capability(ctx: Context = None, uuid: str = "") -> dict | None:
     """Retrieve a single Capability by UUID, returning its full OSCAL representation.
 
     A Capability groups related Components and may include control

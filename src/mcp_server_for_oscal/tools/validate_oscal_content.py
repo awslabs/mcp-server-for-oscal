@@ -248,9 +248,9 @@ def _validate_oscal_cli(content: str, model_type: OSCALModelType) -> dict:
 
 @tool
 def validate_oscal_file(
-    ctx: Context,
     file_uri: str,
     model_type: str | None = None,
+    ctx: Context = None,
 ) -> dict:
     """
     Validate OSCAL JSON file through a multi-level validation pipeline.
@@ -316,9 +316,9 @@ def validate_oscal_file(
 
 @tool
 def validate_oscal_content(
-    ctx: Context,
     content: str,
     model_type: str | None = None,
+    ctx: Context = None,
 ) -> dict:
     """
     Validate OSCAL JSON content through a multi-level validation pipeline.
