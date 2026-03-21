@@ -25,7 +25,6 @@ from mcp_server_for_oscal.config import config
 from mcp_server_for_oscal.tools.utils import paginate, safe_log_mcp, try_notify_client_error
 
 logger = logging.getLogger(__name__)
-logger.setLevel(config.log_level)
 
 
 class ComponentDefinitionStore:

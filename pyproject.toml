@@ -41,6 +41,7 @@ devtest = ["pytest", "mypy", "boto3-stubs", "bandit", "pytest-asyncio", "hypothe
 [project.scripts]
 server = "mcp_server_for_oscal.main:main"
 mcp_server_for_oscal = "mcp_server_for_oscal.main:main"
+agent = "mcp_server_for_oscal.oscal_agent:main"
 
 [project.urls]
 GitHub = "https://github.com/awslabs/mcp-server-for-oscal/"
@@ -154,6 +155,11 @@ typing = [
 # Start the MCP server for remote testing/development
 http-server = [
   "python -m mcp_server_for_oscal.main --transport streamable-http",
+]
+
+# Start the OSCAL agent in interactive mode
+oscal-agent = [
+  "python -m mcp_server_for_oscal.oscal_agent {args}",
 ]
 
 bandito = [
