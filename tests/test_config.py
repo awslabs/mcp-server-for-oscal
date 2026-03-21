@@ -190,3 +190,86 @@ class TestConfig:
 
         # Original transport should still be valid
         config.validate_transport()  # Should not raise
+
+
+# ---------------------------------------------------------------------------
+# Task 2.3: Unit tests for agent config defaults
+# ---------------------------------------------------------------------------
+
+
+class TestAgentConfigDefaults:
+    """Unit tests for agent-specific config attributes — task 2.3."""
+
+    def test_agent_max_tokens_default(self):
+        """agent_max_tokens defaults to 4096."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.agent_max_tokens == 4096
+
+    def test_agent_max_retry_attempts_default(self):
+        """agent_max_retry_attempts defaults to 4."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.agent_max_retry_attempts == 4
+
+    def test_agent_retry_initial_delay_default(self):
+        """agent_retry_initial_delay defaults to 2."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.agent_retry_initial_delay == 2
+
+    def test_agent_retry_max_delay_default(self):
+        """agent_retry_max_delay defaults to 60."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.agent_retry_max_delay == 60
+
+
+# ---------------------------------------------------------------------------
+# Task 2.2: Property test for agent config env var parsing
+# ---------------------------------------------------------------------------
+
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+
+class TestProperty3AgentConfigEnvVarParsing:
+    """
+    Property 3: Agent config environment variable parsing
+
+    For any valid positive integer string set as the value of an agent
+    configuration environment variable, the corresponding Config attribute
+    SHALL equal that integer value after construction.
+
+    **Validates: Requirements 4.3, 5.3**
+    """
+
+    @settings(max_examples=100)
+    @given(
+        max_tokens=st.integers(min_value=1, max_value=10000),
+        max_retry=st.integers(min_value=1, max_value=10000),
+        initial_delay=st.integers(min_value=1, max_value=10000),
+        max_delay=st.integers(min_value=1, max_value=10000),
+    )
+    def test_agent_env_vars_parsed_correctly(
+        self, max_tokens, max_retry, initial_delay, max_delay
+    ):
+        """
+        Feature: oscal-agent-production, Property 3: Agent config env var parsing
+
+        Setting agent env vars to random positive integers and constructing
+        Config must yield matching attribute values.
+        """
+        env = {
+            "OSCAL_AGENT_MAX_TOKENS": str(max_tokens),
+            "OSCAL_AGENT_MAX_RETRY_ATTEMPTS": str(max_retry),
+            "OSCAL_AGENT_RETRY_INITIAL_DELAY": str(initial_delay),
+            "OSCAL_AGENT_RETRY_MAX_DELAY": str(max_delay),
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.agent_max_tokens == max_tokens
+            assert cfg.agent_max_retry_attempts == max_retry
+            assert cfg.agent_retry_initial_delay == initial_delay
+            assert cfg.agent_retry_max_delay == max_delay
