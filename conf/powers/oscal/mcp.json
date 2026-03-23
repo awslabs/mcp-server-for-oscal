@@ -6,11 +6,7 @@
       "env": {},
       "disabled": false,
       "autoApprove": [
-        "get_oscal_schema",
-        "list_oscal_resources",
-        "list_oscal_models",
-        "query_oscal_documentation",
-        "query_component_definition"
+        "*"
       ]
     }
   }
