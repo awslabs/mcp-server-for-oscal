@@ -107,13 +107,13 @@ Wire Strands SDK session management, conversation management, and agent state in
 - [x] 6. Checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. MCP server isolation verification
-  - [~] 7.1 Verify `main.py` does not import session/conversation manager classes
+- [x] 7. MCP server isolation verification
+  - [x] 7.1 Verify `main.py` does not import session/conversation manager classes
     - Inspect `main.py` source to confirm no session or conversation management references
     - Add a unit test in `tests/test_integration.py` that asserts `main.py` source does not contain session/conversation manager imports
     - _Requirements: 8.1, 8.2_
 
-- [~] 8. Final checkpoint — Ensure all tests pass
+- [x] 8. Final checkpoint — Ensure all tests pass
   - Run `hatch run tests` to verify typing, all tests, coverage, and security scan pass.
   - Ensure all tests pass, ask the user if questions arise.
 
