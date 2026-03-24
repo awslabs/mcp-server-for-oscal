@@ -49,6 +49,19 @@ class Config:
         # Component Definition directory configuration
         self.component_definitions_dir: str = os.getenv("OSCAL_COMPONENT_DEFINITIONS_DIR", "component_definitions")
 
+        # Session management configuration
+        self.session_storage: str = os.getenv("OSCAL_AGENT_SESSION_STORAGE", "")
+        self.session_dir: str = os.getenv("OSCAL_AGENT_SESSION_DIR", ".oscal_sessions")
+        self.session_s3_bucket: str = os.getenv("OSCAL_AGENT_SESSION_S3_BUCKET", "")
+        self.session_s3_prefix: str = os.getenv(
+            "OSCAL_AGENT_SESSION_S3_PREFIX", "oscal-agent-sessions/"
+        )
+
+        # Conversation management configuration
+        self.conversation_manager_type: str = os.getenv(
+            "OSCAL_AGENT_CONVERSATION_MANAGER", ""
+        )
+
         # Agent configuration
         self.agent_max_tokens: int = int(os.getenv("OSCAL_AGENT_MAX_TOKENS", "4096"))
         self.agent_max_retry_attempts: int = int(os.getenv("OSCAL_AGENT_MAX_RETRY_ATTEMPTS", "4"))

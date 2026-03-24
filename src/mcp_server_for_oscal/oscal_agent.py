@@ -7,6 +7,7 @@ configured with OSCAL-specific tools, retry strategy, and observability.
 
 import argparse
 import logging
+import uuid
 import warnings
 from collections.abc import Callable
 from pathlib import Path
@@ -99,6 +100,91 @@ def _truncate_args(args: Any, max_len: int = 200) -> str:
     return text
 
 
+def _build_session_manager(
+    args: argparse.Namespace, cfg: Any
+) -> tuple[Any | None, str | None]:
+    """Build a session manager from CLI args and config defaults.
+
+    CLI arguments take precedence over config (environment variable) defaults.
+
+    Args:
+        args: Parsed CLI argument namespace.
+        cfg: Config instance with session-related attributes.
+
+    Returns:
+        A tuple of (session_manager, session_id). Both are None when
+        session storage is not configured (stateless mode).
+
+    Raises:
+        SystemExit: With code 1 when ``s3`` storage is selected but
+            ``--session-s3-bucket`` is not provided.
+    """
+    from strands.session import FileSessionManager, S3SessionManager
+
+    storage = args.session_storage or cfg.session_storage
+    if not storage:
+        return None, None
+
+    session_id = args.session_id or str(uuid.uuid4())
+
+    if storage == "file":
+        session_dir = args.session_dir or cfg.session_dir
+        return FileSessionManager(
+            session_id=session_id,
+            storage_dir=session_dir,
+        ), session_id
+    elif storage == "s3":
+        bucket = args.session_s3_bucket or cfg.session_s3_bucket
+        if not bucket:
+            logger.error(
+                "--session-s3-bucket is required when --session-storage=s3"
+            )
+            raise SystemExit(1)
+        prefix = args.session_s3_prefix or cfg.session_s3_prefix
+        return S3SessionManager(
+            session_id=session_id,
+            bucket=bucket,
+            prefix=prefix,
+        ), session_id
+
+    return None, None
+
+
+def _build_conversation_manager(
+    args: argparse.Namespace, cfg: Any
+) -> Any | None:
+    """Build a conversation manager from CLI args and config defaults.
+
+    CLI arguments take precedence over config (environment variable) defaults.
+
+    Args:
+        args: Parsed CLI argument namespace.
+        cfg: Config instance with session-related attributes.
+
+    Returns:
+        A conversation manager instance, or None when no conversation
+        manager type is configured (SDK default behavior).
+    """
+    cm_type = args.conversation_manager or cfg.conversation_manager_type
+    if not cm_type:
+        return None
+
+    from strands.agent.conversation_manager import (
+        NullConversationManager,
+        SlidingWindowConversationManager,
+        SummarizingConversationManager,
+    )
+
+    if cm_type == "sliding-window":
+        return SlidingWindowConversationManager()
+    elif cm_type == "summarizing":
+        return SummarizingConversationManager()
+    elif cm_type == "null":
+        return NullConversationManager()
+
+    return None
+
+
 class AgentObservabilityHook(HookProvider):
     """HookProvider that logs agent lifecycle events.
 
@@ -155,6 +241,8 @@ class AgentObservabilityHook(HookProvider):
 def create_oscal_agent(
     tools: list[Any] | None = None,
     callback_handler: Any = "default",
+    session_manager: Any | None = None,
+    conversation_manager: Any | None = None,
 ) -> Agent:
     """Create a production-ready OSCAL Strands agent.
 
@@ -162,6 +250,12 @@ def create_oscal_agent(
         tools: Optional list of tool functions. Defaults to get_tool_list().
         callback_handler: Callback handler for streaming output. Pass None
             to suppress all streaming output. Defaults to the SDK default.
+        session_manager: Optional pre-built session manager instance
+            (e.g. FileSessionManager, S3SessionManager). When None, the
+            Agent is created without a session manager (stateless).
+        conversation_manager: Optional pre-built conversation manager
+            instance (e.g. SlidingWindowConversationManager). When None,
+            the Agent uses the SDK default behavior.
 
     Returns:
         Configured Agent instance.
@@ -218,6 +312,10 @@ def create_oscal_agent(
     }
     if callback_handler != "default":
         agent_kwargs["callback_handler"] = callback_handler
+    if session_manager is not None:
+        agent_kwargs["session_manager"] = session_manager
+    if conversation_manager is not None:
+        agent_kwargs["conversation_manager"] = conversation_manager
 
     agent = Agent(**agent_kwargs)
 
@@ -270,6 +368,42 @@ def main() -> None:
         type=str,
         help="Run a single query and exit (non-interactive mode)",
     )
+    parser.add_argument(
+        "--session-id",
+        type=str,
+        default=None,
+        help="Session ID for resuming a previous conversation",
+    )
+    parser.add_argument(
+        "--session-storage",
+        choices=["file", "s3"],
+        default=None,
+        help="Session storage backend: 'file' or 's3'",
+    )
+    parser.add_argument(
+        "--session-dir",
+        type=str,
+        default=None,
+        help="Local directory for file-based session storage",
+    )
+    parser.add_argument(
+        "--session-s3-bucket",
+        type=str,
+        default=None,
+        help="S3 bucket name for S3-based session storage",
+    )
+    parser.add_argument(
+        "--session-s3-prefix",
+        type=str,
+        default=None,
+        help="S3 key prefix for S3-based session storage",
+    )
+    parser.add_argument(
+        "--conversation-manager",
+        choices=["sliding-window", "summarizing", "null"],
+        default=None,
+        help="Conversation manager type: 'sliding-window', 'summarizing', or 'null'",
+    )
     args = parser.parse_args()
 
     # In single-query mode, suppress all logs except errors
@@ -319,14 +453,28 @@ def main() -> None:
         logger.exception("Bundled context files may have been tampered with; exiting.")
         raise SystemExit(2) from err
 
+    # Build session and conversation managers from CLI args / config
+    session_manager, session_id = _build_session_manager(args, config)
+    conversation_manager = _build_conversation_manager(args, config)
+
     # Create agent
     try:
         agent = create_oscal_agent(
             callback_handler=None if args.query else "default",
+            session_manager=session_manager,
+            conversation_manager=conversation_manager,
         )
     except ValueError as err:
         logger.exception("Failed to create OSCAL agent")
         raise SystemExit(1) from err
+
+    # Log session ID for discoverability (Req 9.1–9.4)
+    if session_manager is not None:
+        if args.query:
+            logger.debug("Session ID: %s", session_id)
+        else:
+            logger.info("Session ID: %s", session_id)
+            print(f"Session ID: {session_id}")  # noqa: T201
 
     # Single-query mode: run one query and exit
     if args.query:

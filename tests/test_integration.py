@@ -3,6 +3,7 @@ Integration tests for the OSCAL MCP Server.
 """
 
 import requests
+from pathlib import Path
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -13,6 +14,33 @@ from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
 from mcp_server_for_oscal.tools.list_models import list_oscal_models
 from mcp_server_for_oscal.tools.query_documentation import query_oscal_documentation
 from mcp_server_for_oscal.tools.utils import OSCALModelType, schema_names
+
+
+class TestMCPServerIsolation:
+    """Tests that main.py does not import session/conversation manager classes (Req 8.1, 8.2)."""
+
+    FORBIDDEN_STRINGS = [
+        "SessionManager",
+        "ConversationManager",
+        "FileSessionManager",
+        "S3SessionManager",
+        "SlidingWindowConversationManager",
+        "SummarizingConversationManager",
+        "NullConversationManager",
+        "session_manager",
+        "conversation_manager",
+    ]
+
+    def test_main_py_has_no_session_or_conversation_manager_references(self):
+        """main.py source must not contain any session or conversation manager references."""
+        main_path = Path(__file__).parent.parent / "src" / "mcp_server_for_oscal" / "main.py"
+        source = main_path.read_text()
+
+        for forbidden in self.FORBIDDEN_STRINGS:
+            assert forbidden not in source, (
+                f"main.py must not reference '{forbidden}' — "
+                "session/conversation management belongs in oscal_agent.py only"
+            )
 
 
 class TestIntegration:
