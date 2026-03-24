@@ -35,70 +35,8 @@ The server is lightweight and meant to run locally without additional setup. By 
 
 The default tools should not connect to any remote services or resources - all required content is bundled with the server. As a security measure, we've implemented basic file integrity verification for bundled content. At build-time we generate manifests including SHA-256 hashes of all content files. Each time the server starts, all content files are verified against the hash manifests. Any mismatch should produce an error and prevent startup.
 
-### Tools
+In addition to the MCP server, the package includes a standalone OSCAL agent built with [Strands Agents](https://github.com/strands-agents/sdk-python). See the [OSCAL Agent](#oscal-agent) section below.
 
-| Tool | Description |
-|------|-------------|
-| `list_oscal_models` | List all 8 OSCAL model types with metadata (layer, status, descriptions) |
-| `get_oscal_schema` | Retrieve JSON or XSD schema for any OSCAL model |
-| `list_oscal_resources` | Browse curated OSCAL community resources, tools, and educational content |
-| `validate_oscal_content` | Validate OSCAL JSON content through a 4-level pipeline (well-formedness, JSON Schema, Trestle, oscal-cli) |
-| `validate_oscal_file` | Validate an OSCAL JSON file (local path or remote URI) through the same 4-level pipeline |
-| `query_component_definition` | Query component definitions to find capabilities and components by UUID, title, or type |
-| `list_component_definitions` | List all loaded component definitions with summary metadata |
-| `list_components` | List all loaded components with summary metadata |
-| `list_capabilities` | List all loaded capabilities with summary metadata |
-| `get_capability` | Retrieve a single capability by UUID with full OSCAL representation |
-| `query_oscal_documentation` | RAG-based documentation query (requires AWS Bedrock Knowledge Base; conditionally registered) |
-| `about` | Server metadata including version and supported OSCAL version |
-
-### OSCAL Agent
-
-In addition to the MCP server, the package includes a standalone OSCAL agent built with [Strands Agents](https://github.com/strands-agents/sdk-python). The agent uses the same tools as the MCP server and can be run directly:
-
-```bash
-# Via entry point
-oscal-agent
-
-# Or via module
-python -m mcp_server_for_oscal.oscal_agent
-```
-
-The agent requires AWS Bedrock access and uses the same configuration environment variables as the MCP server.
-
-#### Session Persistence
-
-The agent supports session persistence so that conversation history and agent state survive across invocations. Choose between local filesystem or Amazon S3 storage:
-
-```bash
-# File-based session storage (new session)
-oscal-agent --session-storage file
-
-# Resume a previous session
-oscal-agent --session-storage file --session-id <your-session-id>
-
-# S3-based session storage
-oscal-agent --session-storage s3 --session-s3-bucket my-bucket
-```
-
-When session storage is enabled without a `--session-id`, a UUID is auto-generated and displayed so you can resume later. Session defaults can also be set via environment variables (see [DEVELOPING.md](DEVELOPING.md)).
-
-#### Conversation Management
-
-For long-running workflows, you can select a conversation manager to control how the agent's context window is maintained:
-
-```bash
-# Summarize older messages to keep context manageable
-oscal-agent --session-storage file --conversation-manager summarizing
-
-# Sliding window (SDK default behavior)
-oscal-agent --conversation-manager sliding-window
-
-# No conversation management
-oscal-agent --conversation-manager null
-```
-
-Existing tools and features cover a variety of use-cases but are _far from_ comprehensive. Please share your feedback, feature requests, questions, or bug reports in a [GitHub issue][new-issue-url]. Direct [contributions](CONTRIBUTING.md) are wanted and welcome. 
 
 ## What is OSCAL?
 
@@ -107,7 +45,7 @@ OSCAL (Open Security Controls Assessment Language) is a set of framework-agnosti
 ## What is MCP?
 MCP (Model Context Protocol) is an [open-source standard][mcp-spec-url] for connecting AI applications to external systems. Think of MCP like a USB-C port for AI applications. Just as USB-C provides a standardized way to connect electronic devices, MCP provides a standardized way to connect AI applications to external systems. 
 
-## How to use / Examples
+## How to use / examples
 Examples below were created with kiro-cli, but should work with any AI assistant that supports MCP servers.
 
 ### Example 1: Learn about available OSCAL models
@@ -499,6 +437,54 @@ Run the `MCP: Open User Configuration` command, which opens the mcp.json file in
   }
 }
 ```
+
+## OSCAL Agent
+
+In addition to the MCP server, the package includes a standalone OSCAL agent built with [Strands Agents](https://github.com/strands-agents/sdk-python). The agent uses the same tools as the MCP server and can be run directly:
+
+```bash
+# Via entry point
+oscal-agent
+
+# Or via module
+python -m mcp_server_for_oscal.oscal_agent
+```
+
+The agent requires AWS Bedrock access and uses the same configuration environment variables as the MCP server.
+
+### Session Persistence
+
+The agent supports session persistence so that conversation history and agent state survive across invocations. Choose between local filesystem or Amazon S3 storage:
+
+```bash
+# File-based session storage (new session)
+oscal-agent --session-storage file
+
+# Resume a previous session
+oscal-agent --session-storage file --session-id <your-session-id>
+
+# S3-based session storage
+oscal-agent --session-storage s3 --session-s3-bucket my-bucket
+```
+
+When session storage is enabled without a `--session-id`, a UUID is auto-generated and displayed so you can resume later. Session defaults can also be set via environment variables (see [DEVELOPING.md](DEVELOPING.md)).
+
+### Conversation Management
+
+For long-running workflows, you can select a conversation manager to control how the agent's context window is maintained:
+
+```bash
+# Summarize older messages to keep context manageable
+oscal-agent --session-storage file --conversation-manager summarizing
+
+# Sliding window (SDK default behavior)
+oscal-agent --conversation-manager sliding-window
+
+# No conversation management
+oscal-agent --conversation-manager null
+```
+
+Existing tools and features cover a variety of use-cases but are _far from_ comprehensive. Please share your feedback, feature requests, questions, or bug reports in a [GitHub issue][new-issue-url]. Direct [contributions](CONTRIBUTING.md) are wanted and welcome. 
 
 ## Development
 See [DEVELOPING](DEVELOPING.md) to get started.
