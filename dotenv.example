@@ -23,3 +23,24 @@ export LOG_LEVEL=INFO
 # Server network configuration (for streamable-http transport / AgentCore deployment)
 # OSCAL_MCP_HOST=127.0.0.1
 # OSCAL_MCP_STATELESS_HTTP=false
+
+# Component Definition configuration
+# OSCAL_ALLOW_REMOTE_URIS=false
+# OSCAL_REQUEST_TIMEOUT=30
+# OSCAL_MAX_URI_DEPTH=3
+# OSCAL_COMPONENT_DEFINITIONS_DIR=component_definitions
+
+# Agent configuration (for oscal_agent.py)
+# OSCAL_AGENT_MAX_TOKENS=4096
+# OSCAL_AGENT_MAX_RETRY_ATTEMPTS=4
+# OSCAL_AGENT_RETRY_INITIAL_DELAY=2
+# OSCAL_AGENT_RETRY_MAX_DELAY=60
+
+# Agent session management
+# OSCAL_AGENT_SESSION_STORAGE=          # "file" or "s3" (empty = disabled)
+# OSCAL_AGENT_SESSION_DIR=.oscal_sessions
+# OSCAL_AGENT_SESSION_S3_BUCKET=
+# OSCAL_AGENT_SESSION_S3_PREFIX=oscal-agent-sessions/
+
+# Agent conversation management
+# OSCAL_AGENT_CONVERSATION_MANAGER=     # "sliding-window", "summarizing", or "null" (empty = SDK default)

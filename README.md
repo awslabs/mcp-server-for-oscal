@@ -29,11 +29,74 @@ A Model Context Protocol (MCP) server that provides AI assistants (Claude, Cline
 > To get started, see [Installation](#installation) below.
 
 ## Features
-Together, the tools provided by this MCP server are meant to enable your preferred AI assitant to provide accurate, authoritative gudiance about OSCAL architecture, models, use-cases, requirements, and implementation. You don't need to understand the tools to use them, but details are in the [tools](src/mcp_server_for_oscal/tools/) directory. 
+Together, the tools provided by this MCP server are meant to enable your preferred AI assistant to provide accurate, authoritative guidance about OSCAL architecture, models, use-cases, requirements, and implementation. You don't need to understand the tools to use them, but details are in the [tools](src/mcp_server_for_oscal/tools/) directory. 
 
-The server is lightwieght and meant to run locally without additional setup. By default, it uses `stdio` protocol for MCP transport. Do not attempt to use the server with `streamble-http` transport, as we've not yet implemented transport security or authentication. 
+The server is lightweight and meant to run locally without additional setup. By default, it uses `stdio` protocol for MCP transport. Do not attempt to use the server with `streamable-http` transport, as we've not yet implemented transport security or authentication. 
 
 The default tools should not connect to any remote services or resources - all required content is bundled with the server. As a security measure, we've implemented basic file integrity verification for bundled content. At build-time we generate manifests including SHA-256 hashes of all content files. Each time the server starts, all content files are verified against the hash manifests. Any mismatch should produce an error and prevent startup.
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_oscal_models` | List all 8 OSCAL model types with metadata (layer, status, descriptions) |
+| `get_oscal_schema` | Retrieve JSON or XSD schema for any OSCAL model |
+| `list_oscal_resources` | Browse curated OSCAL community resources, tools, and educational content |
+| `validate_oscal_content` | Validate OSCAL JSON content through a 4-level pipeline (well-formedness, JSON Schema, Trestle, oscal-cli) |
+| `validate_oscal_file` | Validate an OSCAL JSON file (local path or remote URI) through the same 4-level pipeline |
+| `query_component_definition` | Query component definitions to find capabilities and components by UUID, title, or type |
+| `list_component_definitions` | List all loaded component definitions with summary metadata |
+| `list_components` | List all loaded components with summary metadata |
+| `list_capabilities` | List all loaded capabilities with summary metadata |
+| `get_capability` | Retrieve a single capability by UUID with full OSCAL representation |
+| `query_oscal_documentation` | RAG-based documentation query (requires AWS Bedrock Knowledge Base; conditionally registered) |
+| `about` | Server metadata including version and supported OSCAL version |
+
+### OSCAL Agent
+
+In addition to the MCP server, the package includes a standalone OSCAL agent built with [Strands Agents](https://github.com/strands-agents/sdk-python). The agent uses the same tools as the MCP server and can be run directly:
+
+```bash
+# Via entry point
+oscal-agent
+
+# Or via module
+python -m mcp_server_for_oscal.oscal_agent
+```
+
+The agent requires AWS Bedrock access and uses the same configuration environment variables as the MCP server.
+
+#### Session Persistence
+
+The agent supports session persistence so that conversation history and agent state survive across invocations. Choose between local filesystem or Amazon S3 storage:
+
+```bash
+# File-based session storage (new session)
+oscal-agent --session-storage file
+
+# Resume a previous session
+oscal-agent --session-storage file --session-id <your-session-id>
+
+# S3-based session storage
+oscal-agent --session-storage s3 --session-s3-bucket my-bucket
+```
+
+When session storage is enabled without a `--session-id`, a UUID is auto-generated and displayed so you can resume later. Session defaults can also be set via environment variables (see [DEVELOPING.md](DEVELOPING.md)).
+
+#### Conversation Management
+
+For long-running workflows, you can select a conversation manager to control how the agent's context window is maintained:
+
+```bash
+# Summarize older messages to keep context manageable
+oscal-agent --session-storage file --conversation-manager summarizing
+
+# Sliding window (SDK default behavior)
+oscal-agent --conversation-manager sliding-window
+
+# No conversation management
+oscal-agent --conversation-manager null
+```
 
 Existing tools and features cover a variety of use-cases but are _far from_ comprehensive. Please share your feedback, feature requests, questions, or bug reports in a [GitHub issue][new-issue-url]. Direct [contributions](CONTRIBUTING.md) are wanted and welcome. 
 
@@ -378,15 +441,13 @@ Most MCP-compatible tools use a JSON configuration format described in the [Fast
   "mcpServers": {
     "oscal": {
       "command": "uvx",
-      "args": ["--from", "mcp-server-for-oscal@latest", "server"],
-      "env": {
-      }
+      "args": ["mcp-server-for-oscal@latest"]
     }
   }
 }
 ```
 
- For typical, runtime use of the MCP server, additional configuration should not be required. If needed, runtime environment variables can be configured in the `"env": {}` object (shown above, empty) as described in the [FastMCP documentation](https://gofastmcp.com/integrations/mcp-json-configuration#env-optional). See the file [dotenv.example](dotenv.example) for available options. 
+ For typical, runtime use of the MCP server, additional configuration should not be required. If needed, runtime environment variables can be configured in an `"env": {}` object as described in the [FastMCP documentation](https://gofastmcp.com/integrations/mcp-json-configuration#env-optional). See the file [dotenv.example](dotenv.example) for available options. 
 
 > [!Note]
 > A dotenv file is only needed in a development environment. 
@@ -400,14 +461,11 @@ See [Kiro's MCP documentation](https://kiro.dev/docs/mcp/configuration/) for add
   "mcpServers": {
     "oscal": {
       "command": "uvx",
-      "args": ["--from", "mcp-server-for-oscal@latest", "server"],
+      "args": ["mcp-server-for-oscal@latest"],
       "env": {},
       "disabled": false,
       "autoApprove": [
-        "get_oscal_schema",
-        "list_oscal_resources",
-        "list_oscal_models",
-        "query_oscal_documentation"
+        "*"
       ]
     }
   }
@@ -422,23 +480,23 @@ Add to your `~/.claude/claude_desktop_config.json`:
   "mcpServers": {
     "oscal": {
       "command": "uvx",
-      "args": ["--from", "mcp-server-for-oscal@latest", "server"]
+      "args": ["mcp-server-for-oscal@latest"]
     }
   }
 }
 ```
 
 #### VS Code
-Run the `MCP: Open User Configuration` command, which opens the mcp.json file in your user profile. You can then manually add the server configuration to the file. See the [VSCode/Copilot docs](https://code.visualstudio.com/docs/copilot/customization/mcp-servers#_add-an-mcp-server) for addtional options and details.
+Run the `MCP: Open User Configuration` command, which opens the mcp.json file in your user profile. You can then manually add the server configuration to the file. See the [VSCode/Copilot docs](https://code.visualstudio.com/docs/copilot/customization/mcp-servers#_add-an-mcp-server) for additional options and details.
 
 ```json
 {
-  "servers": [
+  "servers": {
     "oscal": {
       "command": "uvx",
-      "args": ["--from", "mcp-server-for-oscal@latest", "server"]
+      "args": ["mcp-server-for-oscal@latest"]
     }
-  ]
+  }
 }
 ```
 
@@ -449,7 +507,8 @@ See [DEVELOPING](DEVELOPING.md) to get started.
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
 
 ## Known limitations
-It's not yet possible to use this MCP server with ChatGPT due to limited MCP support by ChatGPT. 
+- It's not yet possible to use this MCP server with ChatGPT due to limited MCP support by ChatGPT.
+- The `streamable-http` transport does not yet implement authentication or transport security. Use `stdio` for production workloads.
 
 ## Related projects
 Experimental Component Definitions for AWS services are bundled with this MCP server. You can find that content in the AWS Labs project [OSCAL Content for AWS Services](https://github.com/awslabs/oscal-content-for-aws-services).
