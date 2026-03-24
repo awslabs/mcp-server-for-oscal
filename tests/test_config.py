@@ -273,3 +273,189 @@ class TestProperty3AgentConfigEnvVarParsing:
             assert cfg.agent_max_retry_attempts == max_retry
             assert cfg.agent_retry_initial_delay == initial_delay
             assert cfg.agent_retry_max_delay == max_delay
+
+
+# ---------------------------------------------------------------------------
+# Task 1.2: Unit tests for session/conversation config defaults
+# ---------------------------------------------------------------------------
+
+
+class TestSessionConversationConfigDefaults:
+    """Unit tests for session and conversation config attributes — task 1.2.
+
+    Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5
+    """
+
+    def test_session_storage_default(self):
+        """session_storage defaults to empty string when env var is unset."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.session_storage == ""
+
+    def test_session_dir_default(self):
+        """session_dir defaults to '.oscal_sessions' when env var is unset."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.session_dir == ".oscal_sessions"
+
+    def test_session_s3_bucket_default(self):
+        """session_s3_bucket defaults to empty string when env var is unset."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.session_s3_bucket == ""
+
+    def test_session_s3_prefix_default(self):
+        """session_s3_prefix defaults to 'oscal-agent-sessions/' when env var is unset."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.session_s3_prefix == "oscal-agent-sessions/"
+
+    def test_conversation_manager_type_default(self):
+        """conversation_manager_type defaults to empty string when env var is unset."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.conversation_manager_type == ""
+
+    def test_session_storage_from_env_var(self):
+        """session_storage matches OSCAL_AGENT_SESSION_STORAGE env var."""
+        env = {
+            "OSCAL_AGENT_SESSION_STORAGE": "file",
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.session_storage == "file"
+
+    def test_session_dir_from_env_var(self):
+        """session_dir matches OSCAL_AGENT_SESSION_DIR env var."""
+        env = {
+            "OSCAL_AGENT_SESSION_DIR": "/tmp/my_sessions",
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.session_dir == "/tmp/my_sessions"
+
+    def test_session_s3_bucket_from_env_var(self):
+        """session_s3_bucket matches OSCAL_AGENT_SESSION_S3_BUCKET env var."""
+        env = {
+            "OSCAL_AGENT_SESSION_S3_BUCKET": "my-bucket",
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.session_s3_bucket == "my-bucket"
+
+    def test_session_s3_prefix_from_env_var(self):
+        """session_s3_prefix matches OSCAL_AGENT_SESSION_S3_PREFIX env var."""
+        env = {
+            "OSCAL_AGENT_SESSION_S3_PREFIX": "custom-prefix/",
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.session_s3_prefix == "custom-prefix/"
+
+    def test_conversation_manager_type_from_env_var(self):
+        """conversation_manager_type matches OSCAL_AGENT_CONVERSATION_MANAGER env var."""
+        env = {
+            "OSCAL_AGENT_CONVERSATION_MANAGER": "summarizing",
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.conversation_manager_type == "summarizing"
+
+    def test_all_session_env_vars_set_together(self):  # noqa: PLR0915
+        """All five attributes match their env vars when set simultaneously."""
+        env = {
+            "OSCAL_AGENT_SESSION_STORAGE": "s3",
+            "OSCAL_AGENT_SESSION_DIR": "/data/sessions",
+            "OSCAL_AGENT_SESSION_S3_BUCKET": "prod-bucket",
+            "OSCAL_AGENT_SESSION_S3_PREFIX": "agents/oscal/",
+            "OSCAL_AGENT_CONVERSATION_MANAGER": "sliding-window",
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.session_storage == "s3"
+            assert cfg.session_dir == "/data/sessions"
+            assert cfg.session_s3_bucket == "prod-bucket"
+            assert cfg.session_s3_prefix == "agents/oscal/"
+            assert cfg.conversation_manager_type == "sliding-window"
+
+
+# ---------------------------------------------------------------------------
+# Task 1.3: Property test for session/conversation config env var parsing
+# ---------------------------------------------------------------------------
+
+
+class TestProperty2SessionConversationConfigEnvVarParsing:
+    """
+    Property 2: Session/Conversation Config Environment Variable Parsing
+
+    For any valid string value set as the value of a session or conversation
+    configuration environment variable, the corresponding Config attribute
+    SHALL exactly match that string value after construction.
+
+    **Validates: Requirements 7.1, 7.2, 7.3, 7.4, 7.5**
+    """
+
+    # Environment variables cannot contain null bytes or surrogate code points
+    # (surrogates are not valid UTF-8 and os.environ rejects them), so we
+    # exclude both to stay within the valid input space.
+    _env_safe_chars = st.characters(
+        blacklist_characters="\x00",
+        blacklist_categories=["Cs"],
+    )
+    _env_safe_text = st.text(
+        alphabet=_env_safe_chars,
+        min_size=0,
+        max_size=50,
+    )
+
+    @settings(max_examples=100)
+    @given(
+        session_storage=_env_safe_text,
+        session_dir=st.text(
+            alphabet=_env_safe_chars,
+            min_size=1,
+            max_size=200,
+        ),
+        session_s3_bucket=_env_safe_text,
+        session_s3_prefix=st.text(
+            alphabet=_env_safe_chars,
+            min_size=0,
+            max_size=200,
+        ),
+        conversation_manager_type=_env_safe_text,
+    )
+    def test_session_conversation_env_vars_parsed_correctly(
+        self,
+        session_storage,
+        session_dir,
+        session_s3_bucket,
+        session_s3_prefix,
+        conversation_manager_type,
+    ):
+        """
+        Feature: agent-session-state, Property 2: Session/conversation config env var parsing
+
+        Setting session/conversation env vars to random strings and constructing
+        Config must yield matching attribute values.
+        """
+        env = {
+            "OSCAL_AGENT_SESSION_STORAGE": session_storage,
+            "OSCAL_AGENT_SESSION_DIR": session_dir,
+            "OSCAL_AGENT_SESSION_S3_BUCKET": session_s3_bucket,
+            "OSCAL_AGENT_SESSION_S3_PREFIX": session_s3_prefix,
+            "OSCAL_AGENT_CONVERSATION_MANAGER": conversation_manager_type,
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.session_storage == session_storage
+            assert cfg.session_dir == session_dir
+            assert cfg.session_s3_bucket == session_s3_bucket
+            assert cfg.session_s3_prefix == session_s3_prefix
+            assert cfg.conversation_manager_type == conversation_manager_type

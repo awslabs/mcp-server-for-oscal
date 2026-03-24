@@ -6,8 +6,9 @@ Covers:
 - Property test for error context propagation (Task 4.4)
 - Property test for hook event logging completeness (Task 4.5)
 - Property test for system prompt tool name inclusion (Task 4.6)
+- Property test for factory manager forwarding (Task 3.2)
 
-Feature: oscal-agent-production
+Feature: oscal-agent-production, agent-session-state
 """
 
 import logging
@@ -517,3 +518,159 @@ class TestMainEntryPoint:
             main()
 
         assert exc_info.value.code == 1
+
+
+# ---------------------------------------------------------------------------
+# Task 3.2 — Property 1: Factory manager forwarding
+# ---------------------------------------------------------------------------
+
+# Strategy: generate either None or a unique mock object for each manager.
+# We use st.booleans() to decide None vs mock, ensuring Hypothesis explores
+# all four combinations (None/None, None/mock, mock/None, mock/mock).
+_use_mock = st.booleans()
+
+
+class TestProperty1FactoryManagerForwarding:
+    """
+    Property 1: Factory Manager Forwarding
+
+    For any non-None mock session/conversation manager passed to
+    create_oscal_agent(), the Agent constructor receives that exact
+    object as the corresponding keyword argument. When None is passed
+    (or the parameter is omitted), the corresponding keyword argument
+    is absent from the Agent constructor call.
+
+    **Validates: Requirements 1.1, 1.2, 2.1, 2.2**
+    """
+
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(use_session=_use_mock, use_conversation=_use_mock)
+    @patch("mcp_server_for_oscal.oscal_agent.ModelRetryStrategy")
+    @patch("mcp_server_for_oscal.oscal_agent.Agent")
+    @patch("mcp_server_for_oscal.oscal_agent.BedrockModel")
+    @patch("mcp_server_for_oscal.oscal_agent.boto3.Session")
+    def test_manager_forwarding(
+        self,
+        mock_boto_session_cls,
+        mock_bedrock_cls,
+        mock_agent_cls,
+        mock_retry_cls,
+        use_session,
+        use_conversation,
+    ):
+        """
+        Feature: agent-session-state, Property 1: Factory manager forwarding
+
+        When session_manager or conversation_manager is non-None, Agent()
+        receives that exact object; when None, the kwarg is absent.
+        """
+        # Build distinct sentinel objects so identity checks are meaningful
+        session_mgr = Mock(name="session_manager") if use_session else None
+        conversation_mgr = Mock(name="conversation_manager") if use_conversation else None
+
+        create_oscal_agent(
+            tools=[_make_mock_tool("t")],
+            session_manager=session_mgr,
+            conversation_manager=conversation_mgr,
+        )
+
+        agent_call_kwargs = mock_agent_cls.call_args[1]
+
+        # --- session_manager ---
+        if session_mgr is not None:
+            assert "session_manager" in agent_call_kwargs, (
+                "session_manager should be in Agent kwargs when non-None"
+            )
+            assert agent_call_kwargs["session_manager"] is session_mgr, (
+                "Agent must receive the exact session_manager object"
+            )
+        else:
+            assert "session_manager" not in agent_call_kwargs, (
+                "session_manager should be absent from Agent kwargs when None"
+            )
+
+        # --- conversation_manager ---
+        if conversation_mgr is not None:
+            assert "conversation_manager" in agent_call_kwargs, (
+                "conversation_manager should be in Agent kwargs when non-None"
+            )
+            assert agent_call_kwargs["conversation_manager"] is conversation_mgr, (
+                "Agent must receive the exact conversation_manager object"
+            )
+        else:
+            assert "conversation_manager" not in agent_call_kwargs, (
+                "conversation_manager should be absent from Agent kwargs when None"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Task 3.3 — Unit tests for factory backward compatibility
+# ---------------------------------------------------------------------------
+
+
+class TestFactoryBackwardCompatibility:
+    """
+    Unit tests verifying that create_oscal_agent() remains backward-compatible.
+
+    - No new args → Agent kwargs omit session_manager and conversation_manager.
+    - Explicit session_manager/conversation_manager → passed through to Agent.
+
+    **Validates: Requirements 1.2, 2.2, 8.3**
+    """
+
+    @patch("mcp_server_for_oscal.oscal_agent.ModelRetryStrategy")
+    @patch("mcp_server_for_oscal.oscal_agent.Agent")
+    @patch("mcp_server_for_oscal.oscal_agent.BedrockModel")
+    @patch("mcp_server_for_oscal.oscal_agent.boto3.Session")
+    def test_no_new_args_omits_session_and_conversation_manager(
+        self,
+        mock_boto_session_cls,
+        mock_bedrock_cls,
+        mock_agent_cls,
+        mock_retry_cls,
+    ):
+        """Calling create_oscal_agent() with no new args produces Agent kwargs
+        without session_manager or conversation_manager (Req 1.2, 2.2, 8.3)."""
+        create_oscal_agent(tools=[_make_mock_tool("t")])
+
+        agent_call_kwargs = mock_agent_cls.call_args[1]
+        assert "session_manager" not in agent_call_kwargs, (
+            "session_manager should be absent when not provided"
+        )
+        assert "conversation_manager" not in agent_call_kwargs, (
+            "conversation_manager should be absent when not provided"
+        )
+
+    @patch("mcp_server_for_oscal.oscal_agent.ModelRetryStrategy")
+    @patch("mcp_server_for_oscal.oscal_agent.Agent")
+    @patch("mcp_server_for_oscal.oscal_agent.BedrockModel")
+    @patch("mcp_server_for_oscal.oscal_agent.boto3.Session")
+    def test_explicit_managers_passed_through(
+        self,
+        mock_boto_session_cls,
+        mock_bedrock_cls,
+        mock_agent_cls,
+        mock_retry_cls,
+    ):
+        """Calling with explicit session_manager and conversation_manager passes
+        them through to Agent kwargs (Req 1.2, 2.2, 8.3)."""
+        mock_session_mgr = Mock(name="session_manager")
+        mock_conversation_mgr = Mock(name="conversation_manager")
+
+        create_oscal_agent(
+            tools=[_make_mock_tool("t")],
+            session_manager=mock_session_mgr,
+            conversation_manager=mock_conversation_mgr,
+        )
+
+        agent_call_kwargs = mock_agent_cls.call_args[1]
+        assert agent_call_kwargs["session_manager"] is mock_session_mgr, (
+            "Agent must receive the exact session_manager object"
+        )
+        assert agent_call_kwargs["conversation_manager"] is mock_conversation_mgr, (
+            "Agent must receive the exact conversation_manager object"
+        )

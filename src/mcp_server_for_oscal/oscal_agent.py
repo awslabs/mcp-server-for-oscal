@@ -155,6 +155,8 @@ class AgentObservabilityHook(HookProvider):
 def create_oscal_agent(
     tools: list[Any] | None = None,
     callback_handler: Any = "default",
+    session_manager: Any | None = None,
+    conversation_manager: Any | None = None,
 ) -> Agent:
     """Create a production-ready OSCAL Strands agent.
 
@@ -162,6 +164,12 @@ def create_oscal_agent(
         tools: Optional list of tool functions. Defaults to get_tool_list().
         callback_handler: Callback handler for streaming output. Pass None
             to suppress all streaming output. Defaults to the SDK default.
+        session_manager: Optional pre-built session manager instance
+            (e.g. FileSessionManager, S3SessionManager). When None, the
+            Agent is created without a session manager (stateless).
+        conversation_manager: Optional pre-built conversation manager
+            instance (e.g. SlidingWindowConversationManager). When None,
+            the Agent uses the SDK default behavior.
 
     Returns:
         Configured Agent instance.
@@ -218,6 +226,10 @@ def create_oscal_agent(
     }
     if callback_handler != "default":
         agent_kwargs["callback_handler"] = callback_handler
+    if session_manager is not None:
+        agent_kwargs["session_manager"] = session_manager
+    if conversation_manager is not None:
+        agent_kwargs["conversation_manager"] = conversation_manager
 
     agent = Agent(**agent_kwargs)
 
