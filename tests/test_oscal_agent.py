@@ -12,6 +12,7 @@ Feature: oscal-agent-production, agent-session-state
 """
 
 import logging
+import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
@@ -519,6 +520,139 @@ class TestMainEntryPoint:
 
         assert exc_info.value.code == 1
 
+    # -----------------------------------------------------------------------
+    # Task 5.5 — Session ID logging and discoverability (Req 9.1–9.4)
+    # -----------------------------------------------------------------------
+
+    @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
+    @patch("mcp_server_for_oscal.oscal_agent._build_conversation_manager", return_value=None)
+    @patch("mcp_server_for_oscal.oscal_agent._build_session_manager")
+    @patch("mcp_server_for_oscal.oscal_agent.verify_package_integrity")
+    @patch("mcp_server_for_oscal.oscal_agent.config")
+    @patch("sys.argv", ["agent"])
+    def test_interactive_mode_logs_session_id_at_info_and_prints(
+        self,
+        mock_config,
+        mock_verify,
+        mock_build_sm,
+        mock_build_cm,
+        mock_create_agent,
+        caplog,
+        capsys,
+    ):
+        """Req 9.1, 9.2: Interactive mode logs session ID at INFO and prints to stdout."""
+        from mcp_server_for_oscal.oscal_agent import main
+
+        mock_config.aws_profile = None
+        mock_config.log_level = "INFO"
+        mock_config.component_definitions_dir = "component_definitions"
+        mock_config.agent_max_tokens = 4096
+
+        mock_build_sm.return_value = (MagicMock(), "test-session-abc")
+        mock_create_agent.return_value = MagicMock()
+
+        with patch("builtins.input", side_effect=EOFError):
+            with caplog.at_level(logging.DEBUG, logger="mcp_server_for_oscal.oscal_agent"):
+                main()
+
+        # Verify INFO log contains session ID
+        assert any(
+            "Session ID: test-session-abc" in record.message
+            and record.levelno == logging.INFO
+            for record in caplog.records
+        ), f"Expected INFO log with session ID, got: {[r.message for r in caplog.records]}"
+
+        # Verify stdout contains session ID
+        captured = capsys.readouterr()
+        assert "Session ID: test-session-abc" in captured.out
+
+    @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
+    @patch("mcp_server_for_oscal.oscal_agent._build_conversation_manager", return_value=None)
+    @patch("mcp_server_for_oscal.oscal_agent._build_session_manager")
+    @patch("mcp_server_for_oscal.oscal_agent.verify_package_integrity")
+    @patch("mcp_server_for_oscal.oscal_agent.config")
+    @patch("sys.argv", ["agent", "--query", "hello"])
+    def test_query_mode_logs_session_id_at_debug_no_stdout(
+        self,
+        mock_config,
+        mock_verify,
+        mock_build_sm,
+        mock_build_cm,
+        mock_create_agent,
+        caplog,
+        capsys,
+    ):
+        """Req 9.3, 9.4: Query mode logs session ID at DEBUG, not printed to stdout."""
+        from mcp_server_for_oscal.oscal_agent import main
+
+        # Use DEBUG log level so the logger.debug() call is captured by caplog.
+        mock_config.aws_profile = None
+        mock_config.log_level = "DEBUG"
+        mock_config.component_definitions_dir = "component_definitions"
+        mock_config.agent_max_tokens = 4096
+
+        mock_build_sm.return_value = (MagicMock(), "test-session-xyz")
+        mock_agent = MagicMock()
+        mock_agent.return_value = "agent response"
+        mock_create_agent.return_value = mock_agent
+
+        with caplog.at_level(logging.DEBUG, logger="mcp_server_for_oscal.oscal_agent"):
+            main()
+
+        # Verify DEBUG log contains session ID (not INFO)
+        session_logs = [
+            r for r in caplog.records if "Session ID: test-session-xyz" in r.message
+        ]
+        assert len(session_logs) == 1, (
+            f"Expected exactly one session ID log, got: "
+            f"{[(r.levelno, r.message) for r in caplog.records]}"
+        )
+        assert session_logs[0].levelno == logging.DEBUG
+
+        # Verify stdout does NOT contain "Session ID:" (only the agent response)
+        captured = capsys.readouterr()
+        assert "Session ID:" not in captured.out
+
+    @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
+    @patch("mcp_server_for_oscal.oscal_agent._build_conversation_manager", return_value=None)
+    @patch("mcp_server_for_oscal.oscal_agent._build_session_manager")
+    @patch("mcp_server_for_oscal.oscal_agent.verify_package_integrity")
+    @patch("mcp_server_for_oscal.oscal_agent.config")
+    @patch("sys.argv", ["agent"])
+    def test_no_session_manager_skips_session_id_logging(
+        self,
+        mock_config,
+        mock_verify,
+        mock_build_sm,
+        mock_build_cm,
+        mock_create_agent,
+        caplog,
+        capsys,
+    ):
+        """When no session manager is configured, no session ID is logged or printed."""
+        from mcp_server_for_oscal.oscal_agent import main
+
+        mock_config.aws_profile = None
+        mock_config.log_level = "INFO"
+        mock_config.component_definitions_dir = "component_definitions"
+        mock_config.agent_max_tokens = 4096
+
+        mock_build_sm.return_value = (None, None)
+        mock_create_agent.return_value = MagicMock()
+
+        with patch("builtins.input", side_effect=EOFError):
+            with caplog.at_level(logging.DEBUG, logger="mcp_server_for_oscal.oscal_agent"):
+                main()
+
+        # No "Session ID:" in logs
+        assert not any(
+            "Session ID:" in record.message for record in caplog.records
+        ), f"Unexpected session ID log: {[r.message for r in caplog.records]}"
+
+        # No "Session ID:" in stdout
+        captured = capsys.readouterr()
+        assert "Session ID:" not in captured.out
+
 
 # ---------------------------------------------------------------------------
 # Task 3.2 — Property 1: Factory manager forwarding
@@ -673,4 +807,699 @@ class TestFactoryBackwardCompatibility:
         )
         assert agent_call_kwargs["conversation_manager"] is mock_conversation_mgr, (
             "Agent must receive the exact conversation_manager object"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Task 5.6 — Unit tests for CLI argument parsing and manager construction
+# ---------------------------------------------------------------------------
+
+
+class TestBuildSessionManager:
+    """Unit tests for _build_session_manager() helper.
+
+    **Validates: Requirements 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.4, 4.8**
+    """
+
+    def _make_args(self, **overrides):
+        """Build a minimal argparse-like namespace with session defaults."""
+        defaults = {
+            "session_id": None,
+            "session_storage": None,
+            "session_dir": None,
+            "session_s3_bucket": None,
+            "session_s3_prefix": None,
+        }
+        defaults.update(overrides)
+        return SimpleNamespace(**defaults)
+
+    def _make_config(self, **overrides):
+        """Build a minimal config-like namespace with session defaults."""
+        defaults = {
+            "session_storage": "",
+            "session_dir": ".oscal_sessions",
+            "session_s3_bucket": "",
+            "session_s3_prefix": "oscal-agent-sessions/",
+        }
+        defaults.update(overrides)
+        return SimpleNamespace(**defaults)
+
+    @patch("strands.session.FileSessionManager")
+    def test_file_storage_returns_file_session_manager(self, mock_file_sm_cls):
+        """--session-storage=file creates a FileSessionManager (Req 4.2)."""
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        sentinel = MagicMock(name="FileSessionManager_instance")
+        mock_file_sm_cls.return_value = sentinel
+
+        args = self._make_args(session_storage="file", session_id="my-session")
+        cfg = self._make_config()
+
+        sm, sid = _build_session_manager(args, cfg)
+
+        mock_file_sm_cls.assert_called_once_with(
+            session_id="my-session",
+            storage_dir=".oscal_sessions",
+        )
+        assert sm is sentinel
+        assert sid == "my-session"
+
+    @patch("strands.session.S3SessionManager")
+    def test_s3_storage_returns_s3_session_manager(self, mock_s3_sm_cls):
+        """--session-storage=s3 with bucket creates an S3SessionManager (Req 4.3)."""
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        sentinel = MagicMock(name="S3SessionManager_instance")
+        mock_s3_sm_cls.return_value = sentinel
+
+        args = self._make_args(
+            session_storage="s3",
+            session_id="s3-session",
+            session_s3_bucket="my-bucket",
+            session_s3_prefix="prefix/",
+        )
+        cfg = self._make_config()
+
+        sm, sid = _build_session_manager(args, cfg)
+
+        mock_s3_sm_cls.assert_called_once_with(
+            session_id="s3-session",
+            bucket="my-bucket",
+            prefix="prefix/",
+        )
+        assert sm is sentinel
+        assert sid == "s3-session"
+
+    def test_no_storage_returns_none(self):
+        """No --session-storage and empty config returns (None, None) (Req 4.4)."""
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        args = self._make_args()
+        cfg = self._make_config()
+
+        sm, sid = _build_session_manager(args, cfg)
+
+        assert sm is None
+        assert sid is None
+
+    def test_s3_without_bucket_exits_with_code_1(self):
+        """--session-storage=s3 without bucket exits with code 1 (Req 4.8)."""
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        args = self._make_args(session_storage="s3", session_id="x")
+        cfg = self._make_config()
+
+        with pytest.raises(SystemExit) as exc_info:
+            _build_session_manager(args, cfg)
+
+        assert exc_info.value.code == 1
+
+    @patch("strands.session.FileSessionManager")
+    def test_auto_generates_uuid_v4_when_session_id_omitted(self, mock_file_sm_cls):
+        """Auto-generates a valid UUID v4 when --session-id is not provided (Req 3.3)."""
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        args = self._make_args(session_storage="file")
+        cfg = self._make_config()
+
+        _, sid = _build_session_manager(args, cfg)
+
+        # Validate it's a proper UUID v4
+        parsed = uuid.UUID(sid, version=4)
+        assert str(parsed) == sid
+        assert parsed.version == 4
+
+    @patch("strands.session.FileSessionManager")
+    def test_cli_session_dir_overrides_config(self, mock_file_sm_cls):
+        """CLI --session-dir overrides config.session_dir (Req 4.5)."""
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        args = self._make_args(
+            session_storage="file",
+            session_id="x",
+            session_dir="/custom/dir",
+        )
+        cfg = self._make_config(session_dir="/default/dir")
+
+        _build_session_manager(args, cfg)
+
+        call_kwargs = mock_file_sm_cls.call_args[1]
+        assert call_kwargs["storage_dir"] == "/custom/dir"
+
+    @patch("strands.session.S3SessionManager")
+    def test_cli_s3_prefix_overrides_config(self, mock_s3_sm_cls):
+        """CLI --session-s3-prefix overrides config.session_s3_prefix (Req 4.7)."""
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        args = self._make_args(
+            session_storage="s3",
+            session_id="x",
+            session_s3_bucket="bucket",
+            session_s3_prefix="cli-prefix/",
+        )
+        cfg = self._make_config(session_s3_prefix="env-prefix/")
+
+        _build_session_manager(args, cfg)
+
+        call_kwargs = mock_s3_sm_cls.call_args[1]
+        assert call_kwargs["prefix"] == "cli-prefix/"
+
+
+class TestBuildConversationManager:
+    """Unit tests for _build_conversation_manager() helper.
+
+    **Validates: Requirements 5.1, 5.2, 5.3, 5.4, 5.5**
+    """
+
+    def _make_args(self, **overrides):
+        defaults = {"conversation_manager": None}
+        defaults.update(overrides)
+        return SimpleNamespace(**defaults)
+
+    def _make_config(self, **overrides):
+        defaults = {"conversation_manager_type": ""}
+        defaults.update(overrides)
+        return SimpleNamespace(**defaults)
+
+    @patch("strands.agent.conversation_manager.SlidingWindowConversationManager")
+    def test_sliding_window_returns_correct_type(self, mock_sw_cls):
+        """--conversation-manager=sliding-window creates SlidingWindowConversationManager (Req 5.2)."""
+        from mcp_server_for_oscal.oscal_agent import _build_conversation_manager
+
+        sentinel = MagicMock(name="SlidingWindowCM")
+        mock_sw_cls.return_value = sentinel
+
+        args = self._make_args(conversation_manager="sliding-window")
+        cfg = self._make_config()
+
+        result = _build_conversation_manager(args, cfg)
+
+        mock_sw_cls.assert_called_once()
+        assert result is sentinel
+
+    @patch("strands.agent.conversation_manager.SummarizingConversationManager")
+    def test_summarizing_returns_correct_type(self, mock_sum_cls):
+        """--conversation-manager=summarizing creates SummarizingConversationManager (Req 5.3)."""
+        from mcp_server_for_oscal.oscal_agent import _build_conversation_manager
+
+        sentinel = MagicMock(name="SummarizingCM")
+        mock_sum_cls.return_value = sentinel
+
+        args = self._make_args(conversation_manager="summarizing")
+        cfg = self._make_config()
+
+        result = _build_conversation_manager(args, cfg)
+
+        mock_sum_cls.assert_called_once()
+        assert result is sentinel
+
+    @patch("strands.agent.conversation_manager.NullConversationManager")
+    def test_null_returns_correct_type(self, mock_null_cls):
+        """--conversation-manager=null creates NullConversationManager (Req 5.4)."""
+        from mcp_server_for_oscal.oscal_agent import _build_conversation_manager
+
+        sentinel = MagicMock(name="NullCM")
+        mock_null_cls.return_value = sentinel
+
+        args = self._make_args(conversation_manager="null")
+        cfg = self._make_config()
+
+        result = _build_conversation_manager(args, cfg)
+
+        mock_null_cls.assert_called_once()
+        assert result is sentinel
+
+    def test_no_conversation_manager_returns_none(self):
+        """No --conversation-manager and empty config returns None (Req 5.5)."""
+        from mcp_server_for_oscal.oscal_agent import _build_conversation_manager
+
+        args = self._make_args()
+        cfg = self._make_config()
+
+        result = _build_conversation_manager(args, cfg)
+
+        assert result is None
+
+    @patch("strands.agent.conversation_manager.SummarizingConversationManager")
+    def test_config_default_used_when_cli_not_set(self, mock_sum_cls):
+        """Config conversation_manager_type is used when CLI arg is None (Req 5.3, 7.5)."""
+        from mcp_server_for_oscal.oscal_agent import _build_conversation_manager
+
+        sentinel = MagicMock(name="SummarizingCM")
+        mock_sum_cls.return_value = sentinel
+
+        args = self._make_args()  # conversation_manager=None
+        cfg = self._make_config(conversation_manager_type="summarizing")
+
+        result = _build_conversation_manager(args, cfg)
+
+        mock_sum_cls.assert_called_once()
+        assert result is sentinel
+
+
+class TestCLISessionArgParsing:
+    """Unit tests for CLI argument parsing of session/conversation args.
+
+    **Validates: Requirements 3.1, 4.1, 4.5, 4.6, 4.7, 5.1**
+    """
+
+    @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
+    @patch("mcp_server_for_oscal.oscal_agent._build_conversation_manager", return_value=None)
+    @patch("mcp_server_for_oscal.oscal_agent._build_session_manager", return_value=(None, None))
+    @patch("mcp_server_for_oscal.oscal_agent.verify_package_integrity")
+    @patch("mcp_server_for_oscal.oscal_agent.config")
+    @patch(
+        "sys.argv",
+        [
+            "agent",
+            "--session-id", "abc-123",
+            "--session-storage", "file",
+            "--session-dir", "/tmp/sessions",
+            "--conversation-manager", "summarizing",
+        ],
+    )
+    def test_session_args_parsed_and_forwarded(
+        self,
+        mock_config,
+        mock_verify,
+        mock_build_sm,
+        mock_build_cm,
+        mock_create_agent,
+    ):
+        """All session/conversation CLI args are parsed and forwarded to builders (Req 3.1, 4.1, 5.1)."""
+        from mcp_server_for_oscal.oscal_agent import main
+
+        mock_config.aws_profile = None
+        mock_config.log_level = "INFO"
+        mock_config.component_definitions_dir = "component_definitions"
+        mock_config.agent_max_tokens = 4096
+
+        mock_create_agent.return_value = MagicMock()
+
+        with patch("builtins.input", side_effect=EOFError):
+            main()
+
+        # Verify _build_session_manager was called with parsed args
+        sm_call_args = mock_build_sm.call_args[0][0]  # first positional arg = args namespace
+        assert sm_call_args.session_id == "abc-123"
+        assert sm_call_args.session_storage == "file"
+        assert sm_call_args.session_dir == "/tmp/sessions"
+
+        # Verify _build_conversation_manager was called with parsed args
+        cm_call_args = mock_build_cm.call_args[0][0]
+        assert cm_call_args.conversation_manager == "summarizing"
+
+    @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
+    @patch("mcp_server_for_oscal.oscal_agent._build_conversation_manager", return_value=None)
+    @patch("mcp_server_for_oscal.oscal_agent._build_session_manager", return_value=(None, None))
+    @patch("mcp_server_for_oscal.oscal_agent.verify_package_integrity")
+    @patch("mcp_server_for_oscal.oscal_agent.config")
+    @patch(
+        "sys.argv",
+        [
+            "agent",
+            "--session-storage", "s3",
+            "--session-s3-bucket", "my-bucket",
+            "--session-s3-prefix", "my-prefix/",
+        ],
+    )
+    def test_s3_args_parsed_correctly(
+        self,
+        mock_config,
+        mock_verify,
+        mock_build_sm,
+        mock_build_cm,
+        mock_create_agent,
+    ):
+        """S3-specific CLI args are parsed correctly (Req 4.6, 4.7)."""
+        from mcp_server_for_oscal.oscal_agent import main
+
+        mock_config.aws_profile = None
+        mock_config.log_level = "INFO"
+        mock_config.component_definitions_dir = "component_definitions"
+        mock_config.agent_max_tokens = 4096
+
+        mock_create_agent.return_value = MagicMock()
+
+        with patch("builtins.input", side_effect=EOFError):
+            main()
+
+        sm_call_args = mock_build_sm.call_args[0][0]
+        assert sm_call_args.session_storage == "s3"
+        assert sm_call_args.session_s3_bucket == "my-bucket"
+        assert sm_call_args.session_s3_prefix == "my-prefix/"
+
+    @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
+    @patch("mcp_server_for_oscal.oscal_agent._build_conversation_manager", return_value=None)
+    @patch("mcp_server_for_oscal.oscal_agent._build_session_manager", return_value=(None, None))
+    @patch("mcp_server_for_oscal.oscal_agent.verify_package_integrity")
+    @patch("mcp_server_for_oscal.oscal_agent.config")
+    @patch("sys.argv", ["agent"])
+    def test_session_args_default_to_none(
+        self,
+        mock_config,
+        mock_verify,
+        mock_build_sm,
+        mock_build_cm,
+        mock_create_agent,
+    ):
+        """Session/conversation args default to None when not provided (Req 4.4, 5.5)."""
+        from mcp_server_for_oscal.oscal_agent import main
+
+        mock_config.aws_profile = None
+        mock_config.log_level = "INFO"
+        mock_config.component_definitions_dir = "component_definitions"
+        mock_config.agent_max_tokens = 4096
+
+        mock_create_agent.return_value = MagicMock()
+
+        with patch("builtins.input", side_effect=EOFError):
+            main()
+
+        sm_call_args = mock_build_sm.call_args[0][0]
+        assert sm_call_args.session_id is None
+        assert sm_call_args.session_storage is None
+        assert sm_call_args.session_dir is None
+        assert sm_call_args.session_s3_bucket is None
+        assert sm_call_args.session_s3_prefix is None
+        assert sm_call_args.conversation_manager is None
+
+
+# ---------------------------------------------------------------------------
+# Task 5.7 — Property 3: CLI Precedence Over Environment Variables
+# ---------------------------------------------------------------------------
+
+# Strategy for generating non-empty strings suitable for config/CLI values.
+# We use printable characters and filter out empty/whitespace-only strings
+# to ensure both CLI and config values are "truthy" (non-empty).
+_nonempty_text = st.text(
+    min_size=1,
+    max_size=40,
+    alphabet=st.characters(
+        whitelist_categories=("L", "N", "P"),
+        blacklist_characters="\x00/\\",
+    ),
+).filter(lambda t: t.strip())
+
+# Strategy for conversation manager types (valid choices)
+_cm_types = st.sampled_from(["sliding-window", "summarizing", "null"])
+
+
+class TestProperty3CLIPrecedenceOverEnvVars:
+    """
+    Property 3: CLI Precedence Over Environment Variables
+
+    For any (env_var_value, cli_arg_value) pair, when both are set
+    (non-empty), the effective value used to construct the
+    session/conversation manager equals the CLI argument value,
+    not the environment variable value.
+
+    **Validates: Requirements 7.6**
+    """
+
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(
+        cli_session_dir=_nonempty_text,
+        config_session_dir=_nonempty_text,
+    )
+    @patch("strands.session.FileSessionManager")
+    def test_cli_session_dir_wins_over_config(
+        self,
+        mock_file_sm_cls,
+        cli_session_dir,
+        config_session_dir,
+    ):
+        """
+        Feature: agent-session-state, Property 3: CLI precedence over env vars
+
+        When both CLI --session-dir and config.session_dir are set,
+        FileSessionManager receives the CLI value.
+        """
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        args = SimpleNamespace(
+            session_id="fixed-id",
+            session_storage="file",
+            session_dir=cli_session_dir,
+            session_s3_bucket=None,
+            session_s3_prefix=None,
+        )
+        cfg = SimpleNamespace(
+            session_storage="file",
+            session_dir=config_session_dir,
+            session_s3_bucket="",
+            session_s3_prefix="oscal-agent-sessions/",
+        )
+
+        _build_session_manager(args, cfg)
+
+        call_kwargs = mock_file_sm_cls.call_args[1]
+        assert call_kwargs["storage_dir"] == cli_session_dir, (
+            f"Expected CLI value '{cli_session_dir}', "
+            f"got '{call_kwargs['storage_dir']}' "
+            f"(config was '{config_session_dir}')"
+        )
+
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(
+        cli_cm_type=_cm_types,
+        config_cm_type=_cm_types,
+    )
+    def test_cli_conversation_manager_wins_over_config(
+        self,
+        cli_cm_type,
+        config_cm_type,
+    ):
+        """
+        Feature: agent-session-state, Property 3: CLI precedence over env vars
+
+        When both CLI --conversation-manager and config.conversation_manager_type
+        are set, the conversation manager type used equals the CLI value.
+        """
+        from mcp_server_for_oscal.oscal_agent import _build_conversation_manager
+
+        args = SimpleNamespace(conversation_manager=cli_cm_type)
+        cfg = SimpleNamespace(conversation_manager_type=config_cm_type)
+
+        # Map type to expected class name
+        type_to_class = {
+            "sliding-window": "SlidingWindowConversationManager",
+            "summarizing": "SummarizingConversationManager",
+            "null": "NullConversationManager",
+        }
+
+        with patch("strands.agent.conversation_manager.SlidingWindowConversationManager") as mock_sw, \
+             patch("strands.agent.conversation_manager.SummarizingConversationManager") as mock_sum, \
+             patch("strands.agent.conversation_manager.NullConversationManager") as mock_null:
+
+            mock_sw.return_value = MagicMock(name="SlidingWindowCM")
+            mock_sum.return_value = MagicMock(name="SummarizingCM")
+            mock_null.return_value = MagicMock(name="NullCM")
+
+            result = _build_conversation_manager(args, cfg)
+
+            # The CLI type should determine which class was instantiated
+            expected_class = type_to_class[cli_cm_type]
+            mock_map = {
+                "SlidingWindowConversationManager": mock_sw,
+                "SummarizingConversationManager": mock_sum,
+                "NullConversationManager": mock_null,
+            }
+
+            assert mock_map[expected_class].called, (
+                f"Expected {expected_class} to be called for CLI type '{cli_cm_type}', "
+                f"but it was not (config type was '{config_cm_type}')"
+            )
+            assert result is mock_map[expected_class].return_value
+
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(
+        cli_storage=st.sampled_from(["file", "s3"]),
+        config_storage=st.sampled_from(["file", "s3"]),
+    )
+    def test_cli_session_storage_wins_over_config(
+        self,
+        cli_storage,
+        config_storage,
+    ):
+        """
+        Feature: agent-session-state, Property 3: CLI precedence over env vars
+
+        When both CLI --session-storage and config.session_storage are set,
+        the storage type used equals the CLI value.
+        """
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        args = SimpleNamespace(
+            session_id="fixed-id",
+            session_storage=cli_storage,
+            session_dir="/cli/dir",
+            session_s3_bucket="cli-bucket",
+            session_s3_prefix="cli-prefix/",
+        )
+        cfg = SimpleNamespace(
+            session_storage=config_storage,
+            session_dir="/config/dir",
+            session_s3_bucket="config-bucket",
+            session_s3_prefix="config-prefix/",
+        )
+
+        with patch("strands.session.FileSessionManager") as mock_file, \
+             patch("strands.session.S3SessionManager") as mock_s3:
+
+            mock_file.return_value = MagicMock(name="FileSM")
+            mock_s3.return_value = MagicMock(name="S3SM")
+
+            _build_session_manager(args, cfg)
+
+            if cli_storage == "file":
+                assert mock_file.called, (
+                    f"Expected FileSessionManager for CLI storage '{cli_storage}', "
+                    f"but it was not called (config was '{config_storage}')"
+                )
+            else:
+                assert mock_s3.called, (
+                    f"Expected S3SessionManager for CLI storage '{cli_storage}', "
+                    f"but it was not called (config was '{config_storage}')"
+                )
+
+
+# ---------------------------------------------------------------------------
+# Task 5.8 — Property 4: Session ID Propagation
+# ---------------------------------------------------------------------------
+
+# Strategy for generating non-empty session ID strings.
+_session_id_text = st.text(
+    min_size=1,
+    max_size=60,
+    alphabet=st.characters(
+        whitelist_categories=("L", "N", "P"),
+        blacklist_characters="\x00",
+    ),
+).filter(lambda t: t.strip())
+
+
+class TestProperty4SessionIDPropagation:
+    """
+    Property 4: Session ID Propagation
+
+    For any valid session ID string provided via --session-id, the session
+    manager constructed by _build_session_manager() receives that exact
+    string as its session ID. When no --session-id is provided and session
+    storage is enabled, the generated session ID is a valid UUID v4 string.
+
+    **Validates: Requirements 3.2, 3.3**
+    """
+
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(session_id=_session_id_text)
+    @patch("strands.session.FileSessionManager")
+    def test_provided_session_id_propagated_to_session_manager(
+        self,
+        mock_file_sm_cls,
+        session_id,
+    ):
+        """
+        Feature: agent-session-state, Property 4: Session ID propagation
+
+        When session_id is provided (non-empty string), FileSessionManager
+        receives that exact string as its session_id argument.
+        """
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        args = SimpleNamespace(
+            session_id=session_id,
+            session_storage="file",
+            session_dir=None,
+            session_s3_bucket=None,
+            session_s3_prefix=None,
+        )
+        cfg = SimpleNamespace(
+            session_storage="file",
+            session_dir=".oscal_sessions",
+            session_s3_bucket="",
+            session_s3_prefix="oscal-agent-sessions/",
+        )
+
+        sm, returned_sid = _build_session_manager(args, cfg)
+
+        # The returned session_id must be the exact string provided
+        assert returned_sid == session_id, (
+            f"Expected returned session_id '{session_id}', got '{returned_sid}'"
+        )
+
+        # FileSessionManager must have been called with the exact session_id
+        call_kwargs = mock_file_sm_cls.call_args[1]
+        assert call_kwargs["session_id"] == session_id, (
+            f"Expected FileSessionManager session_id '{session_id}', "
+            f"got '{call_kwargs['session_id']}'"
+        )
+
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(data=st.data())
+    @patch("strands.session.FileSessionManager")
+    def test_omitted_session_id_generates_valid_uuid_v4(
+        self,
+        mock_file_sm_cls,
+        data,
+    ):
+        """
+        Feature: agent-session-state, Property 4: Session ID propagation
+
+        When session_id is None (omitted), the returned session_id is a
+        valid UUID v4 string.
+        """
+        from mcp_server_for_oscal.oscal_agent import _build_session_manager
+
+        args = SimpleNamespace(
+            session_id=None,
+            session_storage="file",
+            session_dir=None,
+            session_s3_bucket=None,
+            session_s3_prefix=None,
+        )
+        cfg = SimpleNamespace(
+            session_storage="file",
+            session_dir=".oscal_sessions",
+            session_s3_bucket="",
+            session_s3_prefix="oscal-agent-sessions/",
+        )
+
+        _, returned_sid = _build_session_manager(args, cfg)
+
+        # Must be a valid UUID v4
+        assert returned_sid is not None, "Session ID should not be None when storage is enabled"
+        parsed = uuid.UUID(returned_sid, version=4)
+        assert str(parsed) == returned_sid, (
+            f"Session ID '{returned_sid}' is not a canonical UUID v4 string"
+        )
+        assert parsed.version == 4, (
+            f"Expected UUID version 4, got version {parsed.version}"
+        )
+
+        # FileSessionManager must have received the same UUID
+        call_kwargs = mock_file_sm_cls.call_args[1]
+        assert call_kwargs["session_id"] == returned_sid, (
+            f"FileSessionManager received '{call_kwargs['session_id']}' "
+            f"but returned session_id was '{returned_sid}'"
         )

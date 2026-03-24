@@ -50,8 +50,8 @@ Wire Strands SDK session management, conversation management, and agent state in
 - [x] 4. Checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Add CLI arguments and session/conversation manager construction in `main()`
-  - [~] 5.1 Add new CLI arguments to `main()` argparse
+- [x] 5. Add CLI arguments and session/conversation manager construction in `main()`
+  - [x] 5.1 Add new CLI arguments to `main()` argparse
     - `--session-id` (str, optional)
     - `--session-storage` (choices: `file`, `s3`, optional)
     - `--session-dir` (str, optional)
@@ -60,7 +60,7 @@ Wire Strands SDK session management, conversation management, and agent state in
     - `--conversation-manager` (choices: `sliding-window`, `summarizing`, `null`, optional)
     - _Requirements: 3.1, 4.1, 4.5, 4.6, 4.7, 5.1_
 
-  - [~] 5.2 Implement `_build_session_manager()` helper in `oscal_agent.py`
+  - [x] 5.2 Implement `_build_session_manager()` helper in `oscal_agent.py`
     - Resolve effective storage from CLI arg or config default (CLI wins)
     - Return `None` when storage is not set (stateless mode)
     - Create `FileSessionManager` for `file`, `S3SessionManager` for `s3`
@@ -68,23 +68,23 @@ Wire Strands SDK session management, conversation management, and agent state in
     - Exit with code 1 and descriptive error when `s3` is selected without `--session-s3-bucket`
     - _Requirements: 3.2, 3.3, 4.2, 4.3, 4.4, 4.8, 7.6_
 
-  - [~] 5.3 Implement `_build_conversation_manager()` helper in `oscal_agent.py`
+  - [x] 5.3 Implement `_build_conversation_manager()` helper in `oscal_agent.py`
     - Resolve effective type from CLI arg or config default (CLI wins)
     - Return `None` when type is not set (SDK default behavior)
     - Create `SlidingWindowConversationManager`, `SummarizingConversationManager`, or `NullConversationManager`
     - _Requirements: 5.2, 5.3, 5.4, 5.5, 7.6_
 
-  - [~] 5.4 Wire session/conversation managers into `main()` agent creation
+  - [x] 5.4 Wire session/conversation managers into `main()` agent creation
     - Call `_build_session_manager()` and `_build_conversation_manager()` before `create_oscal_agent()`
     - Pass results to `create_oscal_agent(session_manager=..., conversation_manager=...)`
     - _Requirements: 1.1, 2.1, 6.1, 6.2, 6.3, 6.4_
 
-  - [~] 5.5 Add session ID logging and discoverability in `main()`
+  - [x] 5.5 Add session ID logging and discoverability in `main()`
     - Interactive mode: log session ID at INFO and print to stdout before first prompt
     - Single-query mode (`--query`): log session ID at DEBUG only, do not print to stdout
     - _Requirements: 9.1, 9.2, 9.3, 9.4_
 
-  - [~] 5.6 Write unit tests for CLI argument parsing and manager construction
+  - [x] 5.6 Write unit tests for CLI argument parsing and manager construction
     - Test each new CLI arg is parsed correctly
     - Test `_build_session_manager()` returns correct types for `file`, `s3`, and `None`
     - Test `_build_session_manager()` exits with code 1 when `s3` without bucket
@@ -94,17 +94,17 @@ Wire Strands SDK session management, conversation management, and agent state in
     - Add to `tests/test_oscal_agent.py`
     - _Requirements: 3.1, 3.2, 3.3, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 5.1, 5.2, 5.3, 5.4, 5.5, 9.1, 9.2, 9.3, 9.4_
 
-  - [~] 5.7 Write property test for CLI precedence over environment variables
+  - [x] 5.7 Write property test for CLI precedence over environment variables
     - **Property 3: CLI Precedence Over Environment Variables**
     - For any (env_var_value, cli_arg_value) pair, the effective value used equals the CLI arg value
     - **Validates: Requirements 7.6**
 
-  - [~] 5.8 Write property test for session ID propagation
+  - [x] 5.8 Write property test for session ID propagation
     - **Property 4: Session ID Propagation**
     - For any valid session ID string via `--session-id`, the session manager receives that exact string; when omitted, a valid UUID v4 is generated
     - **Validates: Requirements 3.2, 3.3**
 
-- [~] 6. Checkpoint — Ensure all tests pass
+- [x] 6. Checkpoint — Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 7. MCP server isolation verification
