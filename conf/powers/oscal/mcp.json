@@ -2,7 +2,7 @@
   "mcpServers": {
     "oscal": {
       "command": "uvx",
-      "args": ["--from", "mcp-server-for-oscal@latest", "server"],
+      "args": ["mcp-server-for-oscal@latest"],
       "env": {},
       "disabled": false,
       "autoApprove": [

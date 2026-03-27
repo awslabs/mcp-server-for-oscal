@@ -20,4 +20,4 @@ ENV OSCAL_MCP_TRANSPORT=streamable-http
 
 EXPOSE 8000
 
-CMD ["server"]
+CMD ["mcp-server-for-oscal"]
