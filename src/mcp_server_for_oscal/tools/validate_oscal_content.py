@@ -39,7 +39,7 @@ _TRESTLE_MODEL_MAP: dict[OSCALModelType, tuple[str, str]] = {
     OSCALModelType.ASSESSMENT_PLAN: ("trestle.oscal.assessment_plan", "AssessmentPlan"),
     OSCALModelType.ASSESSMENT_RESULTS: ("trestle.oscal.assessment_results", "AssessmentResults"),
     OSCALModelType.PLAN_OF_ACTION_AND_MILESTONES: ("trestle.oscal.poam", "PlanOfActionAndMilestones"),
-    #TODO: mapping-collection has no trestle model until OSCAL > 1.2.0
+    OSCALModelType.MAPPING: ("trestle.oscal.mapping", "MappingCollection"),
 }
 
 
