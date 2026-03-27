@@ -26,7 +26,7 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
     - Test database mode resolution for all four combinations (DB_PATH set/unset × bundled DB exists/not)
     - _Requirements: 8.1, 8.2, 8.3, 1.2, 1.3, 1.5, 1.6_
 
-- [ ] 2. Directory scanning and document ingestion
+- [x] 2. Directory scanning and document ingestion
   - [x] 2.1 Implement `scan_directory()` and `_detect_model_type()`
     - Implement `_detect_model_type()` to read only the root JSON key and map via `ROOT_KEY_TO_MODEL_TYPE`
     - Implement `scan_directory()` to walk directories for `.json` and `.zip` files, extract metadata (UUID, title, model_type, file_path, file_size, file_mtime, raw_json), and UPSERT into `documents` table with `indexed=0`
@@ -35,34 +35,34 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
     - Support `model_type_filter` parameter to scope scanning
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.4, 3.5, 9.1, 9.2_
 
-  - [-] 2.2 Implement `_ensure_indexed()` and `_extract_child_elements()`
+  - [x] 2.2 Implement `_ensure_indexed()` and `_extract_child_elements()`
     - Implement `_ensure_indexed(doc_id)` to check the `indexed` flag and trigger full parsing + child extraction when needed
     - Implement `_extract_child_elements(model_type, parsed_model)` with the child element type mapping for all 8 OSCAL model types per the design table
     - Insert child elements into `child_elements` table and FTS entries into `fts_index`
     - Set `indexed=1` after successful extraction
     - _Requirements: 1.7, 2.5, 3.2, 3.4_
 
-  - [-] 2.3 Implement LRU cache for parsed Trestle models
+  - [x] 2.3 Implement LRU cache for parsed Trestle models
     - Implement `get_parsed_model(doc_id)` using `functools.lru_cache` with configurable `cache_size`
     - Parse from `raw_json` stored in SQLite (no file system dependency after ingestion)
     - Use the Trestle model mapping table from the design to select the correct parser per model type
     - _Requirements: 3.2, 3.3_
 
-  - [~] 2.4 Write property test for model type detection (Property 3)
+  - [x] 2.4 Write property test for model type detection (Property 3)
     - **Property 3: Model type detection and multi-model acceptance**
     - Generate JSON with each valid root key from `ROOT_KEY_TO_MODEL_TYPE`, verify detection returns correct `OSCALModelType`
     - **Validates: Requirements 2.1, 2.2**
 
-  - [~] 2.5 Write property test for incremental re-indexing (Property 6)
+  - [x] 2.5 Write property test for incremental re-indexing (Property 6)
     - **Property 6: Incremental re-indexing**
     - Ingest documents, re-initialize store with same DB, re-scan unchanged files, verify zero re-processing and data intact
     - **Validates: Requirements 3.4, 3.5, 9.5**
 
-- [~] 3. Checkpoint - Verify scanning and ingestion
+- [x] 3. Checkpoint - Verify scanning and ingestion
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Query and list API
-  - [~] 4.1 Implement `query()` method
+- [x] 4. Query and list API
+  - [x] 4.1 Implement `query()` method
     - Implement unified `query()` with `oscal_model_type` filter, `query_type` (all/by_uuid/by_title/by_type), `query_value`, `offset`, `limit`
     - `by_uuid`: direct index lookup on `documents.uuid`
     - `by_title`: case-insensitive exact match first, FTS fallback
@@ -73,29 +73,29 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
     - Raise `ValueError` when `query_value` missing for by_uuid/by_title/by_type
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6_
 
-  - [~] 4.2 Implement `list_documents()` and `list_child_elements()`
+  - [x] 4.2 Implement `list_documents()` and `list_child_elements()`
     - `list_documents()`: query `documents` table for summaries (UUID, title, model_type, child_count via subquery, sizeInBytes), support `oscal_model_type` filter, return `Page_Response`
     - `list_child_elements()`: query `child_elements` with optional `parent_doc_uuid` and `element_type` filters, include `parentDocumentTitle` and `parentDocumentUuid` via JOIN, return `Page_Response`
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 2.6_
 
-  - [~] 4.3 Implement `text_search()` method
+  - [x] 4.3 Implement `text_search()` method
     - Query FTS5 virtual table with `MATCH` syntax
     - Support `oscal_model_type` scoping
     - Return `Page_Response` with results ranked by relevance
     - Catch `sqlite3.OperationalError` on bad FTS syntax, fall back to LIKE query
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-  - [~] 4.4 Write property test for pagination correctness (Property 7)
+  - [x] 4.4 Write property test for pagination correctness (Property 7)
     - **Property 7: Pagination correctness**
     - Generate N documents, test with random offset/limit, verify `len(items) == min(limit, N - offset)`, `total == N`, `hasMore == (offset + limit < N)`
     - **Validates: Requirements 4.3**
 
-  - [~] 4.5 Write property test for UUID lookup (Property 9)
+  - [x] 4.5 Write property test for UUID lookup (Property 9)
     - **Property 9: UUID lookup returns exact match**
     - Generate documents with known UUIDs, query each by UUID, verify exactly one result with matching UUID
     - **Validates: Requirements 5.3**
 
-  - [~] 4.6 Write property test for case-insensitive title search (Property 10)
+  - [x] 4.6 Write property test for case-insensitive title search (Property 10)
     - **Property 10: Case-insensitive title search**
     - Generate documents with known titles, query with random case variations, verify match
     - **Validates: Requirements 5.4**

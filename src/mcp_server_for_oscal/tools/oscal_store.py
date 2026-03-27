@@ -6,6 +6,8 @@ that supports all eight OSCAL model types, lazy loading, FTS5 search,
 pagination, and three database modes (bundled, persistent, ephemeral).
 """
 
+from __future__ import annotations
+
 import functools
 import importlib
 import json
@@ -286,8 +288,7 @@ class OscalStore:
                     entity_id,
                     title,
                     description,
-                    model_type,
-                    content=''
+                    model_type
                 )
             """)
 
@@ -412,6 +413,631 @@ class OscalStore:
             return OscalStore._do_parse(raw_json, model_type_str)
 
         return _cached_parse
+
+    # ------------------------------------------------------------------
+    # Lazy indexing
+    # ------------------------------------------------------------------
+
+    def _ensure_indexed(self, doc_id: int) -> None:
+        """Ensure a document's child elements are indexed.
+
+        Checks the ``indexed`` flag on the document row.  If already 1,
+        returns immediately (no-op).  Otherwise, parses the document via
+        the LRU cache, extracts child elements, inserts them into the
+        ``child_elements`` and ``fts_index`` tables, and sets
+        ``indexed=1``.
+
+        Args:
+            doc_id: The integer primary key of the document row.
+
+        Raises:
+            ValueError: If no document exists for *doc_id*.
+            RuntimeError: If parsing or extraction fails.
+        """
+        row = self._conn.execute(
+            "SELECT indexed, model_type, title, uuid FROM documents WHERE id = ?",
+            (doc_id,),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"No document found with id {doc_id}")
+
+        if row["indexed"]:
+            return
+
+        model_type_str = row["model_type"]
+        try:
+            model_type = OSCALModelType(model_type_str)
+        except ValueError:
+            logger.warning(
+                "Unknown model type '%s' for doc %d; skipping indexing",
+                model_type_str,
+                doc_id,
+            )
+            return
+
+        # Parse the full Trestle model (uses LRU cache)
+        parsed_model = self.get_parsed_model(doc_id)
+
+        # Extract child elements
+        children = self._extract_child_elements(model_type, parsed_model)
+
+        try:
+            cur = self._conn.cursor()
+
+            # Remove any stale child elements for this doc
+            cur.execute(
+                "DELETE FROM child_elements WHERE parent_doc_id = ?",
+                (doc_id,),
+            )
+
+            for child in children:
+                cur.execute(
+                    """
+                    INSERT OR REPLACE INTO child_elements
+                        (uuid, title, element_type, parent_doc_id,
+                         description, raw_json)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        child["uuid"],
+                        child["title"],
+                        child["element_type"],
+                        doc_id,
+                        child.get("description"),
+                        child.get("raw_json"),
+                    ),
+                )
+
+                # Insert FTS entry for the child element
+                child_id = cur.lastrowid
+                cur.execute(
+                    """
+                    INSERT INTO fts_index
+                        (entity_type, entity_id, title, description, model_type)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        "child_element",
+                        str(child_id),
+                        child["title"],
+                        child.get("description", ""),
+                        model_type_str,
+                    ),
+                )
+
+            # Insert FTS entry for the document itself
+            cur.execute(
+                """
+                INSERT INTO fts_index
+                    (entity_type, entity_id, title, description, model_type)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    "document",
+                    str(doc_id),
+                    row["title"],
+                    "",
+                    model_type_str,
+                ),
+            )
+
+            # Mark as indexed
+            cur.execute(
+                "UPDATE documents SET indexed = 1 WHERE id = ?",
+                (doc_id,),
+            )
+
+            self._conn.commit()
+            logger.debug(
+                "Indexed doc %d (%s): %d child elements",
+                doc_id,
+                model_type_str,
+                len(children),
+            )
+        except sqlite3.Error as exc:
+            self._conn.rollback()
+            raise RuntimeError(
+                f"Failed to index document {doc_id}: {exc}"
+            ) from exc
+
+    def _extract_child_elements(
+        self,
+        model_type: OSCALModelType,
+        parsed_model: object,
+    ) -> list[dict]:
+        """Extract child element metadata from a parsed Trestle model.
+
+        Each returned dict has keys: uuid, title, element_type,
+        description (optional), raw_json (optional).
+
+        Args:
+            model_type: The OSCAL model type of the document.
+            parsed_model: A parsed Trestle Pydantic model instance.
+
+        Returns:
+            A list of child element dicts.
+        """
+        children: list[dict] = []
+
+        if model_type == OSCALModelType.COMPONENT_DEFINITION:
+            # components
+            for comp in getattr(parsed_model, "components", None) or []:
+                children.append(self._child_dict(
+                    uuid=str(comp.uuid),
+                    title=str(comp.title),
+                    element_type="component",
+                    description=str(comp.description) if comp.description else None,
+                    obj=comp,
+                ))
+            # capabilities
+            for cap in getattr(parsed_model, "capabilities", None) or []:
+                children.append(self._child_dict(
+                    uuid=str(cap.uuid),
+                    title=str(cap.name),
+                    element_type="capability",
+                    description=str(cap.description) if cap.description else None,
+                    obj=cap,
+                ))
+
+        elif model_type == OSCALModelType.CATALOG:
+            # controls (top-level)
+            for ctrl in getattr(parsed_model, "controls", None) or []:
+                children.append(self._child_dict(
+                    uuid=str(ctrl.id),
+                    title=str(ctrl.title),
+                    element_type="control",
+                    description=None,
+                    obj=ctrl,
+                ))
+            # groups
+            for grp in getattr(parsed_model, "groups", None) or []:
+                children.append(self._child_dict(
+                    uuid=str(grp.id),
+                    title=str(grp.title),
+                    element_type="group",
+                    description=None,
+                    obj=grp,
+                ))
+
+        elif model_type == OSCALModelType.PROFILE:
+            # imports
+            for idx, imp in enumerate(
+                getattr(parsed_model, "imports", None) or []
+            ):
+                href = str(getattr(imp, "href", ""))
+                children.append(self._child_dict(
+                    uuid=f"import-{idx}",
+                    title=href or f"import-{idx}",
+                    element_type="import",
+                    description=href,
+                    obj=imp,
+                ))
+            # modify
+            modify = getattr(parsed_model, "modify", None)
+            if modify is not None:
+                children.append(self._child_dict(
+                    uuid="modify",
+                    title="modify",
+                    element_type="modify",
+                    description=None,
+                    obj=modify,
+                ))
+
+        elif model_type == OSCALModelType.SYSTEM_SECURITY_PLAN:
+            # control-implementation
+            ctrl_impl = getattr(parsed_model, "control_implementation", None)
+            if ctrl_impl is not None:
+                desc = (
+                    str(ctrl_impl.description)
+                    if ctrl_impl.description
+                    else None
+                )
+                children.append(self._child_dict(
+                    uuid="control-implementation",
+                    title="control-implementation",
+                    element_type="control-implementation",
+                    description=desc,
+                    obj=ctrl_impl,
+                ))
+            # system-components from system_implementation
+            sys_impl = getattr(parsed_model, "system_implementation", None)
+            if sys_impl is not None:
+                for comp in getattr(sys_impl, "components", None) or []:
+                    children.append(self._child_dict(
+                        uuid=str(comp.uuid),
+                        title=str(comp.title),
+                        element_type="system-component",
+                        description=(
+                            str(comp.description)
+                            if comp.description
+                            else None
+                        ),
+                        obj=comp,
+                    ))
+
+        elif model_type == OSCALModelType.ASSESSMENT_PLAN:
+            # tasks
+            for task in getattr(parsed_model, "tasks", None) or []:
+                children.append(self._child_dict(
+                    uuid=str(task.uuid),
+                    title=str(task.title),
+                    element_type="task",
+                    description=(
+                        str(task.description)
+                        if task.description
+                        else None
+                    ),
+                    obj=task,
+                ))
+            # activities from local_definitions
+            local_defs = getattr(parsed_model, "local_definitions", None)
+            if local_defs is not None:
+                for act in getattr(local_defs, "activities", None) or []:
+                    children.append(self._child_dict(
+                        uuid=str(act.uuid),
+                        title=str(act.title) if act.title else str(act.uuid),
+                        element_type="activity",
+                        description=(
+                            str(act.description)
+                            if act.description
+                            else None
+                        ),
+                        obj=act,
+                    ))
+
+        elif model_type == OSCALModelType.ASSESSMENT_RESULTS:
+            # results
+            for result in getattr(parsed_model, "results", None) or []:
+                children.append(self._child_dict(
+                    uuid=str(result.uuid),
+                    title=str(result.title),
+                    element_type="result",
+                    description=(
+                        str(result.description)
+                        if result.description
+                        else None
+                    ),
+                    obj=result,
+                ))
+                # findings within each result
+                for finding in getattr(result, "findings", None) or []:
+                    children.append(self._child_dict(
+                        uuid=str(finding.uuid),
+                        title=str(finding.title),
+                        element_type="finding",
+                        description=(
+                            str(finding.description)
+                            if finding.description
+                            else None
+                        ),
+                        obj=finding,
+                    ))
+
+        elif model_type == OSCALModelType.PLAN_OF_ACTION_AND_MILESTONES:
+            # poam-items
+            for item in getattr(parsed_model, "poam_items", None) or []:
+                children.append(self._child_dict(
+                    uuid=str(item.uuid),
+                    title=str(item.title),
+                    element_type="poam-item",
+                    description=(
+                        str(item.description)
+                        if item.description
+                        else None
+                    ),
+                    obj=item,
+                ))
+
+        elif model_type == OSCALModelType.MAPPING:
+            # mappings
+            mappings = getattr(parsed_model, "mappings", None)
+            if mappings is not None:
+                # mappings can be a single Mapping or a list
+                if not isinstance(mappings, list):
+                    mappings = [mappings]
+                for m in mappings:
+                    title = str(
+                        getattr(m, "matching_rationale", None) or m.uuid
+                    )
+                    children.append(self._child_dict(
+                        uuid=str(m.uuid),
+                        title=title,
+                        element_type="mapping",
+                        description=None,
+                        obj=m,
+                    ))
+
+        return children
+
+    @staticmethod
+    def _child_dict(
+        uuid: str,
+        title: str,
+        element_type: str,
+        description: str | None,
+        obj: object,
+    ) -> dict:
+        """Build a child element dict, serializing the object to JSON."""
+        raw_json: str | None = None
+        try:
+            json_method = getattr(obj, "json", None)
+            if json_method is not None:
+                raw_json = json_method(exclude_none=True, by_alias=True)
+        except Exception:
+            logger.debug(
+                "Could not serialize %s child to JSON", element_type
+            )
+        return {
+            "uuid": uuid,
+            "title": title,
+            "element_type": element_type,
+            "description": description,
+            "raw_json": raw_json,
+        }
+
+    # ------------------------------------------------------------------
+    # Query API
+    # ------------------------------------------------------------------
+
+    def query(
+        self,
+        ctx: object | None = None,
+        oscal_model_type: OSCALModelType | None = None,
+        query_type: str = "all",
+        query_value: str | None = None,
+        offset: int = 0,
+        limit: int = 10,
+    ) -> dict:
+        """Unified query across all OSCAL model types.
+
+        Args:
+            ctx: MCP server context (unused, kept for interface compat).
+            oscal_model_type: Scope to a specific model type, or None for all.
+            query_type: ``"all"`` (paginated scan), ``"by_uuid"`` (index
+                lookup), ``"by_title"`` (case-insensitive exact then FTS
+                fallback), or ``"by_type"`` (filter on model_type column).
+            query_value: Required for by_uuid, by_title, by_type.
+            offset: Zero-based pagination offset.
+            limit: Maximum number of items to return.
+
+        Returns:
+            Page_Response dict with keys: items, total, offset, limit, hasMore.
+
+        Raises:
+            ValueError: If query_value is missing when required.
+        """
+        if query_type in ("by_uuid", "by_title", "by_type") and not query_value:
+            raise ValueError(
+                f"query_value is required for query_type '{query_type}'"
+            )
+
+        if query_type == "by_uuid":
+            assert query_value is not None
+            return self._query_by_uuid(query_value, oscal_model_type, offset, limit)
+        elif query_type == "by_title":
+            assert query_value is not None
+            return self._query_by_title(query_value, oscal_model_type, offset, limit)
+        elif query_type == "by_type":
+            assert query_value is not None
+            return self._query_by_type(query_value, oscal_model_type, offset, limit)
+        else:
+            # "all" — paginated scan
+            return self._query_all(oscal_model_type, offset, limit)
+
+    def _query_by_uuid(
+        self,
+        uuid_value: str,
+        oscal_model_type: OSCALModelType | None,
+        offset: int,
+        limit: int,
+    ) -> dict:
+        """Direct index lookup on documents.uuid."""
+        where = "WHERE d.uuid = ?"
+        params: list = [uuid_value]
+        if oscal_model_type is not None:
+            where += " AND d.model_type = ?"
+            params.append(oscal_model_type.value)
+
+        total = self._conn.execute(
+            f"SELECT COUNT(*) as cnt FROM documents d {where}", params
+        ).fetchone()["cnt"]
+
+        rows = self._conn.execute(
+            f"SELECT d.id, d.uuid, d.title, d.model_type, d.file_path, d.file_size "
+            f"FROM documents d {where} ORDER BY d.id LIMIT ? OFFSET ?",
+            params + [limit, offset],
+        ).fetchall()
+
+        items = self._build_query_items(rows)
+        return self._page_response(items, total, offset, limit)
+
+    def _query_by_title(
+        self,
+        title_value: str,
+        oscal_model_type: OSCALModelType | None,
+        offset: int,
+        limit: int,
+    ) -> dict:
+        """Case-insensitive exact match first, FTS fallback."""
+        # Phase 1: exact case-insensitive match
+        where = "WHERE d.title = ? COLLATE NOCASE"
+        params: list = [title_value]
+        if oscal_model_type is not None:
+            where += " AND d.model_type = ?"
+            params.append(oscal_model_type.value)
+
+        total = self._conn.execute(
+            f"SELECT COUNT(*) as cnt FROM documents d {where}", params
+        ).fetchone()["cnt"]
+
+        if total > 0:
+            rows = self._conn.execute(
+                f"SELECT d.id, d.uuid, d.title, d.model_type, d.file_path, d.file_size "
+                f"FROM documents d {where} ORDER BY d.id LIMIT ? OFFSET ?",
+                params + [limit, offset],
+            ).fetchall()
+            items = self._build_query_items(rows)
+            return self._page_response(items, total, offset, limit)
+
+        # Phase 2: FTS fallback
+        return self._query_by_title_fts(title_value, oscal_model_type, offset, limit)
+
+    def _query_by_title_fts(
+        self,
+        title_value: str,
+        oscal_model_type: OSCALModelType | None,
+        offset: int,
+        limit: int,
+    ) -> dict:
+        """FTS fallback for title search."""
+        try:
+            fts_where = "WHERE fts_index MATCH ?"
+            fts_params: list = [f"entity_type:document {title_value}"]
+            if oscal_model_type is not None:
+                fts_params = [
+                    f"entity_type:document model_type:{oscal_model_type.value} {title_value}"
+                ]
+
+            fts_ids = self._conn.execute(
+                f"SELECT CAST(f.entity_id AS INTEGER) as doc_id "
+                f"FROM fts_index f {fts_where}",
+                fts_params,
+            ).fetchall()
+            doc_ids = [r["doc_id"] for r in fts_ids]
+        except sqlite3.OperationalError:
+            # Bad FTS syntax — fall back to LIKE
+            like_where = "WHERE d.title LIKE ?"
+            like_params: list = [f"%{title_value}%"]
+            if oscal_model_type is not None:
+                like_where += " AND d.model_type = ?"
+                like_params.append(oscal_model_type.value)
+
+            like_rows = self._conn.execute(
+                f"SELECT d.id FROM documents d {like_where}",
+                like_params,
+            ).fetchall()
+            doc_ids = [r["id"] for r in like_rows]
+
+        if not doc_ids:
+            return self._page_response([], 0, offset, limit)
+
+        total = len(doc_ids)
+        paged_ids = doc_ids[offset : offset + limit]
+        if not paged_ids:
+            return self._page_response([], total, offset, limit)
+
+        placeholders = ",".join("?" for _ in paged_ids)
+        rows = self._conn.execute(
+            f"SELECT d.id, d.uuid, d.title, d.model_type, d.file_path, d.file_size "
+            f"FROM documents d WHERE d.id IN ({placeholders}) ORDER BY d.id",
+            paged_ids,
+        ).fetchall()
+
+        items = self._build_query_items(rows)
+        return self._page_response(items, total, offset, limit)
+
+    def _query_by_type(
+        self,
+        type_value: str,
+        oscal_model_type: OSCALModelType | None,
+        offset: int,
+        limit: int,
+    ) -> dict:
+        """Filter on model_type column."""
+        where = "WHERE d.model_type = ?"
+        params: list = [type_value]
+        if oscal_model_type is not None:
+            # Both filters apply — type_value from query_value and
+            # oscal_model_type from the parameter. They may overlap.
+            where += " AND d.model_type = ?"
+            params.append(oscal_model_type.value)
+
+        total = self._conn.execute(
+            f"SELECT COUNT(*) as cnt FROM documents d {where}", params
+        ).fetchone()["cnt"]
+
+        rows = self._conn.execute(
+            f"SELECT d.id, d.uuid, d.title, d.model_type, d.file_path, d.file_size "
+            f"FROM documents d {where} ORDER BY d.id LIMIT ? OFFSET ?",
+            params + [limit, offset],
+        ).fetchall()
+
+        items = self._build_query_items(rows)
+        return self._page_response(items, total, offset, limit)
+
+    def _query_all(
+        self,
+        oscal_model_type: OSCALModelType | None,
+        offset: int,
+        limit: int,
+    ) -> dict:
+        """Paginated scan of all documents."""
+        where = ""
+        params: list = []
+        if oscal_model_type is not None:
+            where = "WHERE d.model_type = ?"
+            params.append(oscal_model_type.value)
+
+        total = self._conn.execute(
+            f"SELECT COUNT(*) as cnt FROM documents d {where}", params
+        ).fetchone()["cnt"]
+
+        rows = self._conn.execute(
+            f"SELECT d.id, d.uuid, d.title, d.model_type, d.file_path, d.file_size "
+            f"FROM documents d {where} ORDER BY d.id LIMIT ? OFFSET ?",
+            params + [limit, offset],
+        ).fetchall()
+
+        items = self._build_query_items(rows)
+        return self._page_response(items, total, offset, limit)
+
+    def _build_query_items(self, rows: list) -> list[dict]:
+        """Build item dicts from document rows, triggering _ensure_indexed."""
+        items = []
+        for row in rows:
+            doc_id = row["id"]
+            self._ensure_indexed(doc_id)
+
+            # Fetch child elements for this document
+            children = self._conn.execute(
+                "SELECT uuid, title, element_type, description "
+                "FROM child_elements WHERE parent_doc_id = ? "
+                "ORDER BY element_type, title",
+                (doc_id,),
+            ).fetchall()
+
+            child_list = [
+                {
+                    "uuid": c["uuid"],
+                    "title": c["title"],
+                    "element_type": c["element_type"],
+                    "description": c["description"],
+                }
+                for c in children
+            ]
+
+            items.append({
+                "uuid": row["uuid"],
+                "title": row["title"],
+                "model_type": row["model_type"],
+                "file_path": row["file_path"],
+                "sizeInBytes": row["file_size"],
+                "children": child_list,
+            })
+        return items
+
+    @staticmethod
+    def _page_response(
+        items: list[dict], total: int, offset: int, limit: int
+    ) -> dict:
+        """Build a Page_Response dict."""
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "hasMore": offset + limit < total,
+        }
 
     # ------------------------------------------------------------------
     # Model type detection
@@ -789,3 +1415,374 @@ class OscalStore:
             logger.debug("Cannot open zip %s: %s", zip_path, exc)
 
         return count
+
+    # ------------------------------------------------------------------
+    # List / query API
+    # ------------------------------------------------------------------
+
+    def list_documents(
+        self,
+        ctx: object | None = None,
+        oscal_model_type: OSCALModelType | None = None,
+        offset: int = 0,
+        limit: int = 10,
+    ) -> dict:
+        """List document summaries (UUID, title, model_type, child_count, sizeInBytes).
+
+        Reads directly from SQLite — no full document loading.
+        Triggers ``_ensure_indexed()`` for documents in the result page so
+        that ``child_count`` is accurate.
+
+        Args:
+            ctx: Optional MCP context (unused, kept for interface consistency).
+            oscal_model_type: Filter to a specific model type, or None for all.
+            offset: Pagination offset (0-based).
+            limit: Maximum number of items to return.
+
+        Returns:
+            Page_Response dict with keys: items, total, offset, limit, hasMore.
+        """
+        # Build WHERE clause
+        where_clauses: list[str] = []
+        params: list = []
+        if oscal_model_type is not None:
+            where_clauses.append("d.model_type = ?")
+            params.append(oscal_model_type.value)
+
+        where_sql = ""
+        if where_clauses:
+            where_sql = "WHERE " + " AND ".join(where_clauses)
+
+        # Get total count
+        total_row = self._conn.execute(
+            f"SELECT COUNT(*) as cnt FROM documents d {where_sql}",
+            params,
+        ).fetchone()
+        total = total_row["cnt"]
+
+        # Get the page of documents
+        page_params = params + [limit, offset]
+        rows = self._conn.execute(
+            f"""
+            SELECT d.id, d.uuid, d.title, d.model_type, d.file_size, d.indexed
+            FROM documents d
+            {where_sql}
+            ORDER BY d.title COLLATE NOCASE, d.uuid
+            LIMIT ? OFFSET ?
+            """,
+            page_params,
+        ).fetchall()
+
+        # Ensure indexing for documents in this page so child_count is accurate
+        for row in rows:
+            if not row["indexed"]:
+                try:
+                    self._ensure_indexed(row["id"])
+                except Exception:
+                    logger.warning(
+                        "Failed to index doc %d for list_documents",
+                        row["id"],
+                    )
+
+        # Build items with child_count via subquery per document
+        items: list[dict] = []
+        for row in rows:
+            child_count_row = self._conn.execute(
+                "SELECT COUNT(*) as cnt FROM child_elements WHERE parent_doc_id = ?",
+                (row["id"],),
+            ).fetchone()
+            items.append({
+                "uuid": row["uuid"],
+                "title": row["title"],
+                "model_type": row["model_type"],
+                "childCount": child_count_row["cnt"],
+                "sizeInBytes": row["file_size"],
+            })
+
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "hasMore": offset + limit < total,
+        }
+
+    def text_search(
+        self,
+        query_text: str,
+        oscal_model_type: OSCALModelType | None = None,
+        offset: int = 0,
+        limit: int = 10,
+    ) -> dict:
+        """FTS5 full-text search across documents and child elements.
+
+        Queries the ``fts_index`` FTS5 virtual table using ``MATCH`` syntax.
+        Results are ranked by relevance (using FTS5 ``rank``).  When the
+        query text contains invalid FTS5 syntax, catches
+        ``sqlite3.OperationalError`` and falls back to a ``LIKE`` query on
+        the ``title`` and ``description`` columns.
+
+        Supports optional ``oscal_model_type`` scoping so that only entities
+        of the specified model type appear in results.
+
+        Args:
+            query_text: The search string.
+            oscal_model_type: Scope results to a specific model type, or
+                None for all types.
+            offset: Pagination offset (0-based).
+            limit: Maximum number of items to return.
+
+        Returns:
+            Page_Response dict with keys: items, total, offset, limit, hasMore.
+            Each item contains: entity_type, entity_id, title, description,
+            model_type.
+        """
+        if not query_text or not query_text.strip():
+            return {
+                "items": [],
+                "total": 0,
+                "offset": offset,
+                "limit": limit,
+                "hasMore": False,
+            }
+
+        try:
+            return self._fts_search(
+                query_text, oscal_model_type, offset, limit
+            )
+        except sqlite3.OperationalError:
+            logger.warning(
+                "FTS MATCH failed for query '%s'; falling back to LIKE",
+                query_text,
+            )
+            return self._like_search(
+                query_text, oscal_model_type, offset, limit
+            )
+
+    def _fts_search(
+        self,
+        query_text: str,
+        oscal_model_type: OSCALModelType | None,
+        offset: int,
+        limit: int,
+    ) -> dict:
+        """Execute an FTS5 MATCH search on fts_index.
+
+        May raise ``sqlite3.OperationalError`` on bad FTS syntax.
+        """
+        where_clauses = ["fts_index MATCH ?"]
+        params: list = [query_text]
+
+        if oscal_model_type is not None:
+            where_clauses.append("model_type = ?")
+            params.append(oscal_model_type.value)
+
+        where_sql = " AND ".join(where_clauses)
+
+        # Total count
+        total_row = self._conn.execute(
+            f"SELECT COUNT(*) as cnt FROM fts_index WHERE {where_sql}",
+            params,
+        ).fetchone()
+        total = total_row["cnt"]
+
+        # Paginated results ranked by relevance
+        page_params = params + [limit, offset]
+        rows = self._conn.execute(
+            f"""
+            SELECT entity_type, entity_id, title, description, model_type,
+                   rank
+            FROM fts_index
+            WHERE {where_sql}
+            ORDER BY rank
+            LIMIT ? OFFSET ?
+            """,
+            page_params,
+        ).fetchall()
+
+        items = [
+            {
+                "entity_type": row["entity_type"],
+                "entity_id": row["entity_id"],
+                "title": row["title"],
+                "description": row["description"],
+                "model_type": row["model_type"],
+            }
+            for row in rows
+        ]
+
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "hasMore": offset + limit < total,
+        }
+
+    def _like_search(
+        self,
+        query_text: str,
+        oscal_model_type: OSCALModelType | None,
+        offset: int,
+        limit: int,
+    ) -> dict:
+        """Fallback LIKE search on fts_index title and description columns."""
+        like_pattern = f"%{query_text}%"
+        where_clauses = ["(title LIKE ? OR description LIKE ?)"]
+        params: list = [like_pattern, like_pattern]
+
+        if oscal_model_type is not None:
+            where_clauses.append("model_type = ?")
+            params.append(oscal_model_type.value)
+
+        where_sql = " AND ".join(where_clauses)
+
+        # Total count
+        total_row = self._conn.execute(
+            f"SELECT COUNT(*) as cnt FROM fts_index WHERE {where_sql}",
+            params,
+        ).fetchone()
+        total = total_row["cnt"]
+
+        # Paginated results
+        page_params = params + [limit, offset]
+        rows = self._conn.execute(
+            f"""
+            SELECT entity_type, entity_id, title, description, model_type
+            FROM fts_index
+            WHERE {where_sql}
+            ORDER BY title
+            LIMIT ? OFFSET ?
+            """,
+            page_params,
+        ).fetchall()
+
+        items = [
+            {
+                "entity_type": row["entity_type"],
+                "entity_id": row["entity_id"],
+                "title": row["title"],
+                "description": row["description"],
+                "model_type": row["model_type"],
+            }
+            for row in rows
+        ]
+
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "hasMore": offset + limit < total,
+        }
+
+    def list_child_elements(
+        self,
+        ctx: object | None = None,
+        parent_doc_uuid: str | None = None,
+        element_type: str | None = None,
+        offset: int = 0,
+        limit: int = 10,
+    ) -> dict:
+        """List child element summaries with parent document info.
+
+        Triggers ``_ensure_indexed()`` for relevant parent documents so
+        that child elements are available.
+
+        Args:
+            ctx: Optional MCP context (unused, kept for interface consistency).
+            parent_doc_uuid: Filter to children of a specific parent document.
+            element_type: Filter to a specific child element type.
+            offset: Pagination offset (0-based).
+            limit: Maximum number of items to return.
+
+        Returns:
+            Page_Response dict with keys: items, total, offset, limit, hasMore.
+        """
+        # Ensure indexing for relevant parent documents
+        if parent_doc_uuid is not None:
+            doc_row = self._conn.execute(
+                "SELECT id, indexed FROM documents WHERE uuid = ?",
+                (parent_doc_uuid,),
+            ).fetchone()
+            if doc_row is not None and not doc_row["indexed"]:
+                try:
+                    self._ensure_indexed(doc_row["id"])
+                except Exception:
+                    logger.warning(
+                        "Failed to index doc %s for list_child_elements",
+                        parent_doc_uuid,
+                    )
+        else:
+            # Ensure all unindexed documents are indexed
+            unindexed = self._conn.execute(
+                "SELECT id FROM documents WHERE indexed = 0"
+            ).fetchall()
+            for row in unindexed:
+                try:
+                    self._ensure_indexed(row["id"])
+                except Exception:
+                    logger.warning(
+                        "Failed to index doc %d for list_child_elements",
+                        row["id"],
+                    )
+
+        # Build WHERE clause
+        where_clauses: list[str] = []
+        params: list = []
+        if parent_doc_uuid is not None:
+            where_clauses.append("d.uuid = ?")
+            params.append(parent_doc_uuid)
+        if element_type is not None:
+            where_clauses.append("ce.element_type = ?")
+            params.append(element_type)
+
+        where_sql = ""
+        if where_clauses:
+            where_sql = "WHERE " + " AND ".join(where_clauses)
+
+        # Get total count
+        total_row = self._conn.execute(
+            f"""
+            SELECT COUNT(*) as cnt
+            FROM child_elements ce
+            JOIN documents d ON ce.parent_doc_id = d.id
+            {where_sql}
+            """,
+            params,
+        ).fetchone()
+        total = total_row["cnt"]
+
+        # Get the page
+        page_params = params + [limit, offset]
+        rows = self._conn.execute(
+            f"""
+            SELECT ce.uuid, ce.title, ce.element_type, ce.description,
+                   d.title AS parent_title, d.uuid AS parent_uuid
+            FROM child_elements ce
+            JOIN documents d ON ce.parent_doc_id = d.id
+            {where_sql}
+            ORDER BY ce.title COLLATE NOCASE, ce.uuid
+            LIMIT ? OFFSET ?
+            """,
+            page_params,
+        ).fetchall()
+
+        items: list[dict] = []
+        for row in rows:
+            items.append({
+                "uuid": row["uuid"],
+                "title": row["title"],
+                "element_type": row["element_type"],
+                "description": row["description"],
+                "parentDocumentTitle": row["parent_title"],
+                "parentDocumentUuid": row["parent_uuid"],
+            })
+
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "hasMore": offset + limit < total,
+        }
