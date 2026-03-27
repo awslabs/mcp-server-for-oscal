@@ -3172,3 +3172,489 @@ class TestPropertyDatabaseModeResolution:
         assert modes[0] in {"bundled", "persistent", "ephemeral"}, (
             f"Invalid mode '{modes[0]}'"
         )
+
+
+# ---------------------------------------------------------------------------
+# Property 1: Document metadata persistence round-trip
+# ---------------------------------------------------------------------------
+
+
+class TestPropertyDocumentMetadataRoundTrip:
+    """Feature: scalable-oscal-store, Property 1: Document metadata persistence round-trip.
+
+    *For any* valid OSCAL document (of any model type) with a UUID, title,
+    model type, file path, and file size, ingesting it into the OscalStore
+    and then querying the document back by UUID should return metadata where
+    UUID, title, model_type, file_path, and sizeInBytes all match the
+    original values.
+
+    **Validates: Requirements 1.1, 4.1**
+    """
+
+    @pytest.mark.slow
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(doc_set=oscal_document_set())
+    def test_document_metadata_round_trip(self, doc_set, tmp_path_factory):
+        """Ingest documents, query each by UUID, verify metadata matches.
+
+        **Validates: Requirements 1.1, 4.1**
+        """
+        tmp_path = tmp_path_factory.mktemp("prop1")
+        db_path = str(tmp_path / "test.db")
+        doc_dir = tmp_path / "docs"
+        doc_dir.mkdir()
+
+        # Write all documents to disk and record expected metadata
+        expected = []
+        for filename, data, doc_uuid, title in doc_set:
+            file_path = doc_dir / filename
+            raw = json.dumps(data)
+            file_path.write_text(raw)
+            expected.append({
+                "uuid": doc_uuid,
+                "title": title,
+                "file_path": str(file_path),
+                "sizeInBytes": file_path.stat().st_size,
+            })
+
+        store = OscalStore(db_path=db_path, cache_size=50)
+        try:
+            count = store.scan_directory(doc_dir)
+            assert count == len(doc_set), (
+                f"Expected {len(doc_set)} ingested, got {count}"
+            )
+
+            for exp in expected:
+                result = store.query(
+                    query_type="by_uuid", query_value=exp["uuid"]
+                )
+                assert result["total"] == 1, (
+                    f"Expected 1 result for UUID {exp['uuid']}, "
+                    f"got {result['total']}"
+                )
+                item = result["items"][0]
+
+                assert item["uuid"] == exp["uuid"], (
+                    f"UUID mismatch: {item['uuid']} != {exp['uuid']}"
+                )
+                assert item["title"] == exp["title"], (
+                    f"Title mismatch: {item['title']} != {exp['title']}"
+                )
+                assert item["file_path"] == exp["file_path"], (
+                    f"file_path mismatch: {item['file_path']} != {exp['file_path']}"
+                )
+                assert item["sizeInBytes"] == exp["sizeInBytes"], (
+                    f"sizeInBytes mismatch: {item['sizeInBytes']} != {exp['sizeInBytes']}"
+                )
+                # model_type should be a non-empty string
+                assert isinstance(item["model_type"], str)
+                assert len(item["model_type"]) > 0
+        finally:
+            store.close()
+
+
+# ---------------------------------------------------------------------------
+# Property 2: Child element metadata persistence
+# ---------------------------------------------------------------------------
+
+# Makers that produce child elements for Property 2 testing
+_MAKERS_WITH_CHILDREN = [
+    ("component-definition-with-children", _make_component_definition_with_children),
+    ("catalog-with-controls", _make_catalog_with_controls),
+    ("poam", _make_poam),
+]
+
+
+@st.composite
+def oscal_document_set_with_children(draw):
+    """Strategy that produces documents guaranteed to have child elements.
+
+    Returns a list of (filename, json_data, uuid, title) tuples.
+    """
+    count = draw(st.integers(min_value=1, max_value=6))
+    docs = []
+    used_uuids = set()
+    for i in range(count):
+        maker_name, maker_fn = draw(st.sampled_from(_MAKERS_WITH_CHILDREN))
+        doc_uuid = _uuid4_hex()
+        while doc_uuid in used_uuids:
+            doc_uuid = _uuid4_hex()
+        used_uuids.add(doc_uuid)
+        title = f"ChildDoc-{i}-{maker_name}"
+        data = maker_fn(uuid=doc_uuid, title=title)
+        filename = f"childdoc_{i}_{maker_name}.json"
+        docs.append((filename, data, doc_uuid, title))
+    return docs
+
+
+class TestPropertyChildElementMetadataPersistence:
+    """Feature: scalable-oscal-store, Property 2: Child element metadata persistence.
+
+    *For any* valid OSCAL document that contains child elements, after the
+    document is fully indexed, querying child_elements by parent document ID
+    should return elements whose UUID, title, and element_type match the
+    child elements in the original document, and each child element's
+    parent_doc_id should reference a valid document row.
+
+    **Validates: Requirements 1.4**
+    """
+
+    @pytest.mark.slow
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(doc_set=oscal_document_set_with_children())
+    def test_child_element_metadata_persistence(self, doc_set, tmp_path_factory):
+        """Ingest documents with children, fully index, verify child metadata.
+
+        **Validates: Requirements 1.4**
+        """
+        tmp_path = tmp_path_factory.mktemp("prop2")
+        db_path = str(tmp_path / "test.db")
+        doc_dir = tmp_path / "docs"
+        doc_dir.mkdir()
+
+        for filename, data, _uuid, _title in doc_set:
+            (doc_dir / filename).write_text(json.dumps(data))
+
+        store = OscalStore(db_path=db_path, cache_size=50)
+        try:
+            count = store.scan_directory(doc_dir)
+            assert count == len(doc_set)
+
+            for _filename, _data, doc_uuid, _title in doc_set:
+                # Trigger full indexing via list_child_elements
+                children_result = store.list_child_elements(
+                    parent_doc_uuid=doc_uuid, limit=100
+                )
+
+                # Documents from _MAKERS_WITH_CHILDREN always have children
+                assert children_result["total"] > 0, (
+                    f"Document {doc_uuid} should have children"
+                )
+
+                for child in children_result["items"]:
+                    # Each child has required fields
+                    assert child["uuid"] is not None and len(child["uuid"]) > 0, (
+                        "Child UUID should be non-empty"
+                    )
+                    assert child["title"] is not None and len(child["title"]) > 0, (
+                        "Child title should be non-empty"
+                    )
+                    assert child["element_type"] is not None and len(child["element_type"]) > 0, (
+                        "Child element_type should be non-empty"
+                    )
+
+                    # parent_doc_id references a valid document
+                    assert child["parentDocumentUuid"] == doc_uuid, (
+                        f"Child parent UUID {child['parentDocumentUuid']} "
+                        f"!= expected {doc_uuid}"
+                    )
+
+                # Verify parent_doc_id references a valid document row
+                doc_row = store._conn.execute(
+                    "SELECT id FROM documents WHERE uuid = ?",
+                    (doc_uuid,),
+                ).fetchone()
+                assert doc_row is not None
+
+                db_children = store._conn.execute(
+                    "SELECT parent_doc_id FROM child_elements WHERE parent_doc_id = ?",
+                    (doc_row["id"],),
+                ).fetchall()
+                for db_child in db_children:
+                    # Verify the FK is valid
+                    parent_exists = store._conn.execute(
+                        "SELECT COUNT(*) as cnt FROM documents WHERE id = ?",
+                        (db_child["parent_doc_id"],),
+                    ).fetchone()["cnt"]
+                    assert parent_exists == 1, (
+                        f"parent_doc_id {db_child['parent_doc_id']} "
+                        f"does not reference a valid document"
+                    )
+        finally:
+            store.close()
+
+
+# ---------------------------------------------------------------------------
+# Property 4: Child element type correctness per model type
+# ---------------------------------------------------------------------------
+
+
+class TestPropertyChildElementTypeCorrectness:
+    """Feature: scalable-oscal-store, Property 4: Child element type correctness per model type.
+
+    *For any* valid OSCAL document of a given model type, after full indexing,
+    the element_type values of its child elements in the database should be a
+    subset of the expected child element types for that model type.
+
+    **Validates: Requirements 2.5**
+    """
+
+    @pytest.mark.slow
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(doc_set=oscal_document_set_with_children())
+    def test_child_element_types_subset_of_expected(self, doc_set, tmp_path_factory):
+        """For each document, verify child element_types are a subset of
+        CHILD_ELEMENT_TYPES for that model type.
+
+        **Validates: Requirements 2.5**
+        """
+        from mcp_server_for_oscal.tools.oscal_store import CHILD_ELEMENT_TYPES
+
+        tmp_path = tmp_path_factory.mktemp("prop4")
+        db_path = str(tmp_path / "test.db")
+        doc_dir = tmp_path / "docs"
+        doc_dir.mkdir()
+
+        for filename, data, _uuid, _title in doc_set:
+            (doc_dir / filename).write_text(json.dumps(data))
+
+        store = OscalStore(db_path=db_path, cache_size=50)
+        try:
+            count = store.scan_directory(doc_dir)
+            assert count == len(doc_set)
+
+            # Index all documents
+            for row in store._conn.execute("SELECT id FROM documents").fetchall():
+                store._ensure_indexed(row["id"])
+
+            # For each document, check child element types
+            for _filename, _data, doc_uuid, _title in doc_set:
+                doc_row = store._conn.execute(
+                    "SELECT id, model_type FROM documents WHERE uuid = ?",
+                    (doc_uuid,),
+                ).fetchone()
+                assert doc_row is not None
+
+                model_type = OSCALModelType(doc_row["model_type"])
+                expected_types = set(CHILD_ELEMENT_TYPES.get(model_type, ()))
+
+                children = store._conn.execute(
+                    "SELECT element_type FROM child_elements WHERE parent_doc_id = ?",
+                    (doc_row["id"],),
+                ).fetchall()
+
+                actual_types = {c["element_type"] for c in children}
+                assert actual_types.issubset(expected_types), (
+                    f"For model type '{model_type.value}': "
+                    f"child types {actual_types} not subset of {expected_types}"
+                )
+        finally:
+            store.close()
+
+
+# ---------------------------------------------------------------------------
+# Property 8: Child element listings include parent info
+# ---------------------------------------------------------------------------
+
+
+class TestPropertyChildElementParentInfo:
+    """Feature: scalable-oscal-store, Property 8: Child element listings include parent info.
+
+    *For any* child element returned by list_child_elements, the result should
+    include parentDocumentTitle and parentDocumentUuid fields, and these should
+    match the title and UUID of the parent document in the documents table.
+
+    **Validates: Requirements 4.4**
+    """
+
+    @pytest.mark.slow
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(doc_set=oscal_document_set_with_children())
+    def test_child_elements_include_correct_parent_info(self, doc_set, tmp_path_factory):
+        """List children, verify parentDocumentTitle and parentDocumentUuid
+        are present and match the actual parent document.
+
+        **Validates: Requirements 4.4**
+        """
+        tmp_path = tmp_path_factory.mktemp("prop8")
+        db_path = str(tmp_path / "test.db")
+        doc_dir = tmp_path / "docs"
+        doc_dir.mkdir()
+
+        for filename, data, _uuid, _title in doc_set:
+            (doc_dir / filename).write_text(json.dumps(data))
+
+        store = OscalStore(db_path=db_path, cache_size=50)
+        try:
+            count = store.scan_directory(doc_dir)
+            assert count == len(doc_set)
+
+            # Build a lookup of doc UUID -> title from the input
+            doc_lookup = {doc_uuid: title for _, _, doc_uuid, title in doc_set}
+
+            for _filename, _data, doc_uuid, doc_title in doc_set:
+                children_result = store.list_child_elements(
+                    parent_doc_uuid=doc_uuid, limit=100
+                )
+
+                assert children_result["total"] > 0, (
+                    f"Document {doc_uuid} should have children"
+                )
+
+                for child in children_result["items"]:
+                    # Verify parentDocumentUuid is present and correct
+                    assert "parentDocumentUuid" in child, (
+                        "Child element missing parentDocumentUuid"
+                    )
+                    assert child["parentDocumentUuid"] == doc_uuid, (
+                        f"parentDocumentUuid {child['parentDocumentUuid']} "
+                        f"!= expected {doc_uuid}"
+                    )
+
+                    # Verify parentDocumentTitle is present and correct
+                    assert "parentDocumentTitle" in child, (
+                        "Child element missing parentDocumentTitle"
+                    )
+                    assert child["parentDocumentTitle"] == doc_title, (
+                        f"parentDocumentTitle '{child['parentDocumentTitle']}' "
+                        f"!= expected '{doc_title}'"
+                    )
+        finally:
+            store.close()
+
+
+# ---------------------------------------------------------------------------
+# Property 11: Full-text search relevance with model type scoping
+# ---------------------------------------------------------------------------
+
+
+@st.composite
+def oscal_mixed_type_set_for_fts(draw):
+    """Strategy that produces 2–6 documents of mixed types for FTS testing.
+
+    Each document has a unique title containing searchable keywords.
+    Titles use separate words so FTS5 tokenization can match them.
+    Returns a list of (filename, json_data, uuid, title, model_type_value, unique_word) tuples.
+    """
+    # Use makers that produce children (so FTS has child content too)
+    _FTS_MAKERS = [
+        ("component-definition-with-children", _make_component_definition_with_children, "component-definition"),
+        ("catalog-with-controls", _make_catalog_with_controls, "catalog"),
+        ("poam", _make_poam, "plan-of-action-and-milestones"),
+    ]
+    # Unique words that are unlikely to collide with other content
+    _UNIQUE_WORDS = [
+        "Xylophone", "Quasar", "Zephyr", "Nebula", "Prism",
+        "Vortex", "Glacier", "Zenith", "Pulsar", "Mirage",
+    ]
+    count = draw(st.integers(min_value=2, max_value=6))
+    docs = []
+    used_uuids = set()
+    for i in range(count):
+        maker_name, maker_fn, model_type_val = draw(st.sampled_from(_FTS_MAKERS))
+        doc_uuid = _uuid4_hex()
+        while doc_uuid in used_uuids:
+            doc_uuid = _uuid4_hex()
+        used_uuids.add(doc_uuid)
+        unique_word = _UNIQUE_WORDS[i]
+        title = f"Searchable {unique_word} Document"
+        data = maker_fn(uuid=doc_uuid, title=title)
+        filename = f"fts_{i}_{maker_name}.json"
+        docs.append((filename, data, doc_uuid, title, model_type_val, unique_word))
+    return docs
+
+
+class TestPropertyFtsWithModelTypeScoping:
+    """Feature: scalable-oscal-store, Property 11: Full-text search relevance with model type scoping.
+
+    *For any* indexed document or child element whose title or description
+    contains a given term, a text search for that term should include that
+    entity in the results. When the search is scoped to a specific
+    oscal_model_type, only entities of that model type should appear in
+    the results.
+
+    **Validates: Requirements 6.2, 6.3**
+    """
+
+    @pytest.mark.slow
+    @settings(
+        max_examples=100,
+        suppress_health_check=[HealthCheck.too_slow],
+        deadline=None,
+    )
+    @given(doc_set=oscal_mixed_type_set_for_fts())
+    def test_fts_finds_indexed_content_and_scoping_filters(self, doc_set, tmp_path_factory):
+        """Index documents, search for known terms, verify found.
+        Scope by model type, verify only matching types returned.
+
+        **Validates: Requirements 6.2, 6.3**
+        """
+        tmp_path = tmp_path_factory.mktemp("prop11")
+        db_path = str(tmp_path / "test.db")
+        doc_dir = tmp_path / "docs"
+        doc_dir.mkdir()
+
+        for filename, data, _uuid, _title, _mt, _uw in doc_set:
+            (doc_dir / filename).write_text(json.dumps(data))
+
+        store = OscalStore(db_path=db_path, cache_size=50)
+        try:
+            count = store.scan_directory(doc_dir)
+            assert count == len(doc_set)
+
+            # Index all documents so FTS entries are populated
+            for row in store._conn.execute("SELECT id FROM documents").fetchall():
+                store._ensure_indexed(row["id"])
+
+            # 1. Search for a term present in all document titles
+            result = store.text_search("Searchable", limit=100)
+            assert result["total"] > 0, (
+                "FTS search for 'Searchable' should find results"
+            )
+
+            # 2. For each document, search for its unique word
+            for _filename, _data, doc_uuid, title, _mt, unique_word in doc_set:
+                result = store.text_search(unique_word, limit=100)
+                assert result["total"] >= 1, (
+                    f"FTS search for '{unique_word}' should find at least 1 result"
+                )
+                # Verify the document's title appears in results
+                result_titles = [item["title"] for item in result["items"]]
+                assert any(unique_word in t for t in result_titles), (
+                    f"Expected '{unique_word}' in result titles, "
+                    f"got {result_titles}"
+                )
+
+            # 3. Model type scoping: for each model type present, verify filtering
+            model_types_present = {mt for _, _, _, _, mt, _ in doc_set}
+            for mt_value in model_types_present:
+                mt_enum = OSCALModelType(mt_value)
+                scoped_result = store.text_search(
+                    "Searchable",
+                    oscal_model_type=mt_enum,
+                    limit=100,
+                )
+                # All returned items should have the scoped model type
+                for item in scoped_result["items"]:
+                    assert item["model_type"] == mt_value, (
+                        f"Scoped search for type '{mt_value}' returned "
+                        f"item with type '{item['model_type']}'"
+                    )
+
+                # Verify we get results for this type (we know docs exist)
+                expected_count = sum(
+                    1 for _, _, _, _, m, _ in doc_set if m == mt_value
+                )
+                if expected_count > 0:
+                    assert scoped_result["total"] > 0, (
+                        f"Scoped search for type '{mt_value}' should find "
+                        f"results (have {expected_count} docs of this type)"
+                    )
+        finally:
+            store.close()

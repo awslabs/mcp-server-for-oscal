@@ -181,41 +181,41 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
 - [x] 9. Checkpoint - Verify build script and bundled DB
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Remaining property tests and integration
-  - [~] 10.1 Write property test for document metadata round-trip (Property 1)
+- [x] 10. Remaining property tests and integration
+  - [x] 10.1 Write property test for document metadata round-trip (Property 1)
     - **Property 1: Document metadata persistence round-trip**
     - Generate random document metadata, ingest, query back by UUID, verify UUID/title/model_type/file_path/sizeInBytes match
     - **Validates: Requirements 1.1, 4.1**
 
-  - [~] 10.2 Write property test for child element metadata persistence (Property 2)
+  - [x] 10.2 Write property test for child element metadata persistence (Property 2)
     - **Property 2: Child element metadata persistence**
     - Generate documents with child elements, fully index, verify child UUID/title/element_type match and parent_doc_id is valid
     - **Validates: Requirements 1.4**
 
-  - [~] 10.3 Write property test for child element type correctness (Property 4)
+  - [x] 10.3 Write property test for child element type correctness (Property 4)
     - **Property 4: Child element type correctness per model type**
     - Generate documents of each model type, index, verify child element_types are subset of expected types for that model
     - **Validates: Requirements 2.5**
 
-  - [~] 10.4 Write property test for child element parent info (Property 8)
+  - [x] 10.4 Write property test for child element parent info (Property 8)
     - **Property 8: Child element listings include parent info**
     - Generate documents with children, list children, verify `parentDocumentTitle` and `parentDocumentUuid` present and correct
     - **Validates: Requirements 4.4**
 
-  - [~] 10.5 Write property test for FTS with model type scoping (Property 11)
+  - [x] 10.5 Write property test for FTS with model type scoping (Property 11)
     - **Property 11: Full-text search relevance with model type scoping**
     - Generate documents with known text, search for terms, verify found; scope by type, verify filtering
     - **Validates: Requirements 6.2, 6.3**
 
-- [ ] 11. Update existing tests for backward compatibility
-  - [~] 11.1 Update `tests/tools/test_query_component_definition.py`
+- [x] 11. Update existing tests for backward compatibility
+  - [x] 11.1 Update `tests/tools/test_query_component_definition.py`
     - Update test imports and fixtures to work with the new `OscalStore`-backed implementation
     - Ensure all existing test cases pass with the new store (same assertions, same return formats)
     - Update `_store._reset()` calls to use the new store's reset/reinit mechanism
     - Add any needed test fixtures for the new store initialization
     - _Requirements: 7.1, 7.2_
 
-  - [~] 11.2 Write integration tests for new MCP tools
+  - [x] 11.2 Write integration tests for new MCP tools
     - Test `query_catalog`, `list_catalogs` with sample catalog fixtures
     - Test `query_ssp`, `list_ssps` with sample SSP fixtures
     - Test cross-model `text_search` returning results from multiple model types

@@ -340,3 +340,313 @@ class TestPageResponseFormat:
         assert set(result.keys()) == {
             "items", "total", "offset", "limit", "hasMore"
         }
+
+
+# ---------------------------------------------------------------------------
+# Integration helpers — additional OSCAL document fixtures
+# ---------------------------------------------------------------------------
+
+def _make_poam(
+    uuid="e5f6a7b8-9abc-4ef0-a1ab-567890123456",
+    title="Test POA&M",
+):
+    """Minimal valid POA&M with poam-items."""
+    return {
+        "plan-of-action-and-milestones": {
+            "uuid": uuid,
+            "metadata": {
+                "title": title,
+                "last-modified": "2024-01-01T00:00:00Z",
+                "version": "1.0",
+                "oscal-version": "1.0.4",
+            },
+            "poam-items": [
+                {
+                    "uuid": "f6a7b8c9-abcd-4f01-a2ab-678901234567",
+                    "title": "Fix vulnerability",
+                    "description": "Remediate CVE-2024-0001",
+                },
+            ],
+        }
+    }
+
+
+def _make_catalog_with_controls(
+    uuid="d2e3f4a5-6789-4bcd-9ef0-bbccddeeff00",
+    title="Security Controls Catalog",
+):
+    """Catalog with controls and a group for richer search content."""
+    return {
+        "catalog": {
+            "uuid": uuid,
+            "metadata": {
+                "title": title,
+                "last-modified": "2024-01-01T00:00:00Z",
+                "version": "1.0",
+                "oscal-version": "1.0.4",
+            },
+            "controls": [
+                {"id": "ac-1", "title": "Access Control Policy"},
+                {"id": "ac-2", "title": "Account Management"},
+            ],
+            "groups": [
+                {"id": "ac", "title": "Access Control"},
+            ],
+        }
+    }
+
+
+# ---------------------------------------------------------------------------
+# Integration fixture — multi-type store
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def multi_type_store(tmp_path):
+    """OscalStore populated with catalogs, component-definitions, and POA&Ms.
+
+    Provides a richer dataset for integration-level tests that exercise
+    the full flow across multiple document types.
+    """
+    db_path = str(tmp_path / "integration.db")
+    s = OscalStore(db_path=db_path, cache_size=10)
+
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir()
+
+    # Two catalogs
+    cat1 = _make_catalog(
+        uuid="c1d2e3f4-5678-4abc-8def-aabbccddeeff",
+        title="Test Catalog",
+    )
+    (docs_dir / "catalog1.json").write_text(json.dumps(cat1))
+
+    cat2 = _make_catalog_with_controls(
+        uuid="d2e3f4a5-6789-4bcd-9ef0-bbccddeeff00",
+        title="Security Controls Catalog",
+    )
+    (docs_dir / "catalog2.json").write_text(json.dumps(cat2))
+
+    # One component-definition
+    cdef = _make_component_definition(
+        uuid="a1b2c3d4-5678-4abc-8def-123456789012",
+        title="Test Component Definition",
+    )
+    (docs_dir / "cdef.json").write_text(json.dumps(cdef))
+
+    # One POA&M
+    poam = _make_poam(
+        uuid="e5f6a7b8-9abc-4ef0-a1ab-567890123456",
+        title="Test POA&M",
+    )
+    (docs_dir / "poam.json").write_text(json.dumps(poam))
+
+    s.scan_directory(docs_dir)
+
+    # Wire the module-level singleton
+    query_oscal_models.init_store(s)
+    yield s
+    s.close()
+
+
+# ---------------------------------------------------------------------------
+# Integration tests — multi-type queries
+# ---------------------------------------------------------------------------
+
+class TestMultiTypeIntegration:
+    """Integration tests exercising the full flow with multiple doc types."""
+
+    # -- Catalog tools with real data --
+
+    def test_list_catalogs_returns_both(self, multi_type_store):
+        """list_catalogs returns exactly the two ingested catalogs."""
+        result = query_oscal_models.list_catalogs(ctx=None)
+        assert result["total"] == 2
+        titles = {item["title"] for item in result["items"]}
+        assert titles == {"Test Catalog", "Security Controls Catalog"}
+
+    def test_query_catalog_by_uuid(self, multi_type_store):
+        """query_catalog by_uuid returns the correct catalog."""
+        result = query_oscal_models.query_catalog(
+            ctx=None,
+            query_type="by_uuid",
+            query_value="d2e3f4a5-6789-4bcd-9ef0-bbccddeeff00",
+        )
+        assert result["total"] == 1
+        assert result["items"][0]["title"] == "Security Controls Catalog"
+
+    def test_query_catalog_by_title(self, multi_type_store):
+        """query_catalog by_title finds the right catalog."""
+        result = query_oscal_models.query_catalog(
+            ctx=None,
+            query_type="by_title",
+            query_value="Test Catalog",
+        )
+        assert result["total"] == 1
+        assert result["items"][0]["uuid"] == "c1d2e3f4-5678-4abc-8def-aabbccddeeff"
+
+    def test_query_catalog_all_excludes_other_types(self, multi_type_store):
+        """query_catalog all returns only catalogs, not cdefs or poams."""
+        result = query_oscal_models.query_catalog(ctx=None, query_type="all")
+        assert result["total"] == 2
+        for item in result["items"]:
+            assert item["model_type"] == "catalog"
+
+    # -- POA&M tools with real data --
+
+    def test_list_poams_returns_one(self, multi_type_store):
+        """list_poams returns the single ingested POA&M."""
+        result = query_oscal_models.list_poams(ctx=None)
+        assert result["total"] == 1
+        assert result["items"][0]["title"] == "Test POA&M"
+
+    def test_query_poam_by_uuid(self, multi_type_store):
+        """query_poam by_uuid returns the correct POA&M."""
+        result = query_oscal_models.query_poam(
+            ctx=None,
+            query_type="by_uuid",
+            query_value="e5f6a7b8-9abc-4ef0-a1ab-567890123456",
+        )
+        assert result["total"] == 1
+        assert result["items"][0]["model_type"] == "plan-of-action-and-milestones"
+
+    # -- Empty-type queries return empty results --
+
+    def test_query_ssp_empty_with_multi_type_store(self, multi_type_store):
+        """SSP queries return empty when no SSPs are loaded."""
+        result = query_oscal_models.query_ssp(ctx=None, query_type="all")
+        assert result["total"] == 0
+        assert result["items"] == []
+
+    def test_list_ssps_empty_with_multi_type_store(self, multi_type_store):
+        """list_ssps returns empty when no SSPs are loaded."""
+        result = query_oscal_models.list_ssps(ctx=None)
+        assert result["total"] == 0
+        assert result["items"] == []
+
+    def test_list_profiles_empty_with_multi_type_store(self, multi_type_store):
+        """list_profiles returns empty when no profiles are loaded."""
+        result = query_oscal_models.list_profiles(ctx=None)
+        assert result["total"] == 0
+
+    def test_list_assessment_plans_empty_with_multi_type_store(
+        self, multi_type_store
+    ):
+        """list_assessment_plans returns empty when none loaded."""
+        result = query_oscal_models.list_assessment_plans(ctx=None)
+        assert result["total"] == 0
+
+    def test_list_assessment_results_empty_with_multi_type_store(
+        self, multi_type_store
+    ):
+        """list_assessment_results returns empty when none loaded."""
+        result = query_oscal_models.list_assessment_results(ctx=None)
+        assert result["total"] == 0
+
+    def test_list_mapping_collections_empty_with_multi_type_store(
+        self, multi_type_store
+    ):
+        """list_mapping_collections returns empty when none loaded."""
+        result = query_oscal_models.list_mapping_collections(ctx=None)
+        assert result["total"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Integration tests — cross-model text search
+# ---------------------------------------------------------------------------
+
+class TestTextSearchIntegration:
+    """Integration tests for text_search_oscal across multiple model types."""
+
+    def test_text_search_finds_results_across_types(self, multi_type_store):
+        """text_search_oscal returns results from multiple model types."""
+        # Trigger indexing for all document types
+        query_oscal_models.query_catalog(ctx=None, query_type="all")
+        multi_type_store.query(
+            oscal_model_type=OSCALModelType.COMPONENT_DEFINITION,
+            query_type="all",
+        )
+        query_oscal_models.query_poam(ctx=None, query_type="all")
+
+        # "Test" appears in titles across catalogs, cdef, and poam
+        result = query_oscal_models.text_search_oscal(
+            ctx=None, query_text="Test"
+        )
+        assert result["total"] >= 3
+        model_types = {item["model_type"] for item in result["items"]}
+        # Should have results from at least two different model types
+        assert len(model_types) >= 2
+
+    def test_text_search_scoped_to_catalog(self, multi_type_store):
+        """text_search_oscal scoped to catalog excludes other types."""
+        # Trigger indexing
+        query_oscal_models.query_catalog(ctx=None, query_type="all")
+        multi_type_store.query(
+            oscal_model_type=OSCALModelType.COMPONENT_DEFINITION,
+            query_type="all",
+        )
+        query_oscal_models.query_poam(ctx=None, query_type="all")
+
+        result = query_oscal_models.text_search_oscal(
+            ctx=None,
+            query_text="Test",
+            oscal_model_type="catalog",
+        )
+        assert result["total"] >= 1
+        for item in result["items"]:
+            assert item["model_type"] == "catalog"
+
+    def test_text_search_scoped_to_poam(self, multi_type_store):
+        """text_search_oscal scoped to POA&M returns only POA&M results."""
+        # Trigger indexing
+        query_oscal_models.query_poam(ctx=None, query_type="all")
+
+        result = query_oscal_models.text_search_oscal(
+            ctx=None,
+            query_text="vulnerability",
+            oscal_model_type="plan-of-action-and-milestones",
+        )
+        assert result["total"] >= 1
+        for item in result["items"]:
+            assert item["model_type"] == "plan-of-action-and-milestones"
+
+    def test_text_search_scoped_to_component_definition(
+        self, multi_type_store
+    ):
+        """text_search_oscal scoped to component-definition filters correctly."""
+        # Trigger indexing
+        multi_type_store.query(
+            oscal_model_type=OSCALModelType.COMPONENT_DEFINITION,
+            query_type="all",
+        )
+
+        result = query_oscal_models.text_search_oscal(
+            ctx=None,
+            query_text="Sample",
+            oscal_model_type="component-definition",
+        )
+        assert result["total"] >= 1
+        for item in result["items"]:
+            assert item["model_type"] == "component-definition"
+
+    def test_text_search_child_elements_indexed(self, multi_type_store):
+        """text_search finds child element content (e.g. control titles)."""
+        # Trigger indexing for the catalog with controls
+        query_oscal_models.query_catalog(ctx=None, query_type="all")
+
+        result = query_oscal_models.text_search_oscal(
+            ctx=None, query_text="Access Control"
+        )
+        assert result["total"] >= 1
+        # At least one result should be a child_element from the catalog
+        entity_types = {item["entity_type"] for item in result["items"]}
+        assert "child_element" in entity_types
+
+    def test_text_search_no_match_returns_empty(self, multi_type_store):
+        """text_search with a term that matches nothing returns empty."""
+        query_oscal_models.query_catalog(ctx=None, query_type="all")
+
+        result = query_oscal_models.text_search_oscal(
+            ctx=None, query_text="zzzznonexistenttermzzzz"
+        )
+        assert result["total"] == 0
+        assert result["items"] == []
