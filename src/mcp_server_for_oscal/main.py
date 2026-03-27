@@ -30,6 +30,55 @@ This server provides tools to support evaluation and implementation of NIST's OS
 )
 
 
+def _init_oscal_store() -> None:
+    """Initialize the OscalStore singleton and scan directories.
+
+    Creates an OscalStore with config values, scans both the
+    component_definitions_dir (backward compat) and oscal_documents_dir
+    (if configured), then sets the store singleton on both
+    query_component_definition and query_oscal_models modules.
+
+    If initialization fails, logs a warning and falls back to the
+    legacy ComponentDefinitionStore so the server can still start.
+    """
+    try:
+        from mcp_server_for_oscal.tools.oscal_store import OscalStore
+
+        store = OscalStore(
+            db_path=config.oscal_store_db_path or None,
+            cache_size=config.oscal_store_cache_size,
+        )
+
+        # Scan component definitions directory (backward compat)
+        my_dir = Path(__file__).parent
+        comp_defs_dir = my_dir / config.component_definitions_dir
+        if comp_defs_dir.exists():
+            store.scan_directory(comp_defs_dir)
+
+        # Scan general OSCAL documents directory (if configured)
+        if config.oscal_documents_dir:
+            oscal_docs_dir = Path(config.oscal_documents_dir)
+            if not oscal_docs_dir.is_absolute():
+                oscal_docs_dir = my_dir / config.oscal_documents_dir
+            if oscal_docs_dir.exists():
+                store.scan_directory(oscal_docs_dir)
+
+        # Set the store singleton on both modules
+        from mcp_server_for_oscal.tools import query_component_definition
+        from mcp_server_for_oscal.tools import query_oscal_models
+
+        query_component_definition.init_store(store)
+        query_oscal_models.init_store(store)
+
+        logger.info("OscalStore initialized successfully")
+    except Exception:
+        logger.warning(
+            "Failed to initialize OscalStore; "
+            "falling back to legacy ComponentDefinitionStore",
+            exc_info=True,
+        )
+
+
 def _setup_tools() -> None:
     from mcp_server_for_oscal.tools import get_tool_list
 
@@ -133,6 +182,9 @@ def main():
     except (RuntimeError, KeyError) as err:
         logger.exception("Bundled context files may have been tampered with; exiting.")
         raise SystemExit(2) from err
+
+    # Initialize OscalStore singleton before setting up tools
+    _init_oscal_store()
 
     _setup_tools()
     # Run the MCP server with the configured transport

@@ -21,6 +21,7 @@ from mcp_server_for_oscal.tools.query_component_definition import (
     _store,
     query_component_definition,
 )
+from mcp_server_for_oscal.tools import query_component_definition as _qcd_module
 
 
 # ---------------------------------------------------------------------------
@@ -79,6 +80,15 @@ def _mock_context():
 # ---------------------------------------------------------------------------
 # Property 16: Component Definition Filter Scoping
 # ---------------------------------------------------------------------------
+
+@pytest.fixture(autouse=True)
+def reset_oscal_store():
+    """Prevent OscalStore singleton from leaking across tests."""
+    saved = _qcd_module._oscal_store
+    _qcd_module._oscal_store = None
+    yield
+    _qcd_module._oscal_store = saved
+
 
 class TestProperty16ComponentDefinitionFilterScoping:
     """

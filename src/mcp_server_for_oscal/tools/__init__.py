@@ -25,6 +25,23 @@ def get_tool_list() -> list[Callable]:
         list_components,
         query_component_definition,
     )
+    from mcp_server_for_oscal.tools.query_oscal_models import (
+        list_assessment_plans,
+        list_assessment_results,
+        list_catalogs,
+        list_mapping_collections,
+        list_poams,
+        list_profiles,
+        list_ssps,
+        query_assessment_plan,
+        query_assessment_results,
+        query_catalog,
+        query_mapping_collection,
+        query_poam,
+        query_profile,
+        query_ssp,
+        text_search_oscal,
+    )
     from mcp_server_for_oscal.tools.validate_oscal_content import (
         validate_oscal_content,
         validate_oscal_file,
@@ -41,6 +58,22 @@ def get_tool_list() -> list[Callable]:
         get_capability,
         validate_oscal_content,
         validate_oscal_file,
+        # New OSCAL model tools
+        query_catalog,
+        list_catalogs,
+        query_ssp,
+        list_ssps,
+        query_profile,
+        list_profiles,
+        query_assessment_plan,
+        list_assessment_plans,
+        query_assessment_results,
+        list_assessment_results,
+        query_poam,
+        list_poams,
+        query_mapping_collection,
+        list_mapping_collections,
+        text_search_oscal,
     ]
 
     if config.knowledge_base_id:

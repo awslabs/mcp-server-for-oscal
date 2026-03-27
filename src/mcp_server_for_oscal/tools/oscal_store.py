@@ -18,6 +18,7 @@ import sqlite3
 import tempfile
 import zipfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 from mcp_server_for_oscal.config import config
 from mcp_server_for_oscal.tools.utils import OSCALModelType, ROOT_KEY_TO_MODEL_TYPE
@@ -1786,3 +1787,134 @@ class OscalStore:
             "limit": limit,
             "hasMore": offset + limit < total,
         }
+
+    # ------------------------------------------------------------------
+    # Backward-compatible external loading
+    # ------------------------------------------------------------------
+
+    def load_external_component_definition(
+        self, source: str, ctx: object | None = None,
+    ) -> None:
+        """Load an OSCAL Component Definition from a local zip or remote URI.
+
+        Backward-compatible method that mirrors the legacy
+        ``ComponentDefinitionStore.load_external_component_definition``
+        behavior.
+
+        For local zip files, extracts and ingests all JSON entries.
+        For remote URIs, fetches the JSON, validates, and ingests.
+
+        Args:
+            source: URI to the Component Definition JSON file or zip archive.
+            ctx: Optional MCP context for error reporting.
+
+        Raises:
+            ValueError: If remote URIs are not allowed, validation fails,
+                or the source is a directory.
+        """
+        import requests as _requests
+        from mcp_server_for_oscal.tools.utils import try_notify_client_error
+
+        def _notify(msg: str) -> None:
+            try_notify_client_error(msg, ctx)  # type: ignore[arg-type]
+
+        uri = urlparse(source)
+
+        if uri.scheme in ("", "file"):
+            lf = Path(source)
+            if lf.is_dir():
+                raise ValueError(
+                    "URI must point to a zip file or JSON component definition"
+                )
+            if lf.is_file() and lf.name.endswith("zip"):
+                self._process_zip_file(
+                    lf, OSCALModelType.COMPONENT_DEFINITION
+                )
+            return
+
+        if not config.allow_remote_uris:
+            msg = (
+                f"Remote URI loading is not enabled. "
+                f"Set OSCAL_ALLOW_REMOTE_URIS=true to enable. Source: {source}"
+            )
+            logger.error(msg)
+            _notify(msg)
+            raise ValueError(msg)
+
+        logger.debug(
+            "Fetching remote Component Definition from: %s", source
+        )
+
+        try:
+            response = _requests.get(source, timeout=config.request_timeout)
+            response.raise_for_status()
+
+            data = response.json()
+            if "component-definition" not in data:
+                data = {"component-definition": data}
+
+            model_type = self._detect_model_type_from_data(data)
+            if model_type != OSCALModelType.COMPONENT_DEFINITION:
+                raise ValueError(
+                    "Remote document is not a Component Definition"
+                )
+
+            if not self._validate_with_trestle(data, model_type):
+                raise ValueError(
+                    "Remote Component Definition failed validation"
+                )
+
+            meta = self._extract_metadata(data, model_type)
+            if meta is None:
+                raise ValueError(
+                    "Cannot extract UUID/title from remote document"
+                )
+
+            uuid_val, title = meta
+            raw_json = json.dumps(data)
+            self._upsert_document(
+                uuid_val,
+                title,
+                model_type.value,
+                source,
+                len(raw_json),
+                0.0,
+                raw_json,
+            )
+            logger.info(
+                "Successfully loaded remote component definition from: %s",
+                source,
+            )
+
+        except _requests.Timeout as e:
+            msg = (
+                f"Request timeout while fetching remote URI "
+                f"(timeout={config.request_timeout}s): {source}"
+            )
+            logger.exception(msg)
+            _notify(msg)
+            raise ValueError(msg) from e
+
+        except _requests.RequestException as e:
+            msg = f"Failed to fetch remote Component Definition: {e}"
+            logger.exception(msg)
+            _notify(msg)
+            raise ValueError(msg) from e
+
+        except json.JSONDecodeError as e:
+            msg = f"Failed to parse remote Component Definition JSON: {e}"
+            logger.exception(msg)
+            _notify(msg)
+            raise ValueError(msg) from e
+
+        except ValueError:
+            raise
+
+        except Exception as e:
+            msg = (
+                "Failed to load or validate remote "
+                f"Component Definition: {e}"
+            )
+            logger.exception(msg)
+            _notify(msg)
+            raise ValueError(msg) from e

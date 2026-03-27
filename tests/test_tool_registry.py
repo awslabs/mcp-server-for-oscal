@@ -27,6 +27,22 @@ BASE_TOOL_NAMES = {
     "get_capability",
     "validate_oscal_content",
     "validate_oscal_file",
+    # New OSCAL model tools
+    "query_catalog",
+    "list_catalogs",
+    "query_ssp",
+    "list_ssps",
+    "query_profile",
+    "list_profiles",
+    "query_assessment_plan",
+    "list_assessment_plans",
+    "query_assessment_results",
+    "list_assessment_results",
+    "query_poam",
+    "list_poams",
+    "query_mapping_collection",
+    "list_mapping_collections",
+    "text_search_oscal",
 }
 
 

@@ -100,11 +100,11 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
     - Generate documents with known titles, query with random case variations, verify match
     - **Validates: Requirements 5.4**
 
-- [~] 5. Checkpoint - Verify query API
+- [x] 5. Checkpoint - Verify query API
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. MCP tool wrappers and backward compatibility
-  - [~] 6.1 Implement backward-compatible MCP tool wrappers
+  - [x] 6.1 Implement backward-compatible MCP tool wrappers
     - Refactor `query_component_definition.py` to delegate to `OscalStore` singleton
     - `query_component_definition` → `_store.query(oscal_model_type=COMPONENT_DEFINITION, ...)`
     - `list_component_definitions` → `_store.list_documents(oscal_model_type=COMPONENT_DEFINITION, ...)`
@@ -115,7 +115,7 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
     - Implement `load_external_component_definition` on `OscalStore` for backward compat (local zip + remote URI)
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-  - [~] 6.2 Add new MCP tools for other OSCAL model types
+  - [x] 6.2 Add new MCP tools for other OSCAL model types
     - Add `query_catalog`, `list_catalogs` tools
     - Add `query_ssp`, `list_ssps` tools
     - Add `query_profile`, `list_profiles` tools
@@ -126,7 +126,7 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
     - All follow same parameter/return conventions as component definition tools
     - _Requirements: 7.3_
 
-  - [~] 6.3 Register new tools in `tools/__init__.py` and update `main.py` startup
+  - [x] 6.3 Register new tools in `tools/__init__.py` and update `main.py` startup
     - Add all new tool functions to `get_tool_list()` in `tools/__init__.py`
     - Update `main.py` to initialize `OscalStore` singleton before `_setup_tools()`
     - Call `scan_directory()` for both `component_definitions_dir` and `oscal_documents_dir`
