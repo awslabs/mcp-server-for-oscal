@@ -103,7 +103,7 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
 - [x] 5. Checkpoint - Verify query API
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. MCP tool wrappers and backward compatibility
+- [x] 6. MCP tool wrappers and backward compatibility
   - [x] 6.1 Implement backward-compatible MCP tool wrappers
     - Refactor `query_component_definition.py` to delegate to `OscalStore` singleton
     - `query_component_definition` → `_store.query(oscal_model_type=COMPONENT_DEFINITION, ...)`
@@ -133,21 +133,21 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
     - Ensure scanning completes before `mcp.run()`
     - _Requirements: 9.3, 9.6_
 
-  - [~] 6.4 Write property test for backward-compatible return format (Property 12)
+  - [x] 6.4 Write property test for backward-compatible return format (Property 12)
     - **Property 12: Backward-compatible return format for component definition queries**
     - Generate component definition queries, verify return dict contains expected top-level keys
     - **Validates: Requirements 7.2**
 
-  - [~] 6.5 Write property test for model type filtering (Property 5)
+  - [x] 6.5 Write property test for model type filtering (Property 5)
     - **Property 5: Model type filtering**
     - Generate mixed-type document sets, filter by each type, verify only matching docs returned and count matches
     - **Validates: Requirements 2.6, 5.1**
 
-- [~] 7. Checkpoint - Verify MCP tools and backward compatibility
+- [x] 7. Checkpoint - Verify MCP tools and backward compatibility
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 8. Build script and bundled database
-  - [~] 8.1 Create build script `bin/build_oscal_db.py`
+- [x] 8. Build script and bundled database
+  - [x] 8.1 Create build script `bin/build_oscal_db.py`
     - Initialize `OscalStore` with explicit `db_path` pointing to `src/mcp_server_for_oscal/oscal_store.db`
     - Scan `component_definitions/` and `oscal_docs/` directories
     - Eagerly index all documents (full parse + child element extraction + FTS population)
@@ -156,29 +156,29 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
     - Ensure idempotency: running twice with same input produces identical logical content
     - _Requirements: 10.1, 10.2, 10.3, 10.4_
 
-  - [~] 8.2 Add `build-db` hatch script and update `pyproject.toml` package data
+  - [x] 8.2 Add `build-db` hatch script and update `pyproject.toml` package data
     - Add `build-db` script entry in `pyproject.toml` hatch scripts section
     - Add `oscal_store.db` to package data includes
     - Update `rehash` script to include the bundled DB directory if needed
     - _Requirements: 10.3_
 
-  - [~] 8.3 Implement bundled DB integrity verification at startup
+  - [x] 8.3 Implement bundled DB integrity verification at startup
     - Verify bundled DB SHA-256 against `hashes.json` at startup (reuse `verify_package_integrity` pattern)
     - On integrity failure: log warning, fall back to ephemeral DB built from bundled JSON/zip files
     - On bundled DB copy to persistent path: seed from bundled DB when `OSCAL_STORE_DB_PATH` is set but file missing
     - _Requirements: 10.4, 10.5, 9.6, 9.7_
 
-  - [~] 8.4 Write property test for bundled database completeness (Property 13)
+  - [x] 8.4 Write property test for bundled database completeness (Property 13)
     - **Property 13: Bundled database completeness**
     - Build bundled DB from test fixtures, open without scanning, verify all bundled docs queryable with children and FTS
     - **Validates: Requirements 10.1, 10.2**
 
-  - [~] 8.5 Write property test for database mode resolution (Property 14)
+  - [x] 8.5 Write property test for database mode resolution (Property 14)
     - **Property 14: Database mode resolution**
     - Generate all 4 combinations of DB_PATH × bundled DB presence, verify each resolves to correct mode deterministically
     - **Validates: Requirements 1.2, 1.3, 1.4, 1.5**
 
-- [~] 9. Checkpoint - Verify build script and bundled DB
+- [x] 9. Checkpoint - Verify build script and bundled DB
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. Remaining property tests and integration

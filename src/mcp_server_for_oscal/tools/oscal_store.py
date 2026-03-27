@@ -9,6 +9,7 @@ pagination, and three database modes (bundled, persistent, ephemeral).
 from __future__ import annotations
 
 import functools
+import hashlib
 import importlib
 import json
 import logging
@@ -27,6 +28,9 @@ logger = logging.getLogger(__name__)
 
 # Path to the pre-built DB shipped with the package
 BUNDLED_DB_PATH = Path(__file__).parent.parent / "oscal_store.db"
+
+# Path to the package-level hashes.json manifest (written by build_oscal_db.py)
+BUNDLED_HASHES_PATH = Path(__file__).parent.parent / "hashes.json"
 
 # Maps each OSCAL model type to the child element types it can contain.
 CHILD_ELEMENT_TYPES: dict[OSCALModelType, tuple[str, ...]] = {
@@ -150,8 +154,8 @@ class OscalStore:
             logger.info("Opening existing persistent DB at %s", db_path)
             return db_path
 
-        # DB file doesn't exist yet — seed from bundled if available
-        if BUNDLED_DB_PATH.exists():
+        # DB file doesn't exist yet — seed from bundled if available and valid
+        if BUNDLED_DB_PATH.exists() and self._verify_bundled_db():
             try:
                 p.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(BUNDLED_DB_PATH, p)
@@ -175,7 +179,13 @@ class OscalStore:
     def _resolve_auto(self) -> str:
         """Resolve when no explicit DB path is configured."""
         if BUNDLED_DB_PATH.exists():
-            return self._copy_bundled_to_temp()
+            if self._verify_bundled_db():
+                return self._copy_bundled_to_temp()
+            logger.warning(
+                "Bundled DB failed integrity check; "
+                "falling back to ephemeral DB"
+            )
+            return self._create_ephemeral()
 
         # No bundled DB — create ephemeral
         return self._create_ephemeral()
@@ -207,6 +217,65 @@ class OscalStore:
         self._db_mode = "ephemeral"
         logger.info("Creating ephemeral DB at %s", dest)
         return str(dest)
+
+    @staticmethod
+    def _verify_bundled_db() -> bool:
+        """Verify the bundled DB SHA-256 against the hash in hashes.json.
+
+        Reuses the same integrity verification pattern as
+        ``verify_package_integrity`` in ``utils.py``, but operates on a
+        single file rather than a whole directory.
+
+        Returns:
+            True if the bundled DB exists and its hash matches the
+            recorded value in hashes.json.  False if the DB is missing,
+            hashes.json is missing/malformed, or the hash does not match.
+        """
+        if not BUNDLED_DB_PATH.exists():
+            return False
+
+        if not BUNDLED_HASHES_PATH.exists():
+            logger.warning(
+                "hashes.json not found at %s; cannot verify bundled DB",
+                BUNDLED_HASHES_PATH,
+            )
+            return False
+
+        try:
+            manifest = json.loads(BUNDLED_HASHES_PATH.read_text())
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Failed to read hashes.json: %s", exc)
+            return False
+
+        file_hashes = manifest.get("file_hashes", {})
+        expected_hash = file_hashes.get("oscal_store.db")
+        if not expected_hash:
+            logger.warning(
+                "No hash entry for oscal_store.db in hashes.json"
+            )
+            return False
+
+        h = hashlib.sha256()
+        try:
+            with open(BUNDLED_DB_PATH, "rb") as f:
+                for chunk in iter(lambda: f.read(8192), b""):
+                    h.update(chunk)
+        except OSError as exc:
+            logger.warning("Failed to read bundled DB for hashing: %s", exc)
+            return False
+
+        actual_hash = h.hexdigest()
+        if actual_hash != expected_hash:
+            logger.warning(
+                "Bundled DB integrity check failed: "
+                "expected %s, got %s",
+                expected_hash,
+                actual_hash,
+            )
+            return False
+
+        logger.info("Bundled DB integrity verified")
+        return True
 
     # ------------------------------------------------------------------
     # Schema initialization

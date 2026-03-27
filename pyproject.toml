@@ -115,6 +115,10 @@ exclude = ["./build", ".hatch", "private"]
 [tool.hatch.build]
 directory = "./build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_server_for_oscal"]
+artifacts = ["src/mcp_server_for_oscal/oscal_store.db"]
+
 [tool.hatch.env]
 python = "3.12"
 
@@ -134,7 +138,10 @@ rehash = [
   "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_docs",
   "git add src/mcp_server_for_oscal/oscal_docs/hashes.json",
   "hatch run bin/update_hashes.py src/mcp_server_for_oscal/component_definitions",
-  "git add src/mcp_server_for_oscal/component_definitions/hashes.json"
+  "git add src/mcp_server_for_oscal/component_definitions/hashes.json",
+  # Bundled OSCAL SQLite database hash is managed by build-db script
+  # (updates hashes.json at package root level)
+  "git add src/mcp_server_for_oscal/hashes.json"
 ]
 
 # TODO: monitor OSCAL GitHub project for changes and trigger PRs in our project
@@ -179,6 +186,10 @@ checkout-oscal-steering = [
 ]
 
 tests = ["typing", "hatch test --all --cover --junitxml private/docs/pytest.xml", "hatch run bandito"]
+
+build-db = [
+  "python bin/build_oscal_db.py",
+]
 
 build-agentcore-container = [
   "finch build -f conf/agentcore/Dockerfile -t bedrock-agentcore-oscal --build-arg VERSION=$(hatch version) ."
