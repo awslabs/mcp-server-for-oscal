@@ -832,7 +832,8 @@ def _oscal_store_query_component_definition(
     Translates the legacy ComponentDefinitionStore query interface into
     OscalStore.query() calls while preserving the exact return format.
     """
-    assert _oscal_store is not None
+    if _oscal_store is None:  # pragma: no cover
+        raise RuntimeError("OscalStore not initialised")
 
     if query_value:
         query_value = query_value.strip()
@@ -933,7 +934,8 @@ def _oscal_store_find_capability(
     Returns the capability response dict if found, or None to fall through
     to component search.
     """
-    assert _oscal_store is not None
+    if _oscal_store is None:  # pragma: no cover
+        raise RuntimeError("OscalStore not initialised")
 
     # Search for capability as a child element
     cap_result = _oscal_store.list_child_elements(
@@ -1022,7 +1024,8 @@ def _oscal_store_list_component_definitions(
     Preserves the exact return format: Page_Response with items containing
     uuid, title, componentCount, importedComponentDefinitionsCount, sizeInBytes.
     """
-    assert _oscal_store is not None
+    if _oscal_store is None:  # pragma: no cover
+        raise RuntimeError("OscalStore not initialised")
 
     result = _oscal_store.list_documents(
         ctx=ctx,
@@ -1065,7 +1068,8 @@ def _oscal_store_list_components(
     uuid, title, parentComponentDefinitionTitle,
     parentComponentDefinitionUuid, sizeInBytes.
     """
-    assert _oscal_store is not None
+    if _oscal_store is None:  # pragma: no cover
+        raise RuntimeError("OscalStore not initialised")
 
     result = _oscal_store.list_child_elements(
         ctx=ctx,
@@ -1112,7 +1116,8 @@ def _oscal_store_list_capabilities(
     uuid, name, parentComponentDefinitionTitle,
     parentComponentDefinitionUuid, sizeInBytes.
     """
-    assert _oscal_store is not None
+    if _oscal_store is None:  # pragma: no cover
+        raise RuntimeError("OscalStore not initialised")
 
     result = _oscal_store.list_child_elements(
         ctx=ctx,
@@ -1152,7 +1157,8 @@ def _oscal_store_get_capability(
 
     Returns the full OSCAL Capability dict, or None if not found.
     """
-    assert _oscal_store is not None
+    if _oscal_store is None:  # pragma: no cover
+        raise RuntimeError("OscalStore not initialised")
 
     if not uuid:
         return None
