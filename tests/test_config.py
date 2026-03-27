@@ -459,3 +459,73 @@ class TestProperty2SessionConversationConfigEnvVarParsing:
             assert cfg.session_s3_bucket == session_s3_bucket
             assert cfg.session_s3_prefix == session_s3_prefix
             assert cfg.conversation_manager_type == conversation_manager_type
+
+
+# ---------------------------------------------------------------------------
+# Task 1.1: Unit tests for OSCAL Store config fields
+# ---------------------------------------------------------------------------
+
+
+class TestOscalStoreConfigDefaults:
+    """Unit tests for OSCAL Store config attributes — task 1.1.
+
+    Validates: Requirements 8.1, 8.2, 8.3, 8.4
+    """
+
+    def test_oscal_store_db_path_default(self):
+        """oscal_store_db_path defaults to empty string when env var is unset."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.oscal_store_db_path == ""
+
+    def test_oscal_store_cache_size_default(self):
+        """oscal_store_cache_size defaults to 100 when env var is unset."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.oscal_store_cache_size == 100
+
+    def test_oscal_documents_dir_default(self):
+        """oscal_documents_dir defaults to empty string when env var is unset."""
+        with patch.dict(os.environ, {"PYTHON_DOTENV_DISABLED": "1"}, clear=True):
+            cfg = Config()
+            assert cfg.oscal_documents_dir == ""
+
+    def test_oscal_store_db_path_from_env_var(self):
+        """oscal_store_db_path matches OSCAL_STORE_DB_PATH env var."""
+        env = {
+            "OSCAL_STORE_DB_PATH": "/data/oscal.db",
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.oscal_store_db_path == "/data/oscal.db"
+
+    def test_oscal_store_cache_size_from_env_var(self):
+        """oscal_store_cache_size matches OSCAL_STORE_CACHE_SIZE env var."""
+        env = {
+            "OSCAL_STORE_CACHE_SIZE": "500",
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.oscal_store_cache_size == 500
+
+    def test_oscal_documents_dir_from_env_var(self):
+        """oscal_documents_dir matches OSCAL_DOCUMENTS_DIR env var."""
+        env = {
+            "OSCAL_DOCUMENTS_DIR": "/opt/oscal/docs",
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.oscal_documents_dir == "/opt/oscal/docs"
+
+    def test_component_definitions_dir_still_works(self):
+        """Backward compat: component_definitions_dir still reads from its env var."""
+        env = {
+            "OSCAL_COMPONENT_DEFINITIONS_DIR": "/custom/comp_defs",
+            "PYTHON_DOTENV_DISABLED": "1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            cfg = Config()
+            assert cfg.component_definitions_dir == "/custom/comp_defs"
