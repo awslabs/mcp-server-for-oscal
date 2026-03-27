@@ -4,6 +4,21 @@ This package contains all tool implementations for the OSCAL MCP server. Each to
 
 ## Available Tools
 
+| Tool | Description |
+|------|-------------|
+| `list_oscal_models` | List all 8 OSCAL model types with metadata (layer, status, descriptions) |
+| `get_oscal_schema` | Retrieve JSON or XSD schema for any OSCAL model |
+| `list_oscal_resources` | Browse curated OSCAL community resources, tools, and educational content |
+| `validate_oscal_content` | Validate OSCAL JSON content through a 4-level pipeline (well-formedness, JSON Schema, Trestle, oscal-cli) |
+| `validate_oscal_file` | Validate an OSCAL JSON file (local path or remote URI) through the same 4-level pipeline |
+| `query_component_definition` | Query component definitions to find capabilities and components by UUID, title, or type |
+| `list_component_definitions` | List all loaded component definitions with summary metadata |
+| `list_components` | List all loaded components with summary metadata |
+| `list_capabilities` | List all loaded capabilities with summary metadata |
+| `get_capability` | Retrieve a single capability by UUID with full OSCAL representation |
+| `query_oscal_documentation` | RAG-based documentation query (requires AWS Bedrock Knowledge Base; conditionally registered) |
+| `about` | Server metadata including version and supported OSCAL version |
+
 ### 1. List OSCAL Models
 **Tool**: `list_oscal_models`
 
@@ -158,7 +173,54 @@ Validates OSCAL JSON content through a multi-level pipeline:
 
 ---
 
-### 9. About
+### 9. Validate OSCAL File
+**Tool**: `validate_oscal_file`
+
+Validates an OSCAL JSON file (local path or remote URI) through the same multi-level pipeline as `validate_oscal_content`.
+
+**Parameters**:
+- `file_uri` (str): Local file path or remote URI pointing to an OSCAL JSON file. Remote URIs require `OSCAL_ALLOW_REMOTE_URIS=true`.
+- `model_type` (str, optional): OSCAL model type (e.g. "catalog", "profile"). Auto-detected from root key if omitted.
+
+**Returns**: Same structured validation results as `validate_oscal_content`
+
+**Key behaviors**:
+- Supports local file paths and `file://` URIs
+- Remote URIs (http/https) are blocked by default; enable with `OSCAL_ALLOW_REMOTE_URIS=true`
+- Remote requests respect `OSCAL_REQUEST_TIMEOUT` (default 30s)
+- Delegates to `validate_oscal_content` after reading the file
+
+---
+
+### 10. List Capabilities
+**Tool**: `list_capabilities`
+
+Returns a summary list of all capabilities across all loaded Component Definitions.
+
+**Parameters**: None (context injected automatically)
+
+**Returns**: List of dictionaries containing:
+- `uuid`: Capability UUID
+- `name`: Capability name
+- `description`: Capability description
+- `parentComponentDefinitionTitle`: Title of parent Component Definition
+- `parentComponentDefinitionUuid`: UUID of parent Component Definition
+
+---
+
+### 11. Get Capability
+**Tool**: `get_capability`
+
+Retrieves a single capability by UUID with its full OSCAL representation.
+
+**Parameters**:
+- `uuid` (str): UUID of the capability. Use `list_capabilities` to discover UUIDs.
+
+**Returns**: Dictionary with the full OSCAL capability object, or None if not found
+
+---
+
+### 12. About
 **Tool**: `about`
 
 Returns metadata about the MCP server itself.
@@ -168,14 +230,14 @@ Returns metadata about the MCP server itself.
 **Returns**: Dictionary containing:
 - `version`: Server version
 - `keywords`: Server keywords
-- `oscal-version`: Supported OSCAL version (currently 1.2.0)
+- `oscal-version`: Supported OSCAL version (currently 1.2.1)
 
 ---
 
 ## Implementation Details
 
 ### Tool Registration
-Tools are registered in `main.py` using the FastMCP framework. The `query_oscal_documentation` tool is conditionally registered only when a Knowledge Base ID is configured.
+Tools are registered in `main.py` using the FastMCP framework. Tool functions are collected by `get_tool_list()` in `tools/__init__.py`, which conditionally includes `query_oscal_documentation` only when a Knowledge Base ID is configured. The `about` tool is registered separately in `main.py` as an MCP-server-only tool.
 
 ### Dependencies
 - **strands**: Provides the `@tool` decorator for tool definitions

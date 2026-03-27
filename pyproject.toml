@@ -20,13 +20,14 @@ license = "Apache-2.0"
 license-files = ["LICENSE"]
 keywords = [
   "OSCAL",
-  "compliance-as-code",
-  "security-as-code",
-  "compliance-automation",
-  "continuous-compliance",
-  "security-assurance",
-  "mcp-server",
-  "strands-agents",
+  "compliance as code",
+  "security as code",
+  "compliance automation",
+  "continuous compliance",
+  "security assurance",
+  "mcp server",
+  "strands agents",
+  "grc engineering",
 ]
 
 classifiers = [
@@ -40,8 +41,10 @@ devtest = ["pytest", "mypy", "boto3-stubs", "bandit", "pytest-asyncio", "hypothe
 
 [project.scripts]
 server = "mcp_server_for_oscal.main:main"
+mcp-server-for-oscal = "mcp_server_for_oscal.main:main"
 mcp_server_for_oscal = "mcp_server_for_oscal.main:main"
-agent = "mcp_server_for_oscal.oscal_agent:main"
+oscal-agent = "mcp_server_for_oscal.oscal_agent:main"
+oscal_agent = "mcp_server_for_oscal.oscal_agent:main"
 
 [project.urls]
 GitHub = "https://github.com/awslabs/mcp-server-for-oscal/"
