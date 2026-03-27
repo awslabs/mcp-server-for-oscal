@@ -8,6 +8,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import requests
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from trestle.oscal.component import ComponentDefinition
 
 from mcp_server_for_oscal.tools.query_component_definition import (
@@ -188,6 +190,14 @@ class TestQueryComponentDefinitionTool:
         assert "component_definitions_searched" in result
         assert "filtered_by" in result
 
+        # Verify pagination metadata
+        assert "offset" in result
+        assert "limit" in result
+        assert "hasMore" in result
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
+
         # Verify query metadata
         assert result["query_type"] == "all"
         assert result["component_definitions_searched"] == 1
@@ -214,6 +224,9 @@ class TestQueryComponentDefinitionTool:
         assert result["total_count"] == 1
         assert result["query_type"] == "by_uuid"
         assert result["components"][0]["uuid"] == "b2c3d4e5-6789-4bcd-9efa-234567890123"
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_query_by_uuid_not_found(self, mock_context, setup_component_defs_dir):
         """Test querying component by UUID that doesn't exist returns empty."""
@@ -226,6 +239,9 @@ class TestQueryComponentDefinitionTool:
         )
         assert result["total_count"] == 0
         assert result["components"] == []
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_query_by_title_success(self, mock_context, setup_component_defs_dir):
         """Test querying component by title successfully."""
@@ -240,6 +256,9 @@ class TestQueryComponentDefinitionTool:
         assert result["total_count"] == 1
         assert result["query_type"] == "by_title"
         assert result["components"][0]["title"] == "Sample Component"
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_query_by_title_not_found(self, mock_context, setup_component_defs_dir):
         """Test querying component by title that doesn't exist returns empty."""
@@ -252,6 +271,9 @@ class TestQueryComponentDefinitionTool:
         )
         assert result["total_count"] == 0
         assert result["components"] == []
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_query_by_type_success(self, mock_context, setup_component_defs_dir):
         """Test querying components by type successfully."""
@@ -266,6 +288,9 @@ class TestQueryComponentDefinitionTool:
         assert result["total_count"] == 1
         assert result["query_type"] == "by_type"
         assert result["components"][0]["type"] == "software"
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_query_by_type_not_found(self, mock_context):
         """Test querying components by type that doesn't exist returns empty."""
@@ -278,6 +303,9 @@ class TestQueryComponentDefinitionTool:
         )
         assert result["total_count"] == 0
         assert result["components"] == []
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_query_missing_query_value(self, mock_context):
         """Test that query_value is required for specific query types."""
@@ -329,6 +357,9 @@ class TestQueryComponentDefinitionTool:
 
         assert result["component_definitions_searched"] == 1
         assert result["filtered_by"] == "a1b2c3d4-5678-4abc-8def-123456789012"
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_query_with_component_definition_filter_by_title(
         self, mock_context, tmp_path, sample_component_def_data, monkeypatch
@@ -359,6 +390,9 @@ class TestQueryComponentDefinitionTool:
 
         assert result["component_definitions_searched"] == 1
         assert result["filtered_by"] == "Sample Component Definition"
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_query_with_component_definition_filter_not_found(
         self, mock_context, tmp_path, sample_component_def_data, monkeypatch
@@ -388,6 +422,9 @@ class TestQueryComponentDefinitionTool:
         )
         assert result["total_count"] == 0
         assert result["components"] == []
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_query_empty_directory(self, mock_context, tmp_path, monkeypatch):
         """Test error when component definitions directory is empty."""
@@ -894,6 +931,9 @@ class TestSelectComponentsEdgeCases:
             return_format="raw",
         )
         assert result["total_count"] == 1
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
     def test_query_no_components_in_filtered_cdef(self, mock_context, tmp_path, monkeypatch):
         """A component definition with no components should return empty."""
@@ -925,6 +965,9 @@ class TestSelectComponentsEdgeCases:
         )
         assert result["total_count"] == 0
         assert result["components"] == []
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
 
 
 class TestIndexComponentsExceptionPath:
@@ -1176,3 +1219,269 @@ class TestRemainingCoverageGaps:
         assert _store._stats["processed_json_files"] == 1
         assert _store._stats["loaded_files"] == 0
         assert len(_store._cdefs_by_path) == 0
+
+
+class TestQueryComponentDefinitionPagination:
+    """Pagination-specific tests for query_component_definition.
+
+    Validates: Requirements 1.2, 2.1, 4.1, 4.2, 5.3, 6.3
+    """
+
+    @pytest.fixture
+    def mock_context(self):
+        ctx = AsyncMock()
+        ctx.log = AsyncMock()
+        ctx.session = AsyncMock()
+        ctx.session.client_params = {}
+        return ctx
+
+    @pytest.fixture
+    def multi_component_cdef_data(self):
+        """Component definition with three components for pagination testing."""
+        return {
+            "component-definition": {
+                "uuid": "aa000000-0000-4000-8000-000000000001",
+                "metadata": {
+                    "title": "Multi Component Def",
+                    "last-modified": "2024-01-01T00:00:00Z",
+                    "version": "1.0",
+                    "oscal-version": "1.0.4",
+                },
+                "components": [
+                    {
+                        "uuid": "bb000000-0000-4000-8000-000000000001",
+                        "type": "software",
+                        "title": "Component Alpha",
+                        "description": "First component",
+                    },
+                    {
+                        "uuid": "bb000000-0000-4000-8000-000000000002",
+                        "type": "software",
+                        "title": "Component Beta",
+                        "description": "Second component",
+                    },
+                    {
+                        "uuid": "bb000000-0000-4000-8000-000000000003",
+                        "type": "software",
+                        "title": "Component Gamma",
+                        "description": "Third component",
+                    },
+                ],
+            }
+        }
+
+    @pytest.fixture
+    def setup_multi_component_store(
+        self, tmp_path, multi_component_cdef_data, monkeypatch
+    ):
+        """Load a component definition with three components."""
+        _store._reset()
+        comp_defs_dir = tmp_path / "component_definitions"
+        comp_defs_dir.mkdir()
+        with open(comp_defs_dir / "multi.json", "w") as f:
+            json.dump(multi_component_cdef_data, f)
+
+        from mcp_server_for_oscal import config as config_module
+
+        monkeypatch.setattr(
+            config_module.config,
+            "component_definitions_dir",
+            str(comp_defs_dir),
+        )
+        _store.load_from_directory(comp_defs_dir)
+
+    def test_default_pagination_without_explicit_params(
+        self, mock_context, setup_multi_component_store
+    ):
+        """Calling without offset/limit should default to offset=0, limit=10."""
+        result = query_component_definition(
+            ctx=mock_context,
+            query_type="all",
+            return_format="raw",
+        )
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["total_count"] == 3
+        assert result["hasMore"] is False
+        assert len(result["components"]) == 3
+
+    def test_explicit_offset_limit_slicing(
+        self, mock_context, setup_multi_component_store
+    ):
+        """Explicit offset/limit should produce the correct slice."""
+        result = query_component_definition(
+            ctx=mock_context,
+            query_type="all",
+            return_format="raw",
+            offset=0,
+            limit=1,
+        )
+        assert result["offset"] == 0
+        assert result["limit"] == 1
+        assert result["total_count"] == 3
+        assert result["hasMore"] is True
+        assert len(result["components"]) == 1
+
+        # Second page
+        result2 = query_component_definition(
+            ctx=mock_context,
+            query_type="all",
+            return_format="raw",
+            offset=1,
+            limit=1,
+        )
+        assert result2["offset"] == 1
+        assert result2["limit"] == 1
+        assert result2["total_count"] == 3
+        assert result2["hasMore"] is True
+        assert len(result2["components"]) == 1
+        # Ensure different component than first page
+        assert result2["components"][0]["uuid"] != result["components"][0]["uuid"]
+
+    def test_capability_response_wrapping(self, mock_context, tmp_path, monkeypatch):
+        """Capability query should include offset=0, limit=1, total=1, hasMore=False."""
+        _store._reset()
+        cap_path = (
+            Path(__file__).parent.parent
+            / "fixtures"
+            / "sample_component_definition_with_capabilities.json"
+        )
+        comp_defs_dir = tmp_path / "component_definitions"
+        comp_defs_dir.mkdir()
+        import shutil
+
+        shutil.copy(cap_path, comp_defs_dir / "cap.json")
+
+        from mcp_server_for_oscal import config as config_module
+
+        monkeypatch.setattr(
+            config_module.config,
+            "component_definitions_dir",
+            str(comp_defs_dir),
+        )
+        _store.load_from_directory(comp_defs_dir)
+
+        result = query_component_definition(
+            ctx=mock_context,
+            query_type="by_title",
+            query_value="Test Capability",
+            return_format="raw",
+        )
+        assert "capability" in result
+        assert result["offset"] == 0
+        assert result["limit"] == 1
+        assert result["total"] == 1
+        assert result["hasMore"] is False
+
+        # Also verify by UUID
+        result_uuid = query_component_definition(
+            ctx=mock_context,
+            query_type="by_uuid",
+            query_value="d1e2f3a4-5678-4abc-9def-112233445566",
+            return_format="raw",
+        )
+        assert "capability" in result_uuid
+        assert result_uuid["offset"] == 0
+        assert result_uuid["limit"] == 1
+        assert result_uuid["total"] == 1
+        assert result_uuid["hasMore"] is False
+
+    def test_empty_results_include_pagination_metadata(
+        self, mock_context, setup_multi_component_store
+    ):
+        """Query returning no components should still include pagination metadata."""
+        result = query_component_definition(
+            ctx=mock_context,
+            query_type="by_type",
+            query_value="hardware",
+            return_format="raw",
+        )
+        assert result["components"] == []
+        assert result["total_count"] == 0
+        assert "offset" in result
+        assert "limit" in result
+        assert "hasMore" in result
+        assert result["offset"] == 0
+        assert result["limit"] == 10
+        assert result["hasMore"] is False
+
+    def test_has_more_true_when_more_pages_exist(
+        self, mock_context, setup_multi_component_store
+    ):
+        """hasMore should be True when offset+limit < total."""
+        result = query_component_definition(
+            ctx=mock_context,
+            query_type="all",
+            return_format="raw",
+            offset=0,
+            limit=2,
+        )
+        assert result["total_count"] == 3
+        assert result["hasMore"] is True
+        assert len(result["components"]) == 2
+
+        # Last page should have hasMore=False
+        result_last = query_component_definition(
+            ctx=mock_context,
+            query_type="all",
+            return_format="raw",
+            offset=2,
+            limit=2,
+        )
+        assert result_last["total_count"] == 3
+        assert result_last["hasMore"] is False
+        assert len(result_last["components"]) == 1
+
+
+class TestQueryComponentDefinitionProperties:
+    """Property-based tests for query_component_definition pagination.
+
+    **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4**
+    """
+
+    @given(
+        full_list=st.lists(
+            st.fixed_dictionaries({
+                "uuid": st.text(min_size=1, max_size=10),
+                "title": st.text(min_size=1, max_size=10),
+            })
+        ),
+        offset=st.integers(min_value=0, max_value=200),
+        limit=st.integers(min_value=1, max_value=100),
+    )
+    @settings(max_examples=100)
+    def test_component_pagination_slice_correctness(self, full_list, offset, limit):
+        """Property 1: Component pagination slice correctness.
+
+        For any list of components returned by the store and any valid
+        offset/limit, the paginated components must equal
+        full_list[offset:offset+limit] and total_count must equal
+        len(full_list).
+
+        **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4**
+        """
+        store_response = {
+            "components": full_list,
+            "total_count": len(full_list),
+            "query_type": "all",
+            "component_definitions_searched": 1,
+            "filtered_by": None,
+        }
+
+        with (
+            patch(
+                "mcp_server_for_oscal.tools.query_component_definition._oscal_store",
+                None,
+            ),
+            patch.object(_store, "query", return_value=store_response),
+        ):
+            result = query_component_definition(
+                ctx=None,
+                query_type="all",
+                offset=offset,
+                limit=limit,
+            )
+
+        assert result["components"] == full_list[offset : offset + limit]
+        assert result["total_count"] == len(full_list)
+        assert result["hasMore"] == (offset + limit < len(full_list))

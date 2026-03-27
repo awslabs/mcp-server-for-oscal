@@ -631,6 +631,8 @@ def query_component_definition(
     query_type: Literal["all", "by_uuid", "by_title", "by_type"] = "all",
     query_value: str | None = None,
     return_format: Literal["raw"] = "raw",
+    offset: int = 0,
+    limit: int = 10,
 ) -> dict[str, Any]:
     """
     Query OSCAL Component Definition documents to find Capabilities and Components.
@@ -650,7 +652,7 @@ def query_component_definition(
       - list_capabilities()  — lists all Capability UUIDs and names
       - list_components()    — lists all Component UUIDs and titles
       - list_component_definitions() — lists all Component Definition UUIDs and titles
-    
+
     If you need details about the Component Definition schema, use the tool get_oscal_schema.
 
     Args:
@@ -674,16 +676,21 @@ def query_component_definition(
             and by_type queries.
         return_format: Response format. Currently only "raw" is supported, returning
             complete OSCAL objects as JSON.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
 
     Returns:
         dict: When a Capability matches, the response contains:
             - capability: Full OSCAL Capability object as JSON
             - component_count: Number of Components the Capability incorporates
+            - offset, limit, total, hasMore: Pagination metadata
+              (always 0, 1, 1, False for single-capability results)
             - query_type, component_definitions_searched, filtered_by
 
         When Components are returned instead, the response contains:
-            - components: List of complete OSCAL Component objects as JSON
-            - total_count: Number of Components returned
+            - components: Paginated list of OSCAL Component objects as JSON
+            - total_count: Total number of matching Components across all pages
+            - offset, limit, hasMore: Pagination metadata
             - query_type, component_definitions_searched, filtered_by
 
     Raises:
@@ -696,14 +703,23 @@ def query_component_definition(
             query_type=query_type,
             query_value=query_value,
             return_format=return_format,
+            offset=offset,
+            limit=limit,
         )
-    return _store.query(
+    result = _store.query(
         ctx=ctx,
         component_definition_filter=component_definition_filter,
         query_type=query_type,
         query_value=query_value,
         return_format=return_format,
     )
+    if "capability" in result:
+        result["offset"] = 0
+        result["limit"] = 1
+        result["total"] = 1
+        result["hasMore"] = False
+        return result
+    return _paginate_component_response(result, offset, limit)
 
 
 @tool()
@@ -816,6 +832,40 @@ _store.load_from_directory()
 
 
 # ------------------------------------------------------------------
+# Pagination helper
+# ------------------------------------------------------------------
+
+
+def _paginate_component_response(
+    result: dict[str, Any], offset: int, limit: int
+) -> dict[str, Any]:
+    """Apply pagination to a component query response.
+
+    Takes a response dict (with ``components`` and ``total_count`` keys)
+    and slices the ``components`` list using :func:`paginate`, merging
+    the pagination metadata back into the response.
+
+    Args:
+        result: Component query response containing a ``components`` list.
+        offset: Zero-based index of the first item to return.
+        limit: Maximum number of items to return (1-100).
+
+    Returns:
+        The same *result* dict, mutated in place, with ``components``
+        replaced by the paginated slice and ``offset``, ``limit``,
+        ``total_count``, and ``hasMore`` keys set.
+    """
+    components = result.get("components", [])
+    page = paginate(components, offset, limit)
+    result["components"] = page["items"]
+    result["total_count"] = page["total"]
+    result["offset"] = page["offset"]
+    result["limit"] = page["limit"]
+    result["hasMore"] = page["hasMore"]
+    return result
+
+
+# ------------------------------------------------------------------
 # OscalStore delegation helpers
 # ------------------------------------------------------------------
 
@@ -826,6 +876,8 @@ def _oscal_store_query_component_definition(
     query_type: Literal["all", "by_uuid", "by_title", "by_type"],
     query_value: str | None,
     return_format: Literal["raw"],
+    offset: int = 0,
+    limit: int = 10,
 ) -> dict[str, Any]:
     """Delegate query_component_definition to OscalStore.
 
@@ -898,6 +950,9 @@ def _oscal_store_query_component_definition(
                 "query_type": query_type,
                 "component_definitions_searched": 0,
                 "filtered_by": component_definition_filter,
+                "offset": offset,
+                "limit": limit,
+                "hasMore": False,
             }
         cdefs_searched = filter_result["total"]
 
@@ -908,19 +963,24 @@ def _oscal_store_query_component_definition(
         )
         if cap_result is not None:
             cap_result["component_definitions_searched"] = cdefs_searched
+            cap_result["offset"] = 0
+            cap_result["limit"] = 1
+            cap_result["total"] = 1
+            cap_result["hasMore"] = False
             return cap_result
 
     # Fall through to component search via the legacy store
     # The OscalStore query returns documents, not components.
     # For backward compat, we delegate to the legacy store which
     # has the full component-level query logic.
-    return _store.query(
+    result = _store.query(
         ctx=ctx,
         component_definition_filter=component_definition_filter,
         query_type=query_type,
         query_value=query_value,
         return_format=return_format,
     )
+    return _paginate_component_response(result, offset, limit)
 
 
 def _oscal_store_find_capability(

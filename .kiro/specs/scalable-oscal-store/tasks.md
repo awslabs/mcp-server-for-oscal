@@ -221,7 +221,7 @@ Replace the in-memory `ComponentDefinitionStore` with a SQLite-backed `OscalStor
     - Test cross-model `text_search` returning results from multiple model types
     - _Requirements: 7.3, 6.2, 6.3_
 
-- [~] 12. Final checkpoint - Full test suite
+- [x] 12. Final checkpoint - Full test suite
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
