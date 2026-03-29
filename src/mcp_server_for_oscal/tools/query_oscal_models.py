@@ -527,3 +527,479 @@ def text_search_oscal(
         offset=offset,
         limit=limit,
     )
+
+
+# ------------------------------------------------------------------
+# Catalog child element tools
+# ------------------------------------------------------------------
+
+
+@tool()
+def list_catalog_controls(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List controls within OSCAL Catalog documents.
+
+    Controls are the primary structural elements of a catalog, each
+    identified by a human-readable token ID (e.g. ``ac-1``, ``sc-7``).
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single catalog.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="control",
+        offset=offset,
+        limit=limit,
+    )
+
+
+@tool()
+def list_catalog_groups(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List groups within OSCAL Catalog documents.
+
+    Groups organise controls into families (e.g. ``ac`` for Access
+    Control).  Group IDs are human-readable tokens unique within the
+    containing catalog.
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single catalog.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="group",
+        offset=offset,
+        limit=limit,
+    )
+
+
+# ------------------------------------------------------------------
+# SSP child element tools
+# ------------------------------------------------------------------
+
+
+@tool()
+def list_ssp_control_implementations(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List control-implementation elements within OSCAL SSP documents.
+
+    The control-implementation is a singleton element within each SSP
+    that describes how the system implements required security controls.
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single SSP.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="control-implementation",
+        offset=offset,
+        limit=limit,
+    )
+
+
+@tool()
+def list_ssp_system_components(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List system-component elements within OSCAL SSP documents.
+
+    System components describe the individual parts of a system (e.g.
+    servers, services, software) and are identified by UUID.
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single SSP.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="system-component",
+        offset=offset,
+        limit=limit,
+    )
+
+
+# ------------------------------------------------------------------
+# Profile child element tools
+# ------------------------------------------------------------------
+
+
+@tool()
+def list_profile_imports(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List import elements within OSCAL Profile documents.
+
+    Imports reference the catalogs or profiles from which controls are
+    selected.  Import IDs are synthetic positional identifiers
+    (e.g. ``import-0``, ``import-1``).
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single profile.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="import",
+        offset=offset,
+        limit=limit,
+    )
+
+
+@tool()
+def list_profile_modify(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List modify elements within OSCAL Profile documents.
+
+    The modify element is a singleton within each profile that describes
+    customisations applied to imported controls (e.g. parameter settings,
+    additions, alterations).
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single profile.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="modify",
+        offset=offset,
+        limit=limit,
+    )
+
+
+# ------------------------------------------------------------------
+# Assessment Plan child element tools
+# ------------------------------------------------------------------
+
+
+@tool()
+def list_assessment_plan_tasks(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List task elements within OSCAL Assessment Plan documents.
+
+    Tasks define the specific assessment activities to be performed.
+    Each task is identified by a UUID.
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single
+            assessment plan.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="task",
+        offset=offset,
+        limit=limit,
+    )
+
+
+@tool()
+def list_assessment_plan_activities(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List activity elements within OSCAL Assessment Plan documents.
+
+    Activities describe the methods and procedures used to assess
+    controls.  Each activity is identified by a UUID.
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single
+            assessment plan.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="activity",
+        offset=offset,
+        limit=limit,
+    )
+
+
+# ------------------------------------------------------------------
+# Assessment Results child element tools
+# ------------------------------------------------------------------
+
+
+@tool()
+def list_assessment_results_results(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List result elements within OSCAL Assessment Results documents.
+
+    Results capture the outcome of an assessment, including observations
+    and risk determinations.  Each result is identified by a UUID.
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single
+            assessment results document.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="result",
+        offset=offset,
+        limit=limit,
+    )
+
+
+@tool()
+def list_assessment_results_findings(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List finding elements within OSCAL Assessment Results documents.
+
+    Findings document specific determinations about control
+    implementation status.  Each finding is identified by a UUID.
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single
+            assessment results document.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="finding",
+        offset=offset,
+        limit=limit,
+    )
+
+
+# ------------------------------------------------------------------
+# POA&M child element tools
+# ------------------------------------------------------------------
+
+
+@tool()
+def list_poam_items(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List POA&M item elements within OSCAL POA&M documents.
+
+    POA&M items document specific security issues and their remediation
+    plans.  Each item is identified by a UUID (optional in the OSCAL
+    schema).
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single
+            POA&M document.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="poam-item",
+        offset=offset,
+        limit=limit,
+    )
+
+
+# ------------------------------------------------------------------
+# Mapping Collection child element tools
+# ------------------------------------------------------------------
+
+
+@tool()
+def list_mapping_collection_mappings(
+    ctx: Context | None = None,
+    parent_doc_uuid: str | None = None,
+    offset: int = 0,
+    limit: int = 10,
+) -> dict:
+    """List mapping elements within OSCAL Mapping Collection documents.
+
+    Mappings describe how controls from one framework relate to controls
+    in another framework.  Each mapping is identified by a UUID.
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        parent_doc_uuid: Optional UUID to scope results to a single
+            mapping collection document.
+        offset: Zero-based pagination offset (default 0).
+        limit: Maximum items to return, 1-100 (default 10).
+
+    Returns:
+        Page_Response dict with keys: items, total, offset, limit, hasMore.
+        Each item contains: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid.
+    """
+    return _get_store().list_child_elements(
+        ctx=ctx,
+        parent_doc_uuid=parent_doc_uuid,
+        element_type="mapping",
+        offset=offset,
+        limit=limit,
+    )
+
+# ------------------------------------------------------------------
+# Get child element by ID (cross-model)
+# ------------------------------------------------------------------
+
+
+@tool()
+def get_child_element(
+    ctx: Context | None = None,
+    element_id: str = "",
+    parent_doc_uuid: str | None = None,
+) -> dict | None:
+    """Retrieve a single child element by its identifier.
+
+    OSCAL uses two identifier schemes:
+    - UUIDs (globally unique) for most elements such as tasks,
+      activities, results, findings, POA&M items, mappings, and
+      system-components.
+    - Token IDs (e.g. ``ac-1``, ``sc``) for catalog controls and
+      groups — these are human-readable but only unique within their
+      containing document.
+
+    For elements with token-based IDs, ``parent_doc_uuid`` should be
+    provided to disambiguate.  For elements with UUIDs,
+    ``parent_doc_uuid`` is optional.
+
+    If ``parent_doc_uuid`` is omitted and the ``element_id`` matches
+    elements in more than one document, an error dict is returned with
+    ``error: "ambiguous_element_id"`` and a list of matching parent
+    document UUIDs so the caller can retry with disambiguation.
+
+    Args:
+        ctx: MCP server context (injected automatically).
+        element_id: The element identifier (UUID or token ID).
+        parent_doc_uuid: Optional parent document UUID to scope the
+            lookup using the composite key (element_id, parent_doc_uuid).
+
+    Returns:
+        A dict with keys: id, title, element_type, description,
+        parentDocumentTitle, parentDocumentUuid, raw_json — or None if
+        not found.  Returns an error dict if the element_id is ambiguous
+        across documents.
+    """
+    return _get_store().get_child_element(
+        element_id=element_id,
+        parent_doc_uuid=parent_doc_uuid,
+    )

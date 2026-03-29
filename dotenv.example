@@ -30,6 +30,14 @@ export LOG_LEVEL=INFO
 # OSCAL_MAX_URI_DEPTH=3
 # OSCAL_COMPONENT_DEFINITIONS_DIR=component_definitions
 
+# OSCAL Store configuration
+# Directory containing your own OSCAL JSON files (catalogs, SSPs, profiles, etc.)
+# OSCAL_DOCUMENTS_DIR=
+# Path to a persistent SQLite database (reused across restarts when set)
+# OSCAL_STORE_DB_PATH=
+# Max parsed documents in the in-memory LRU cache
+# OSCAL_STORE_CACHE_SIZE=100
+
 # Agent configuration (for oscal_agent.py)
 # OSCAL_AGENT_MAX_TOKENS=4096
 # OSCAL_AGENT_MAX_RETRY_ATTEMPTS=4

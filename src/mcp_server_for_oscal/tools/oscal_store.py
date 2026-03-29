@@ -1842,7 +1842,7 @@ class OscalStore:
         items: list[dict] = []
         for row in rows:
             items.append({
-                "uuid": row["uuid"],
+                "id": row["uuid"],
                 "title": row["title"],
                 "element_type": row["element_type"],
                 "description": row["description"],
@@ -1856,6 +1856,131 @@ class OscalStore:
             "offset": offset,
             "limit": limit,
             "hasMore": offset + limit < total,
+        }
+
+    def get_child_element(
+        self,
+        element_id: str,
+        parent_doc_uuid: str | None = None,
+    ) -> dict | None:
+        """Retrieve a single child element by its identifier.
+
+        Triggers ``_ensure_indexed()`` for relevant parent documents so
+        that child elements are available.
+
+        For elements with token-based IDs (catalog controls/groups),
+        ``parent_doc_uuid`` should be provided to disambiguate since
+        token IDs are only unique within their containing document.
+
+        For elements with UUIDs, ``parent_doc_uuid`` is optional.
+
+        Args:
+            element_id: The element identifier (UUID or token ID).
+            parent_doc_uuid: Optional parent document UUID to scope the
+                lookup using the composite key ``(uuid, parent_doc_id)``.
+
+        Returns:
+            Full element dict including ``raw_json``, or ``None`` if not
+            found.  Returns an error dict with
+            ``error: "ambiguous_element_id"`` if the element_id matches
+            multiple documents and ``parent_doc_uuid`` was not provided.
+        """
+        if not element_id:
+            return None
+
+        # Ensure indexing for relevant parent documents
+        if parent_doc_uuid is not None:
+            doc_row = self._conn.execute(
+                "SELECT id, indexed FROM documents WHERE uuid = ?",
+                (parent_doc_uuid,),
+            ).fetchone()
+            if doc_row is not None and not doc_row["indexed"]:
+                try:
+                    self._ensure_indexed(doc_row["id"])
+                except Exception:
+                    logger.warning(
+                        "Failed to index doc %s for get_child_element",
+                        parent_doc_uuid,
+                    )
+        else:
+            # Ensure all unindexed documents are indexed
+            unindexed = self._conn.execute(
+                "SELECT id FROM documents WHERE indexed = 0"
+            ).fetchall()
+            for row in unindexed:
+                try:
+                    self._ensure_indexed(row["id"])
+                except Exception:
+                    logger.warning(
+                        "Failed to index doc %d for get_child_element",
+                        row["id"],
+                    )
+
+        # Query child elements
+        if parent_doc_uuid is not None:
+            # Composite key lookup: (uuid, parent_doc_id) via JOIN
+            row = self._conn.execute(
+                """
+                SELECT ce.uuid, ce.title, ce.element_type, ce.description,
+                       ce.raw_json,
+                       d.title AS parent_title, d.uuid AS parent_uuid
+                FROM child_elements ce
+                JOIN documents d ON ce.parent_doc_id = d.id
+                WHERE ce.uuid = ? AND d.uuid = ?
+                """,
+                (element_id, parent_doc_uuid),
+            ).fetchone()
+            if row is None:
+                return None
+            return {
+                "id": row["uuid"],
+                "title": row["title"],
+                "element_type": row["element_type"],
+                "description": row["description"],
+                "parentDocumentTitle": row["parent_title"],
+                "parentDocumentUuid": row["parent_uuid"],
+                "raw_json": row["raw_json"],
+            }
+
+        # No parent_doc_uuid — query by uuid alone
+        rows = self._conn.execute(
+            """
+            SELECT ce.uuid, ce.title, ce.element_type, ce.description,
+                   ce.raw_json,
+                   d.title AS parent_title, d.uuid AS parent_uuid
+            FROM child_elements ce
+            JOIN documents d ON ce.parent_doc_id = d.id
+            WHERE ce.uuid = ?
+            """,
+            (element_id,),
+        ).fetchall()
+
+        if len(rows) == 0:
+            return None
+
+        if len(rows) == 1:
+            row = rows[0]
+            return {
+                "id": row["uuid"],
+                "title": row["title"],
+                "element_type": row["element_type"],
+                "description": row["description"],
+                "parentDocumentTitle": row["parent_title"],
+                "parentDocumentUuid": row["parent_uuid"],
+                "raw_json": row["raw_json"],
+            }
+
+        # Multiple matches — ambiguous element_id
+        matching_docs = [r["parent_uuid"] for r in rows]
+        return {
+            "error": "ambiguous_element_id",
+            "message": (
+                f"Element ID '{element_id}' matches elements in "
+                f"{len(matching_docs)} documents. Provide "
+                f"parent_doc_uuid to disambiguate."
+            ),
+            "element_id": element_id,
+            "matching_documents": matching_docs,
         }
 
     # ------------------------------------------------------------------

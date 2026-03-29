@@ -2001,7 +2001,7 @@ class TestListChildElements:
         result = store.list_child_elements()
         item = result["items"][0]
         assert set(item.keys()) == {
-            "uuid", "title", "element_type", "description",
+            "id", "title", "element_type", "description",
             "parentDocumentTitle", "parentDocumentUuid",
         }
 
@@ -2040,6 +2040,145 @@ class TestListChildElements:
         result = store.list_child_elements()
         assert result["total"] == 1
         assert result["items"][0]["description"] == "Remediate CVE-2024-0001"
+
+
+# ---------------------------------------------------------------------------
+# Tests for get_child_element()
+# ---------------------------------------------------------------------------
+
+
+class TestGetChildElement:
+    """Tests for OscalStore.get_child_element().
+
+    Validates: Requirements 11.2, 11.3, 11.4, 11.5, 11.6
+    """
+
+    def test_get_by_uuid_with_parent_doc_uuid(self, store, tmp_path):
+        """Get a UUID-identified element with parent_doc_uuid provided."""
+        doc_dir = tmp_path / "docs"
+        doc_dir.mkdir()
+        (doc_dir / "poam.json").write_text(json.dumps(_make_poam()))
+        store.scan_directory(doc_dir)
+
+        result = store.get_child_element(
+            element_id="f6a7b8c9-abcd-4f01-a2ab-678901234567",
+            parent_doc_uuid="e5f6a7b8-9abc-4ef0-a1ab-567890123456",
+        )
+        assert result is not None
+        assert result["id"] == "f6a7b8c9-abcd-4f01-a2ab-678901234567"
+        assert result["title"] == "Fix vulnerability"
+        assert result["element_type"] == "poam-item"
+        assert result["description"] == "Remediate CVE-2024-0001"
+        assert result["parentDocumentTitle"] == "Test POA&M"
+        assert result["parentDocumentUuid"] == "e5f6a7b8-9abc-4ef0-a1ab-567890123456"
+        assert "raw_json" in result
+        assert set(result.keys()) == {
+            "id", "title", "element_type", "description",
+            "parentDocumentTitle", "parentDocumentUuid", "raw_json",
+        }
+
+    def test_get_by_token_id_with_parent_doc_uuid(self, store, tmp_path):
+        """Get a token-ID element (catalog control) with parent_doc_uuid."""
+        doc_dir = tmp_path / "docs"
+        doc_dir.mkdir()
+        (doc_dir / "catalog.json").write_text(
+            json.dumps(_make_catalog_with_controls())
+        )
+        store.scan_directory(doc_dir)
+
+        result = store.get_child_element(
+            element_id="ac-1",
+            parent_doc_uuid="c1d2e3f4-5678-4abc-8def-aabbccddeeff",
+        )
+        assert result is not None
+        assert result["id"] == "ac-1"
+        assert result["title"] == "Access Control Policy"
+        assert result["element_type"] == "control"
+        assert result["parentDocumentUuid"] == "c1d2e3f4-5678-4abc-8def-aabbccddeeff"
+        assert "raw_json" in result
+        assert set(result.keys()) == {
+            "id", "title", "element_type", "description",
+            "parentDocumentTitle", "parentDocumentUuid", "raw_json",
+        }
+
+    def test_get_by_token_id_without_parent_unique(self, store, tmp_path):
+        """Token ID without parent returns element when only one match exists."""
+        doc_dir = tmp_path / "docs"
+        doc_dir.mkdir()
+        (doc_dir / "catalog.json").write_text(
+            json.dumps(_make_catalog_with_controls())
+        )
+        store.scan_directory(doc_dir)
+
+        result = store.get_child_element(element_id="ac-1")
+        assert result is not None
+        assert result["id"] == "ac-1"
+        assert result["title"] == "Access Control Policy"
+        assert result["element_type"] == "control"
+        assert result["parentDocumentUuid"] == "c1d2e3f4-5678-4abc-8def-aabbccddeeff"
+        assert "raw_json" in result
+
+    def test_get_by_token_id_without_parent_ambiguous(self, store, tmp_path):
+        """Token ID without parent returns error when multiple docs match."""
+        doc_dir = tmp_path / "docs"
+        doc_dir.mkdir()
+
+        # Two catalogs with the same control token ID "ac-1"
+        catalog_a_uuid = "aaaa1111-1111-4aaa-aaaa-aaaaaaaaaaaa"
+        catalog_b_uuid = "bbbb2222-2222-4bbb-bbbb-bbbbbbbbbbbb"
+
+        catalog_a = {
+            "catalog": {
+                "uuid": catalog_a_uuid,
+                "metadata": {**_COMMON_METADATA, "title": "Catalog A"},
+                "controls": [
+                    {"id": "ac-1", "title": "Access Control Policy A"},
+                ],
+            }
+        }
+        catalog_b = {
+            "catalog": {
+                "uuid": catalog_b_uuid,
+                "metadata": {**_COMMON_METADATA, "title": "Catalog B"},
+                "controls": [
+                    {"id": "ac-1", "title": "Access Control Policy B"},
+                ],
+            }
+        }
+
+        (doc_dir / "catalog_a.json").write_text(json.dumps(catalog_a))
+        (doc_dir / "catalog_b.json").write_text(json.dumps(catalog_b))
+        store.scan_directory(doc_dir)
+
+        result = store.get_child_element(element_id="ac-1")
+        assert result is not None
+        assert result["error"] == "ambiguous_element_id"
+        assert result["element_id"] == "ac-1"
+        assert set(result.keys()) == {
+            "error", "message", "element_id", "matching_documents",
+        }
+        assert isinstance(result["matching_documents"], list)
+        assert len(result["matching_documents"]) == 2
+        assert set(result["matching_documents"]) == {
+            catalog_a_uuid, catalog_b_uuid,
+        }
+
+    def test_get_nonexistent_element_id_returns_none(self, store, tmp_path):
+        """Querying a nonexistent element_id returns None."""
+        doc_dir = tmp_path / "docs"
+        doc_dir.mkdir()
+        (doc_dir / "catalog.json").write_text(
+            json.dumps(_make_catalog_with_controls())
+        )
+        store.scan_directory(doc_dir)
+
+        result = store.get_child_element(element_id="nonexistent-id-xyz")
+        assert result is None
+
+    def test_get_empty_element_id_returns_none(self, store):
+        """Querying with an empty element_id returns None."""
+        result = store.get_child_element(element_id="")
+        assert result is None
 
 
 # ---------------------------------------------------------------------------
@@ -2510,7 +2649,7 @@ class TestPropertyBackwardCompatibleReturnFormat:
     limit, hasMore) for query and list operations. For list_documents, items
     should contain uuid, title, model_type, childCount, sizeInBytes. For
     list_child_elements with element_type="component", items should contain
-    uuid, title, element_type, parentDocumentTitle, parentDocumentUuid.
+    id, title, element_type, parentDocumentTitle, parentDocumentUuid.
 
     **Validates: Requirements 7.2**
     """
@@ -2667,7 +2806,7 @@ class TestPropertyBackwardCompatibleReturnFormat:
 
             # Verify each item has the expected keys
             expected_item_keys = {
-                "uuid", "title", "element_type", "description",
+                "id", "title", "element_type", "description",
                 "parentDocumentTitle", "parentDocumentUuid",
             }
             for item in result["items"]:
@@ -3341,8 +3480,8 @@ class TestPropertyChildElementMetadataPersistence:
 
                 for child in children_result["items"]:
                     # Each child has required fields
-                    assert child["uuid"] is not None and len(child["uuid"]) > 0, (
-                        "Child UUID should be non-empty"
+                    assert child["id"] is not None and len(child["id"]) > 0, (
+                        "Child id should be non-empty"
                     )
                     assert child["title"] is not None and len(child["title"]) > 0, (
                         "Child title should be non-empty"

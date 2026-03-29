@@ -43,6 +43,20 @@ BASE_TOOL_NAMES = {
     "query_mapping_collection",
     "list_mapping_collections",
     "text_search_oscal",
+    # Child element tools
+    "list_catalog_controls",
+    "list_catalog_groups",
+    "list_ssp_control_implementations",
+    "list_ssp_system_components",
+    "list_profile_imports",
+    "list_profile_modify",
+    "list_assessment_plan_tasks",
+    "list_assessment_plan_activities",
+    "list_assessment_results_results",
+    "list_assessment_results_findings",
+    "list_poam_items",
+    "list_mapping_collection_mappings",
+    "get_child_element",
 }
 
 
