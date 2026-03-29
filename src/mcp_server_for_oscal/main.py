@@ -33,10 +33,11 @@ This server provides tools to support evaluation and implementation of NIST's OS
 def _init_oscal_store() -> None:
     """Initialize the OscalStore singleton and scan directories.
 
-    Creates an OscalStore with config values, scans both the
-    component_definitions_dir (backward compat) and oscal_documents_dir
-    (if configured), then sets the store singleton on both
-    query_component_definition and query_oscal_models modules.
+    Creates an OscalStore with config values, scans the
+    component_definitions_dir (backward compat), oscal_documents_dir
+    (if configured), and the bundled oscal_docs/ directory, then sets
+    the store singleton on query_component_definition,
+    query_oscal_models, and query_documentation modules.
 
     If initialization fails, logs a warning and falls back to the
     legacy ComponentDefinitionStore so the server can still start.
@@ -56,18 +57,30 @@ def _init_oscal_store() -> None:
             store.scan_directory(comp_defs_dir)
 
         # Scan general OSCAL documents directory (if configured)
+        scanned_dirs: set[Path] = set()
         if config.oscal_documents_dir:
             oscal_docs_dir = Path(config.oscal_documents_dir)
             if not oscal_docs_dir.is_absolute():
                 oscal_docs_dir = my_dir / config.oscal_documents_dir
             if oscal_docs_dir.exists():
                 store.scan_directory(oscal_docs_dir)
+                scanned_dirs.add(oscal_docs_dir.resolve())
 
-        # Set the store singleton on both modules
+        # Scan bundled oscal_docs/ directory for markdown documentation
+        bundled_docs_dir = my_dir / "oscal_docs"
+        if (
+            bundled_docs_dir.exists()
+            and bundled_docs_dir.resolve() not in scanned_dirs
+        ):
+            store.scan_directory(bundled_docs_dir)
+
+        # Set the store singleton on all modules
         from mcp_server_for_oscal.tools import query_component_definition
+        from mcp_server_for_oscal.tools import query_documentation
         from mcp_server_for_oscal.tools import query_oscal_models
 
         query_component_definition.init_store(store)
+        query_documentation.init_store(store)
         query_oscal_models.init_store(store)
 
         logger.info("OscalStore initialized successfully")

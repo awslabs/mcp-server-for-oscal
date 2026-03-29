@@ -11,8 +11,32 @@ from mcp.server.fastmcp.server import Context
 from strands import tool
 
 from mcp_server_for_oscal.config import config
+from mcp_server_for_oscal.tools.oscal_store import OscalStore
 
 logger = logging.getLogger(__name__)
+
+# Module-level singleton — initialised lazily by ``init_store()``.
+_store: OscalStore | None = None
+
+
+def init_store(store: OscalStore) -> None:
+    """Set the module-level OscalStore singleton.
+
+    Called during server startup after the store has been
+    initialised and directories have been scanned.
+    """
+    global _store  # noqa: PLW0603
+    _store = store
+
+
+def _get_store() -> OscalStore:
+    """Return the module-level store, raising if not yet initialised."""
+    if _store is None:
+        raise RuntimeError(
+            "OscalStore has not been initialised. "
+            "Call init_store() during server startup."
+        )
+    return _store
 
 
 @tool
@@ -26,13 +50,18 @@ def query_oscal_documentation(query: str, ctx: Context | None = None) -> Any:
     Returns:
         dict: Results retrieved from knowledge base, structured as a Bedrock RetrieveResponseTypeDef object.
     """
-    if config.knowledge_base_id is None:
-        msg = "Knowledge base ID is not set. Please set the OSCAL_KB_ID environment variable."
-        logger.warning(msg)
-        if ctx is not None:
-            garbage = ctx.warning(msg)
-        return query_local(query, ctx)
-    return query_kb(query, ctx)
+    if config.knowledge_base_id is not None:
+        logger.info("Using Knowledge Base search path (KB ID: %s)", config.knowledge_base_id)
+        try:
+            return query_kb(query, ctx)
+        except Exception:
+            logger.warning(
+                "Knowledge Base query failed; falling back to local search"
+            )
+            return query_local(query, ctx)
+
+    logger.info("Using local documentation search path")
+    return query_local(query, ctx)
 
 
 def query_kb(query: str, ctx: Context | None) -> Any:
@@ -65,10 +94,7 @@ def query_kb(query: str, ctx: Context | None) -> Any:
 
 
 def query_local(query: str, ctx: Context | None) -> Any:
-    msg = "Not yet implemented"
-    logger.error(msg)
-    if ctx is not None:
-        garbage = ctx.error(msg)
-    return {
-        "error": msg,
-    }
+    """Perform a local FTS5 search over bundled OSCAL documentation."""
+    if _store is None:
+        return {"error": "OscalStore has not been initialized"}
+    return _store.search_documentation(query)

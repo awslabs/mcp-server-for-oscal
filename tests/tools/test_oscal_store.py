@@ -162,7 +162,8 @@ class TestScanDirectory:
         count1 = store.scan_directory(doc_dir)
         assert count1 == 1
 
-        # Scan again without changes
+        # With content_hash now populated by _upsert_document,
+        # unchanged files are correctly detected and skipped.
         count2 = store.scan_directory(doc_dir)
         assert count2 == 0
 
@@ -954,9 +955,11 @@ class TestIncrementalReindexingProperty:
         try:
             count2 = store2.scan_directory(doc_dir)
 
-            # Core assertion: zero files re-processed
+            # With content_hash now populated by _upsert_document,
+            # unchanged files are correctly detected and skipped.
             assert count2 == 0, (
-                f"Expected 0 re-processed files, got {count2}"
+                f"Expected 0 re-processed files "
+                f"(content_hash enables skip), got {count2}"
             )
 
             # Verify all documents are still present and queryable

@@ -14,12 +14,14 @@ import importlib
 import json
 import logging
 import os
+import re
 import shutil
 import sqlite3
 import tempfile
 import zipfile
 from pathlib import Path
 from urllib.parse import urlparse
+from uuid import NAMESPACE_URL, uuid5
 
 from mcp_server_for_oscal.config import config
 from mcp_server_for_oscal.tools.utils import OSCALModelType, ROOT_KEY_TO_MODEL_TYPE
@@ -295,19 +297,28 @@ class OscalStore:
             # -- documents table --
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS documents (
-                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    uuid        TEXT    NOT NULL UNIQUE,
-                    title       TEXT    NOT NULL,
-                    model_type  TEXT    NOT NULL,
-                    file_path   TEXT    NOT NULL UNIQUE,
-                    file_size   INTEGER NOT NULL,
-                    file_mtime  REAL    NOT NULL,
-                    raw_json    TEXT    NOT NULL,
-                    indexed     INTEGER NOT NULL DEFAULT 0,
-                    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
-                    updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
+                    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    uuid         TEXT    NOT NULL UNIQUE,
+                    title        TEXT    NOT NULL,
+                    model_type   TEXT    NOT NULL,
+                    file_path    TEXT    NOT NULL UNIQUE,
+                    file_size    INTEGER NOT NULL,
+                    file_mtime   REAL    NOT NULL,
+                    content_hash TEXT,
+                    raw_json     TEXT    NOT NULL,
+                    indexed      INTEGER NOT NULL DEFAULT 0,
+                    created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+                    updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
                 )
             """)
+
+            # -- migration: add content_hash for existing DBs --
+            try:
+                cur.execute(
+                    "ALTER TABLE documents ADD COLUMN content_hash TEXT"
+                )
+            except sqlite3.OperationalError:
+                pass  # column already exists
 
             cur.execute(
                 "CREATE INDEX IF NOT EXISTS idx_documents_uuid "
@@ -1204,12 +1215,13 @@ class OscalStore:
         directory: Path,
         model_type_filter: OSCALModelType | None = None,
     ) -> int:
-        """Scan a directory for OSCAL JSON files, extracting metadata only.
+        """Scan a directory for OSCAL JSON files and markdown documentation.
 
-        Walks the directory tree for ``.json`` and ``.zip`` files.  For each
-        file, extracts metadata (UUID, title, model_type, file_path,
-        file_size, file_mtime, raw_json) and UPSERTs into the ``documents``
-        table with ``indexed=0``.
+        Walks the directory tree for ``.json``, ``.zip``, and ``.md`` files.
+        For each JSON/ZIP file, extracts metadata (UUID, title, model_type,
+        file_path, file_size, file_mtime, raw_json) and UPSERTs into the
+        ``documents`` table with ``indexed=0``.  For each markdown file,
+        indexes the content as documentation into the FTS index.
 
         Change detection: files whose mtime **and** size match the stored
         values are skipped.
@@ -1247,6 +1259,12 @@ class OscalStore:
         for zip_file in zip_files:
             count += self._process_zip_file(zip_file, model_type_filter)
 
+        # Process .md files
+        md_files = list(directory.rglob("**/*.md"))
+        for md_file in md_files:
+            if self._process_markdown_file(md_file):
+                count += 1
+
         if count == 0:
             logger.info(
                 "No new or updated OSCAL documents found in %s", directory
@@ -1261,16 +1279,24 @@ class OscalStore:
         return count
 
     def _file_unchanged(
-        self, file_path: str, file_size: int, file_mtime: float
+        self, file_path: str, content_hash: str
     ) -> bool:
-        """Check if a file's mtime and size match the stored values."""
+        """Check if a file's SHA-256 content hash matches the stored value.
+
+        When ``content_hash`` is NULL (pre-migration rows), always returns
+        ``False`` so the file is re-indexed and the hash gets populated.
+        """
         row = self._conn.execute(
-            "SELECT file_size, file_mtime FROM documents WHERE file_path = ?",
+            "SELECT content_hash FROM documents "
+            "WHERE file_path = ?",
             (file_path,),
         ).fetchone()
         if row is None:
             return False
-        return row["file_size"] == file_size and row["file_mtime"] == file_mtime
+        # Force re-indexing for rows that lack a content_hash
+        if row["content_hash"] is None:
+            return False
+        return row["content_hash"] == content_hash
 
     def _extract_metadata(
         self, data: dict, model_type: OSCALModelType
@@ -1304,6 +1330,7 @@ class OscalStore:
         file_size: int,
         file_mtime: float,
         raw_json: str,
+        content_hash: str = "",
     ) -> bool:
         """UPSERT a document row into the documents table.
 
@@ -1314,8 +1341,8 @@ class OscalStore:
                 """
                 INSERT INTO documents
                     (uuid, title, model_type, file_path, file_size,
-                     file_mtime, raw_json, indexed, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0, datetime('now'))
+                     file_mtime, raw_json, content_hash, indexed, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, datetime('now'))
                 ON CONFLICT(uuid) DO UPDATE SET
                     title = excluded.title,
                     model_type = excluded.model_type,
@@ -1323,10 +1350,14 @@ class OscalStore:
                     file_size = excluded.file_size,
                     file_mtime = excluded.file_mtime,
                     raw_json = excluded.raw_json,
+                    content_hash = excluded.content_hash,
                     indexed = 0,
                     updated_at = datetime('now')
                 """,
-                (uuid, title, model_type, file_path, file_size, file_mtime, raw_json),
+                (
+                    uuid, title, model_type, file_path,
+                    file_size, file_mtime, raw_json, content_hash,
+                ),
             )
             self._conn.commit()
             return True
@@ -1354,8 +1385,18 @@ class OscalStore:
         file_size = stat.st_size
         file_mtime = stat.st_mtime
 
-        # Change detection
-        if self._file_unchanged(file_path_str, file_size, file_mtime):
+        # Read file content in binary mode and compute SHA-256 hash
+        try:
+            with open(json_file, "rb") as f:
+                raw_bytes = f.read()
+        except OSError as exc:
+            logger.debug("Cannot read %s: %s", json_file, exc)
+            return False
+
+        content_hash = hashlib.sha256(raw_bytes).hexdigest()
+
+        # Change detection using content hash
+        if self._file_unchanged(file_path_str, content_hash):
             return False
 
         # Detect model type
@@ -1368,13 +1409,12 @@ class OscalStore:
         if model_type_filter is not None and model_type != model_type_filter:
             return False
 
-        # Read full JSON
+        # Parse JSON from already-read bytes
         try:
-            with open(json_file) as f:
-                raw_json = f.read()
+            raw_json = raw_bytes.decode("utf-8")
             data = json.loads(raw_json)
-        except (json.JSONDecodeError, OSError) as exc:
-            logger.debug("Cannot read %s: %s", json_file, exc)
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            logger.debug("Cannot parse %s: %s", json_file, exc)
             return False
 
         # Validate with Trestle
@@ -1396,6 +1436,7 @@ class OscalStore:
         return self._upsert_document(
             uuid, title, model_type.value, file_path_str,
             file_size, file_mtime, raw_json,
+            content_hash=content_hash,
         )
 
     def _process_zip_file(
@@ -1436,10 +1477,11 @@ class OscalStore:
                     file_size = len(raw_bytes)
                     file_mtime = zip_stat.st_mtime
 
-                    # Change detection
-                    if self._file_unchanged(
-                        file_path_str, file_size, file_mtime
-                    ):
+                    # Compute SHA-256 hash of inner file content
+                    content_hash = hashlib.sha256(raw_bytes).hexdigest()
+
+                    # Change detection using content hash
+                    if self._file_unchanged(file_path_str, content_hash):
                         continue
 
                     try:
@@ -1477,6 +1519,7 @@ class OscalStore:
                     if self._upsert_document(
                         uuid, title, model_type.value, file_path_str,
                         file_size, file_mtime, raw_json,
+                        content_hash=content_hash,
                     ):
                         count += 1
 
@@ -1486,6 +1529,122 @@ class OscalStore:
             logger.debug("Cannot open zip %s: %s", zip_path, exc)
 
         return count
+
+    def _process_markdown_file(self, md_file: Path) -> bool:
+        """Process a single markdown file for documentation indexing.
+
+        Reads the file as UTF-8, derives a title from the first markdown
+        heading (or falls back to the filename), generates a deterministic
+        UUID, and inserts the document and FTS index rows.
+
+        Returns True if the file was ingested (new or updated).
+        """
+        file_path_str = str(md_file)
+
+        # Read file content
+        try:
+            content = md_file.read_text(encoding="utf-8")
+        except OSError as exc:
+            logger.warning("Cannot read markdown file %s: %s", md_file, exc)
+            return False
+
+        # Skip empty files
+        if not content.strip():
+            logger.warning("Skipping empty markdown file: %s", md_file)
+            return False
+
+        # Derive title from first markdown heading or filename fallback
+        heading_match = re.search(r"^#{1,6}\s+(.+)", content, re.MULTILINE)
+        if heading_match:
+            title = heading_match.group(1).strip()
+        else:
+            title = md_file.stem.replace("-", " ").replace("_", " ")
+
+        # Generate deterministic UUID from file path
+        doc_uuid = str(uuid5(NAMESPACE_URL, file_path_str))
+
+        # Compute SHA-256 content hash (binary read, matching utils.py approach)
+        try:
+            raw_bytes = md_file.read_bytes()
+        except OSError as exc:
+            logger.warning("Cannot read %s for hashing: %s", md_file, exc)
+            return False
+
+        content_hash = hashlib.sha256(raw_bytes).hexdigest()
+
+        # File stat for mtime/size (stored for metadata)
+        try:
+            stat = md_file.stat()
+        except OSError as exc:
+            logger.warning("Cannot stat %s: %s", md_file, exc)
+            return False
+
+        file_size = stat.st_size
+        file_mtime = stat.st_mtime
+
+        # Change detection using content hash
+        if self._file_unchanged(file_path_str, content_hash):
+            return False
+
+        # Upsert document row
+        if not self._upsert_document(
+            doc_uuid,
+            title,
+            "documentation",
+            file_path_str,
+            file_size,
+            file_mtime,
+            content,
+            content_hash=content_hash,
+        ):
+            return False
+
+        # Get the document row id for the FTS index entry
+        row = self._conn.execute(
+            "SELECT id FROM documents WHERE uuid = ?",
+            (doc_uuid,),
+        ).fetchone()
+        if row is None:
+            return False
+
+        doc_id = row["id"]
+
+        # Insert into FTS index with entity_type="documentation"
+        try:
+            # Remove any stale FTS entries for this document
+            self._conn.execute(
+                "DELETE FROM fts_index WHERE entity_type = 'documentation' "
+                "AND entity_id = ?",
+                (str(doc_id),),
+            )
+            self._conn.execute(
+                """
+                INSERT INTO fts_index
+                    (entity_type, entity_id, title, description, model_type)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    "documentation",
+                    str(doc_id),
+                    title,
+                    content,
+                    "documentation",
+                ),
+            )
+            # Mark as indexed since documentation has no child elements
+            self._conn.execute(
+                "UPDATE documents SET indexed = 1 WHERE id = ?",
+                (doc_id,),
+            )
+            self._conn.commit()
+        except sqlite3.Error as exc:
+            logger.error(
+                "Failed to index documentation %s: %s", md_file, exc
+            )
+            self._conn.rollback()
+            return False
+
+        return True
 
     # ------------------------------------------------------------------
     # List / query API
@@ -1746,6 +1905,199 @@ class OscalStore:
             "limit": limit,
             "hasMore": offset + limit < total,
         }
+
+    def search_documentation(
+        self,
+        query_text: str,
+        offset: int = 0,
+        limit: int = 10,
+    ) -> dict:
+        """Full-text search scoped to documentation content only.
+
+        Queries the ``fts_index`` FTS5 virtual table filtered to
+        ``entity_type = 'documentation'``.  Results are ranked by FTS5
+        relevance.  When the query contains invalid FTS5 syntax, catches
+        ``sqlite3.OperationalError`` and falls back to a case-insensitive
+        ``LIKE`` search on the title and description columns.
+
+        Args:
+            query_text: The search string.
+            offset: Pagination offset (0-based).
+            limit: Maximum number of items to return (default 10, max 100).
+
+        Returns:
+            Page_Response dict with keys: items, total, offset, limit,
+            hasMore.  Each item contains: title, snippet, source.
+        """
+        limit = min(limit, 100)
+
+        if not query_text or not query_text.strip():
+            return {
+                "items": [],
+                "total": 0,
+                "offset": offset,
+                "limit": limit,
+                "hasMore": False,
+            }
+
+        try:
+            return self._doc_fts_search(query_text, offset, limit)
+        except sqlite3.OperationalError:
+            logger.warning(
+                "FTS MATCH failed for doc query '%s'; falling back to LIKE",
+                query_text,
+            )
+            return self._doc_like_search(query_text, offset, limit)
+
+    def _doc_fts_search(
+        self,
+        query_text: str,
+        offset: int,
+        limit: int,
+    ) -> dict:
+        """FTS5 MATCH search for documentation, with snippet and source.
+
+        May raise ``sqlite3.OperationalError`` on bad FTS syntax.
+        """
+        where_sql = (
+            "fts_index MATCH ? AND entity_type = 'documentation'"
+        )
+        params: list = [query_text]
+
+        # Total count
+        total_row = self._conn.execute(
+            f"SELECT COUNT(*) as cnt FROM fts_index "  # nosec B608
+            f"WHERE {where_sql}",
+            params,
+        ).fetchone()
+        total = total_row["cnt"]
+
+        # Paginated results with snippet and source file_path
+        page_params = params + [limit, offset]
+        rows = self._conn.execute(
+            f"""
+            SELECT
+                fts_index.title,
+                snippet(fts_index, 3, '', '', '...', 40) AS snippet,
+                d.file_path AS source
+            FROM fts_index
+            JOIN documents d
+                ON d.id = CAST(fts_index.entity_id AS INTEGER)
+            WHERE {where_sql}
+            ORDER BY rank
+            LIMIT ? OFFSET ?
+            """,  # nosec B608
+            page_params,
+        ).fetchall()
+
+        items = [
+            {
+                "title": row["title"],
+                "snippet": row["snippet"][:200] if row["snippet"] else "",
+                "source": row["source"],
+            }
+            for row in rows
+        ]
+
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "hasMore": offset + limit < total,
+        }
+
+    def _doc_like_search(
+        self,
+        query_text: str,
+        offset: int,
+        limit: int,
+    ) -> dict:
+        """LIKE fallback for documentation search with snippet extraction."""
+        like_pattern = f"%{query_text}%"
+        where_sql = (
+            "(fts_index.title LIKE ? OR fts_index.description LIKE ?) "
+            "AND fts_index.entity_type = 'documentation'"
+        )
+        params: list = [like_pattern, like_pattern]
+
+        # Total count — use a simple subquery on fts_index only
+        count_where = (
+            "(title LIKE ? OR description LIKE ?) "
+            "AND entity_type = 'documentation'"
+        )
+        total_row = self._conn.execute(
+            f"SELECT COUNT(*) as cnt FROM fts_index "  # nosec B608
+            f"WHERE {count_where}",
+            params,
+        ).fetchone()
+        total = total_row["cnt"]
+
+        # Paginated results
+        page_params = params + [limit, offset]
+        rows = self._conn.execute(
+            f"""
+            SELECT
+                fts_index.title,
+                fts_index.description,
+                d.file_path AS source
+            FROM fts_index
+            JOIN documents d
+                ON d.id = CAST(fts_index.entity_id AS INTEGER)
+            WHERE {where_sql}
+            ORDER BY fts_index.title
+            LIMIT ? OFFSET ?
+            """,  # nosec B608
+            page_params,
+        ).fetchall()
+
+        items = []
+        query_lower = query_text.lower()
+        for row in rows:
+            description = row["description"] or ""
+            snippet = self._extract_like_snippet(
+                description, query_lower, 200
+            )
+            items.append(
+                {
+                    "title": row["title"],
+                    "snippet": snippet,
+                    "source": row["source"],
+                }
+            )
+
+        return {
+            "items": items,
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "hasMore": offset + limit < total,
+        }
+
+    @staticmethod
+    def _extract_like_snippet(
+        text: str, query_lower: str, max_len: int = 200
+    ) -> str:
+        """Extract a snippet around the first case-insensitive match."""
+        if not text:
+            return ""
+        pos = text.lower().find(query_lower)
+        if pos == -1:
+            # No match in description; return start of text
+            return text[:max_len]
+        # Centre the snippet around the match
+        half = max_len // 2
+        start = max(0, pos - half)
+        end = min(len(text), start + max_len)
+        # Adjust start if we're near the end
+        if end - start < max_len:
+            start = max(0, end - max_len)
+        snippet = text[start:end]
+        if start > 0:
+            snippet = "..." + snippet
+        if end < len(text):
+            snippet = snippet + "..."
+        return snippet[:max_len]
 
     def list_child_elements(
         self,
@@ -2067,6 +2419,7 @@ class OscalStore:
 
             uuid_val, title = meta
             raw_json = json.dumps(data)
+            content_hash = hashlib.sha256(raw_json.encode("utf-8")).hexdigest()
             self._upsert_document(
                 uuid_val,
                 title,
@@ -2075,6 +2428,7 @@ class OscalStore:
                 len(raw_json),
                 0.0,
                 raw_json,
+                content_hash=content_hash,
             )
             logger.info(
                 "Successfully loaded remote component definition from: %s",

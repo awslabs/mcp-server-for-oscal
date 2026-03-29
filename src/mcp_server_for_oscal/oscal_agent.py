@@ -453,6 +453,11 @@ def main() -> None:
         logger.exception("Bundled context files may have been tampered with; exiting.")
         raise SystemExit(2) from err
 
+    # Initialize OscalStore so store-backed tools work in agent mode
+    from mcp_server_for_oscal.main import _init_oscal_store
+
+    _init_oscal_store()
+
     # Build session and conversation managers from CLI args / config
     session_manager, session_id = _build_session_manager(args, config)
     conversation_manager = _build_conversation_manager(args, config)

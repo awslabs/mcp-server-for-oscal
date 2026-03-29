@@ -10,11 +10,8 @@ from collections.abc import Callable
 def get_tool_list() -> list[Callable]:
     """Return the canonical list of OSCAL tool functions.
 
-    Conditionally includes query_oscal_documentation when
-    config.knowledge_base_id is set. Excludes the `about` tool
-    (MCP-server-only).
+    Excludes the `about` tool (MCP-server-only).
     """
-    from mcp_server_for_oscal.config import config
     from mcp_server_for_oscal.tools.get_schema import get_oscal_schema
     from mcp_server_for_oscal.tools.list_models import list_oscal_models
     from mcp_server_for_oscal.tools.list_oscal_resources import list_oscal_resources
@@ -103,11 +100,10 @@ def get_tool_list() -> list[Callable]:
         get_child_element,
     ]
 
-    if config.knowledge_base_id:
-        from mcp_server_for_oscal.tools.query_documentation import (
-            query_oscal_documentation,
-        )
+    from mcp_server_for_oscal.tools.query_documentation import (
+        query_oscal_documentation,
+    )
 
-        tools.append(query_oscal_documentation)
+    tools.append(query_oscal_documentation)
 
     return tools

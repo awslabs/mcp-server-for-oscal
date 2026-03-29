@@ -270,12 +270,14 @@ class TestIntegration:
 
         mock_context = Mock()
 
-        # Execute tool and verify error handling
-        with pytest.raises(Exception):
-            query_oscal_documentation("test query", mock_context)
+        # KB failure now falls back to local search (Req 4.4) instead of raising
+        result = query_oscal_documentation("test query", mock_context)
 
-        # Verify error was reported to context
+        # Verify KB error was reported to context before fallback
         mock_context.error.assert_called_once()
+
+        # Verify fallback produced a result (either local search or error dict)
+        assert result is not None
 
     def test_mcp_server_transport_compatibility(self):
         """Test that MCP server is compatible with expected transports."""
