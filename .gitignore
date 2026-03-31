@@ -34,3 +34,5 @@ _version.py
 
 # Hypothesis
 .hypothesis/
+MagicMock
+examples
