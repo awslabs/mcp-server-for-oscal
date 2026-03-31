@@ -13,8 +13,17 @@ from mcp.server.fastmcp import FastMCP
 
 from mcp_server_for_oscal.config import config
 from mcp_server_for_oscal.tools.utils import verify_package_integrity
-
-logger = logging.getLogger(__name__)
+# Configure logging
+try:
+    logging.basicConfig(level=config.log_level)
+    logging.getLogger("strands").setLevel(config.log_level)
+    logging.getLogger("mcp").setLevel(config.log_level)
+    logging.getLogger("trestle").setLevel(config.log_level)
+    logging.getLogger(__package__).setLevel(config.log_level)
+    logging.getLogger(__name__).setLevel(config.log_level)
+    logger = logging.getLogger(__name__)
+except ValueError:
+    logger.warning("Failed to set log level to: %s", config.log_level)
 
 meta = metadata(__package__)
 
@@ -148,16 +157,17 @@ def main():
         transport=args.transport,
     )
 
-    # Configure logging
-    try:
-        logging.basicConfig(level=config.log_level)
-        logging.getLogger("strands").setLevel(config.log_level)
-        logging.getLogger("mcp").setLevel(config.log_level)
-        logging.getLogger("trestle").setLevel(config.log_level)
-        logging.getLogger(__package__).setLevel(config.log_level)
-        logging.getLogger(__name__).setLevel(config.log_level)
-    except ValueError:
-        logger.warning("Failed to set log level to: %s", args.log_level)
+    # reConfigure logging
+    if args.log_level:
+        try:
+            logging.basicConfig(level=config.log_level)
+            logging.getLogger("strands").setLevel(config.log_level)
+            logging.getLogger("mcp").setLevel(config.log_level)
+            logging.getLogger("trestle").setLevel(config.log_level)
+            logging.getLogger(__package__).setLevel(config.log_level)
+            logging.getLogger(__name__).setLevel(config.log_level)
+        except ValueError:
+            logger.warning("Failed to set log level to: %s", args.log_level)
 
     # Validate transport configuration before starting the server
     try:

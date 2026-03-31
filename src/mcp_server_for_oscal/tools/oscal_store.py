@@ -682,6 +682,10 @@ class OscalStore:
                     description=None,
                     obj=grp,
                 ))
+            # controls nested inside groups (recursive)
+            self._extract_controls_from_groups(
+                getattr(parsed_model, "groups", None) or [], children
+            )
 
         elif model_type == OSCALModelType.PROFILE:
             # imports
@@ -832,6 +836,34 @@ class OscalStore:
                     ))
 
         return children
+
+    def _extract_controls_from_groups(
+        self,
+        groups: list,
+        children: list[dict],
+    ) -> None:
+        """Recursively extract controls nested inside catalog groups.
+
+        Walks the group hierarchy and appends a child dict for every
+        control found at any nesting depth.  Groups themselves are NOT
+        added here — they are already extracted at the top level.
+
+        Args:
+            groups: A list of parsed group objects to traverse.
+            children: The accumulator list to append child dicts to.
+        """
+        for grp in groups:
+            for ctrl in getattr(grp, "controls", None) or []:
+                children.append(self._child_dict(
+                    uuid=str(ctrl.id),
+                    title=str(ctrl.title),
+                    element_type="control",
+                    description=None,
+                    obj=ctrl,
+                ))
+            self._extract_controls_from_groups(
+                getattr(grp, "groups", None) or [], children
+            )
 
     @staticmethod
     def _child_dict(
