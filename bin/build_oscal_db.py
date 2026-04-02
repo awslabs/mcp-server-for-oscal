@@ -107,7 +107,7 @@ def build_db(
         logger.info("Removed existing DB at %s", db_path)
 
     # Initialize store with explicit db_path
-    store = OscalStore(db_path=str(db_path), cache_size=200)
+    store = OscalStore(db_path=str(db_path), cache_size=200, seed_from_bundled=False)
 
     # --- Scan directories ---
     total_scanned = 0

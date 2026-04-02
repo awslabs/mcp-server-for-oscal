@@ -17,7 +17,7 @@ class TestContentHashSchemaMigration:
     def test_new_db_has_content_hash_column(self, tmp_path):
         """A freshly created DB should include the content_hash column."""
         db_path = str(tmp_path / "new.db")
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             row = store._conn.execute(
                 "PRAGMA table_info(documents)"
@@ -58,7 +58,7 @@ class TestContentHashSchemaMigration:
         conn.close()
 
         # Open with OscalStore — migration should add content_hash
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             row = store._conn.execute(
                 "PRAGMA table_info(documents)"
@@ -78,7 +78,7 @@ class TestContentHashSchemaMigration:
     def test_null_content_hash_forces_reindex(self, tmp_path):
         """_file_unchanged() returns False when content_hash is NULL."""
         db_path = str(tmp_path / "test.db")
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             # Insert a row with NULL content_hash
             store._conn.execute(
@@ -98,7 +98,7 @@ class TestContentHashSchemaMigration:
     def test_migration_is_idempotent(self, tmp_path):
         """Calling _init_schema twice should not raise."""
         db_path = str(tmp_path / "idem.db")
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             # Call _init_schema again — should not raise
             store._init_schema()
@@ -178,7 +178,7 @@ class TestSHA256ChangeDetectionProperty:
             md_file = doc_dir / "test-doc.md"
 
             db_path = str(tmp_path / "test.db")
-            store = OscalStore(db_path=db_path)
+            store = OscalStore(db_path=db_path, seed_from_bundled=False)
             try:
                 # --- Phase 1: Write first content and scan ---
                 md_file.write_text(content_a, encoding="utf-8")
@@ -243,7 +243,7 @@ class TestSHA256ChangeDetectionProperty:
             md_file = doc_dir / "same-len.md"
 
             db_path = str(tmp_path / "test.db")
-            store = OscalStore(db_path=db_path)
+            store = OscalStore(db_path=db_path, seed_from_bundled=False)
             try:
                 # Write first content, scan
                 md_file.write_text(content_a, encoding="utf-8")
@@ -357,7 +357,7 @@ class TestTitleDerivationProperty:
 
             # Create a fresh store and scan the directory
             db_path = str(tmp_path / "test.db")
-            store = OscalStore(db_path=db_path)
+            store = OscalStore(db_path=db_path, seed_from_bundled=False)
             try:
                 store.scan_directory(tmp_path)
 
@@ -438,7 +438,7 @@ class TestMarkdownIndexingRoundTripProperty:
         # Compute expected SHA-256 hash
         expected_hash = hashlib.sha256(md_file.read_bytes()).hexdigest()
 
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             ingested = store.scan_directory(doc_dir)
             assert ingested == 1, f"Expected 1 ingested file, got {ingested}"
@@ -507,7 +507,7 @@ class TestSearchDocumentation:
             encoding="utf-8",
         )
 
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         store.scan_directory(doc_dir)
         yield store
         store.close()
@@ -639,7 +639,7 @@ class TestSearchDocumentation:
             encoding="utf-8",
         )
 
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             store.scan_directory(doc_dir)
 
@@ -704,7 +704,7 @@ class TestEmptyQueryReturnsEmptyResponseProperty:
             encoding="utf-8",
         )
 
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             store.scan_directory(doc_dir)
 
@@ -737,7 +737,7 @@ class TestEmptyQueryReturnsEmptyResponseProperty:
             encoding="utf-8",
         )
 
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             store.scan_directory(doc_dir)
 
@@ -800,7 +800,7 @@ class TestSearchResultStructureProperty:
         md_file = doc_dir / "searchable.md"
         md_file.write_text(content, encoding="utf-8")
 
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             store.scan_directory(doc_dir)
             result = store.search_documentation("OSCAL")
@@ -905,7 +905,7 @@ class TestDocumentationSearchScopingProperty:
         md_content = f"# {keyword.title()} Guide\n\n{md_body}\n\n{keyword} details."
         (doc_dir / "guide.md").write_text(md_content, encoding="utf-8")
 
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             store.scan_directory(doc_dir)
 
@@ -967,7 +967,7 @@ class TestInitStore:
     def test_init_store_sets_module_singleton(self, tmp_path):
         """init_store() sets the module-level _store variable."""
         db_path = str(tmp_path / "test.db")
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             old_store = query_documentation._store
             query_documentation.init_store(store)
@@ -1021,7 +1021,7 @@ class TestQueryLocalErrorHandling:
             encoding="utf-8",
         )
 
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         store.scan_directory(doc_dir)
 
         old_store = query_documentation._store

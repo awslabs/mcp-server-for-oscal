@@ -94,7 +94,7 @@ def _make_poam(
 def multi_type_store(tmp_path):
     """OscalStore populated with a catalog (controls + groups) and a POA&M."""
     db_path = str(tmp_path / "prop.db")
-    s = OscalStore(db_path=db_path, cache_size=10)
+    s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
 
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir()

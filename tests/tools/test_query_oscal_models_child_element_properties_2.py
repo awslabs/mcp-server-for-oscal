@@ -138,7 +138,7 @@ class TestGetToolAmbiguityDetection:
     def ambiguous_store(self, tmp_path):
         """Store with two catalogs that both contain control 'ac-1'."""
         db_path = str(tmp_path / "ambiguous.db")
-        s = OscalStore(db_path=db_path, cache_size=10)
+        s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
 
         docs_dir = tmp_path / "docs"
         docs_dir.mkdir()

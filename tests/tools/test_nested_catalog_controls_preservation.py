@@ -148,7 +148,7 @@ def _ingest_and_parse(store, tmp_path, doc_dict, filename="doc.json"):
 def store(tmp_path):
     """Create an OscalStore with an ephemeral DB in tmp_path."""
     db_path = str(tmp_path / "test.db")
-    s = OscalStore(db_path=db_path, cache_size=10)
+    s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
     yield s
     s.close()
 
@@ -184,7 +184,7 @@ class TestPreservationTopLevelControls:
         """
         tmp_path = tmp_path_factory.mktemp("preserve_ctrl")
         db_path = str(tmp_path / "test.db")
-        s = OscalStore(db_path=db_path, cache_size=10)
+        s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
         try:
             model = _ingest_and_parse(s, tmp_path, catalog_dict)
             children = s._extract_child_elements(
@@ -225,7 +225,7 @@ class TestPreservationTopLevelControls:
         """
         tmp_path = tmp_path_factory.mktemp("preserve_grp")
         db_path = str(tmp_path / "test.db")
-        s = OscalStore(db_path=db_path, cache_size=10)
+        s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
         try:
             model = _ingest_and_parse(s, tmp_path, catalog_dict)
             children = s._extract_child_elements(
@@ -265,7 +265,7 @@ class TestPreservationTopLevelControls:
         """
         tmp_path = tmp_path_factory.mktemp("preserve_count")
         db_path = str(tmp_path / "test.db")
-        s = OscalStore(db_path=db_path, cache_size=10)
+        s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
         try:
             model = _ingest_and_parse(s, tmp_path, catalog_dict)
             children = s._extract_child_elements(
@@ -308,7 +308,7 @@ class TestPreservationComponentDefinition:
         """
         tmp_path = tmp_path_factory.mktemp("preserve_comp")
         db_path = str(tmp_path / "test.db")
-        s = OscalStore(db_path=db_path, cache_size=10)
+        s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
         try:
             model = _ingest_and_parse(s, tmp_path, comp_def_dict)
             children = s._extract_child_elements(

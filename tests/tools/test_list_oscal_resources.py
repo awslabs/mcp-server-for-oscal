@@ -302,7 +302,7 @@ class TestListOscalResources:
     def test_init_store_sets_module_singleton(self, tmp_path):
         """init_store() sets the module-level _store variable."""
         db_path = str(tmp_path / "test.db")
-        store = OscalStore(db_path=db_path)
+        store = OscalStore(db_path=db_path, seed_from_bundled=False)
         try:
             old = lr_module._store
             lr_module.init_store(store)

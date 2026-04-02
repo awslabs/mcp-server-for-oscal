@@ -87,6 +87,7 @@ class OscalStore:
         self,
         db_path: str | None = None,
         cache_size: int = 100,
+        seed_from_bundled: bool = True,
     ) -> None:
         """Initialize the store, resolving database mode.
 
@@ -102,11 +103,15 @@ class OscalStore:
             db_path: Path to SQLite database file. None = auto-resolve.
                      When None, falls back to config.oscal_store_db_path if set.
             cache_size: Max number of parsed Trestle models to cache.
+            seed_from_bundled: If True (default), seed from the bundled DB
+                     when db_path does not exist. If False, always start
+                     with an empty database.
 
         Raises:
             RuntimeError: If the database cannot be created or opened.
         """
         self._cache_size = cache_size
+        self._seed_from_bundled = seed_from_bundled
         self._db_mode: str = ""  # "bundled", "persistent", or "ephemeral"
         self._temp_dir: tempfile.TemporaryDirectory | None = None
         self._cached_parse = self._build_cached_parse()
@@ -160,20 +165,21 @@ class OscalStore:
             return db_path
 
         # DB file doesn't exist yet — seed from bundled if available and valid
-        if BUNDLED_DB_PATH.exists() and self._verify_bundled_db():
-            try:
-                p.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(BUNDLED_DB_PATH, p)
-                self._db_mode = "persistent"
-                logger.info(
-                    "Seeded persistent DB from bundled DB at %s", db_path
-                )
-                return db_path
-            except OSError:
-                logger.warning(
-                    "Failed to copy bundled DB to %s; creating fresh DB",
-                    db_path,
-                )
+        if self._seed_from_bundled:
+            if BUNDLED_DB_PATH.exists() and self._verify_bundled_db():
+                try:
+                    p.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy2(BUNDLED_DB_PATH, p)
+                    self._db_mode = "persistent"
+                    logger.info(
+                        "Seeded persistent DB from bundled DB at %s", db_path
+                    )
+                    return db_path
+                except OSError:
+                    logger.warning(
+                        "Failed to copy bundled DB to %s; creating fresh DB",
+                        db_path,
+                    )
 
         # Create a new empty persistent DB
         p.parent.mkdir(parents=True, exist_ok=True)

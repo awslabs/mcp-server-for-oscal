@@ -19,7 +19,7 @@ from mcp_server_for_oscal.tools.utils import OSCALModelType
 def store(tmp_path):
     """Create an OscalStore with an ephemeral DB in tmp_path."""
     db_path = str(tmp_path / "test.db")
-    s = OscalStore(db_path=db_path, cache_size=10)
+    s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
     yield s
     s.close()
 
@@ -416,7 +416,7 @@ class TestGetParsedModel:
     def test_cache_eviction(self, tmp_path):
         """When cache_size is exceeded, oldest entries are evicted."""
         db_path = str(tmp_path / "evict.db")
-        small_store = OscalStore(db_path=db_path, cache_size=2)
+        small_store = OscalStore(db_path=db_path, cache_size=2, seed_from_bundled=False)
         try:
             doc_dir = tmp_path / "docs"
             doc_dir.mkdir()
@@ -925,7 +925,7 @@ class TestIncrementalReindexingProperty:
         for filename, data, _uuid, _title in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store1 = OscalStore(db_path=db_path, cache_size=50)
+        store1 = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count1 = store1.scan_directory(doc_dir)
             assert count1 == len(doc_set), (
@@ -951,7 +951,7 @@ class TestIncrementalReindexingProperty:
             store1.close()
 
         # --- Phase 2: Re-initialize store with same DB, re-scan ---
-        store2 = OscalStore(db_path=db_path, cache_size=50)
+        store2 = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count2 = store2.scan_directory(doc_dir)
 
@@ -1078,7 +1078,7 @@ class TestPropertyModelTypeDetection:
             from pathlib import Path
 
             db_path = str(Path(tmp) / "test.db")
-            s = OscalStore(db_path=db_path, cache_size=10)
+            s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
             try:
                 f = Path(tmp) / f"{root_key}.json"
                 f.write_text(json.dumps(doc))
@@ -1108,7 +1108,7 @@ class TestPropertyModelTypeDetection:
             from pathlib import Path
 
             db_path = str(Path(tmp) / "test.db")
-            s = OscalStore(db_path=db_path, cache_size=10)
+            s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
             try:
                 doc_dir = Path(tmp) / "docs"
                 doc_dir.mkdir()
@@ -2221,7 +2221,7 @@ class TestPropertyUuidLookup:
         for filename, data, _uuid, _title in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == len(doc_set), (
@@ -2319,7 +2319,7 @@ class TestPaginationCorrectnessProperty:
         for filename, data, _uuid, _title in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == n, f"Expected {n} ingested, got {count}"
@@ -2428,7 +2428,7 @@ class TestPropertyCaseInsensitiveTitleSearch:
         doc_dir.mkdir()
         (doc_dir / f"{root_key}.json").write_text(json.dumps(doc))
 
-        store = OscalStore(db_path=db_path, cache_size=10)
+        store = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == 1
@@ -2524,7 +2524,7 @@ class TestPropertyModelTypeFiltering:
         for filename, data, _uuid, _title, _model_type in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == len(doc_set), (
@@ -2682,7 +2682,7 @@ class TestPropertyBackwardCompatibleReturnFormat:
         for filename, data, _uuid, _title, _nc in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == len(doc_set)
@@ -2737,7 +2737,7 @@ class TestPropertyBackwardCompatibleReturnFormat:
         for filename, data, _uuid, _title, _nc in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == len(doc_set)
@@ -2789,7 +2789,7 @@ class TestPropertyBackwardCompatibleReturnFormat:
         for filename, data, _uuid, _title, _nc in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == len(doc_set)
@@ -3363,7 +3363,7 @@ class TestPropertyDocumentMetadataRoundTrip:
                 "sizeInBytes": file_path.stat().st_size,
             })
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == len(doc_set), (
@@ -3465,7 +3465,7 @@ class TestPropertyChildElementMetadataPersistence:
         for filename, data, _uuid, _title in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == len(doc_set)
@@ -3562,7 +3562,7 @@ class TestPropertyChildElementTypeCorrectness:
         for filename, data, _uuid, _title in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == len(doc_set)
@@ -3632,7 +3632,7 @@ class TestPropertyChildElementParentInfo:
         for filename, data, _uuid, _title in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == len(doc_set)
@@ -3745,7 +3745,7 @@ class TestPropertyFtsWithModelTypeScoping:
         for filename, data, _uuid, _title, _mt, _uw in doc_set:
             (doc_dir / filename).write_text(json.dumps(data))
 
-        store = OscalStore(db_path=db_path, cache_size=50)
+        store = OscalStore(db_path=db_path, cache_size=50, seed_from_bundled=False)
         try:
             count = store.scan_directory(doc_dir)
             assert count == len(doc_set)

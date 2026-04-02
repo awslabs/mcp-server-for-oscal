@@ -63,7 +63,7 @@ def _make_component_definition(
 def store(tmp_path):
     """Create an OscalStore with an ephemeral DB in tmp_path."""
     db_path = str(tmp_path / "test.db")
-    s = OscalStore(db_path=db_path, cache_size=10)
+    s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
     yield s
     s.close()
 
@@ -408,7 +408,7 @@ def multi_type_store(tmp_path):
     the full flow across multiple document types.
     """
     db_path = str(tmp_path / "integration.db")
-    s = OscalStore(db_path=db_path, cache_size=10)
+    s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
 
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir()

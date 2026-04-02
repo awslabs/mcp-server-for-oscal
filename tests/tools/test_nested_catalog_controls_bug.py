@@ -162,7 +162,7 @@ def _collect_all_control_ids_from_groups(groups):
 def store(tmp_path):
     """Create an OscalStore with an ephemeral DB in tmp_path."""
     db_path = str(tmp_path / "test.db")
-    s = OscalStore(db_path=db_path, cache_size=10)
+    s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
     yield s
     s.close()
 
@@ -216,7 +216,7 @@ class TestBugConditionNestedControlsExtracted:
         """
         tmp_path = tmp_path_factory.mktemp("nested_ctrl")
         db_path = str(tmp_path / "test.db")
-        s = OscalStore(db_path=db_path, cache_size=10)
+        s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
         try:
             model = _ingest_and_parse(s, tmp_path, catalog_dict)
             children = s._extract_child_elements(

@@ -100,7 +100,7 @@ def multi_type_store(tmp_path):
     Provides data for testing list child element tools and get_child_element.
     """
     db_path = str(tmp_path / "child_elements.db")
-    s = OscalStore(db_path=db_path, cache_size=10)
+    s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
 
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir()
@@ -266,7 +266,7 @@ def ambiguous_store(tmp_path):
     Used to test ambiguity detection in get_child_element.
     """
     db_path = str(tmp_path / "ambiguous.db")
-    s = OscalStore(db_path=db_path, cache_size=10)
+    s = OscalStore(db_path=db_path, cache_size=10, seed_from_bundled=False)
 
     docs_dir = tmp_path / "docs"
     docs_dir.mkdir()
