@@ -28,7 +28,8 @@ CURRENT_RELEASE_VERSION="0.2.0"
 DEST_DIR="$PROJECT_ROOT/data/component_definitions"
 
 # Release URL
-RELEASE_URL="https://github.com/awslabs/oscal-content-for-aws-services/releases/download/v$CURRENT_RELEASE_VERSION/oscal-content-for-aws-services-$CURRENT_RELEASE_VERSION.zip"
+RELEASE_URL="https://github.com/awslabs/oscal-content-for-aws-services/archive/refs/tags/v$CURRENT_RELEASE_VERSION.zip"
+# RELEASE_URL="https://github.com/awslabs/oscal-content-for-aws-services/releases/download/v$CURRENT_RELEASE_VERSION/oscal-content-for-aws-services-$CURRENT_RELEASE_VERSION.zip"
 
 # Determine temporary download directory
 # Uses system temp directory (TMPDIR, TMP, TEMP, or defaults to /tmp)
@@ -42,25 +43,25 @@ RELEASE_FILE_NAME=$(basename "$RELEASE_URL")
 # Download the OSCAL release archive
 # -L flag follows redirects, -o specifies output file
 echo "Downloading release from: $RELEASE_URL"
-curl -L -o "$DOWNLOAD_DIR"/"$RELEASE_FILE_NAME" $RELEASE_URL
+curl -L -o "$DOWNLOAD_DIR"/"$RELEASE_FILE_NAME" $RELEASE_URL || { echo "FAIL 4"; exit 4; }
 
 # Extract files from the archive and move relevant ones to destination
 # unzip: -d specifies destination directory; -o overwrites existing files
 echo "Extracting release zip to: $DOWNLOAD_DIR"
-unzip -o "${DOWNLOAD_DIR}/${RELEASE_FILE_NAME}" -d "$DOWNLOAD_DIR" 
+unzip -o "${DOWNLOAD_DIR}/${RELEASE_FILE_NAME}" -d "$DOWNLOAD_DIR" || { echo "FAIL 3"; exit 3; }
 
 # Remove all white space from json files
-WORK_DIR="${DOWNLOAD_DIR}/oscal-content-for-aws-services/component-definitions"
-for json_file in "$WORK_DIR"/*.json "$WORK_DIR"/**/*.json; do
-    jq -c . "$json_file" > "$WORK_DIR"/tmpws.json && mv "$WORK_DIR"/tmpws.json "$json_file"
+WORK_DIR="${DOWNLOAD_DIR}/oscal-content-for-aws-services-${CURRENT_RELEASE_VERSION}/"
+for json_file in "$WORK_DIR"/component-definitions/*.json "$WORK_DIR"/catalogs/*.json; do
+    (jq -c . "$json_file" > "$WORK_DIR"/tmpws.json && mv "$WORK_DIR"/tmpws.json "$json_file") || { echo "FAIL 2"; exit 2; }
 done
 
-cd "$WORK_DIR" || (echo "FAIL" && exit 1)
-ZIP_FILE_TEMP_PATH="${DOWNLOAD_DIR}"/aws-component-definitions-v${CURRENT_RELEASE_VERSION}.zip
+cd "$WORK_DIR" || { echo "FAIL 1"; exit 1; }
+ZIP_FILE_TEMP_PATH="${DOWNLOAD_DIR}"/aws-oscal-content-v$CURRENT_RELEASE_VERSION.zip
 # Create a new zip containing only the relevant (component definition) files
 zip -r "${ZIP_FILE_TEMP_PATH}" .
 # Remove existing zip files from dest directory - we don't want multiple versions
-rm -f "${DEST_DIR}"/aws-component-definitions*.zip
+rm -f "${DEST_DIR}"/aws-oscal-content*.zip
 # Copy new zip to destination dir, overwriting existing files
 cp -f "${ZIP_FILE_TEMP_PATH}" "${DEST_DIR}"
 

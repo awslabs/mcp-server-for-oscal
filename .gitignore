@@ -20,7 +20,7 @@ __pycache__/
 
 .env
 *.zip
-!src/mcp_server_for_oscal/component_definitions/*.zip
+!data/component_definitions/*.zip
 
 # Don't add OSCAL schemas to the repo since we'll download and extract them during build process.
 # **/oscal_schemas/*.json
@@ -36,3 +36,5 @@ _version.py
 .hypothesis/
 MagicMock
 examples
+# this is perhaps temp and should be revisited
+conf/powers/oscal/concepts
