@@ -117,7 +117,7 @@ directory = "./build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mcp_server_for_oscal"]
-artifacts = ["src/mcp_server_for_oscal/oscal_store.db"]
+artifacts = ["src/mcp_server_for_oscal/oscal_store.db", "src/mcp_server_for_oscal/hashes.json"]
 
 [tool.hatch.env]
 python = "3.12"
