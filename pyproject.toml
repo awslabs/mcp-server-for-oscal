@@ -154,7 +154,7 @@ update-awesome-oscal = [
   https://raw.githubusercontent.com/oscal-club/awesome-oscal/refs/heads/main/README.md''',
 ]
 
-release = ["hatch run tests", "git status", "hatch build"]
+release = ["hatch run tests", "git status", "build-db", "hatch build"]
 
 typing = [
   # Type checking using mypy
