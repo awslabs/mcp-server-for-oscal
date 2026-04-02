@@ -436,22 +436,14 @@ def main() -> None:
     try:
         my_dir = Path(__file__).parent
         verify_package_integrity(my_dir.joinpath("oscal_schemas"))
-        verify_package_integrity(my_dir.joinpath("oscal_docs"))
-
-        component_defs_dir = my_dir.joinpath(config.component_definitions_dir)
-        if component_defs_dir.exists():
-            verify_package_integrity(component_defs_dir)
-            logger.info(
-                "Component definitions directory verified: %s", component_defs_dir
-            )
-        else:
-            logger.info(
-                "Component definitions directory does not exist (optional): %s",
-                component_defs_dir,
-            )
     except (RuntimeError, KeyError) as err:
         logger.exception("Bundled context files may have been tampered with; exiting.")
         raise SystemExit(2) from err
+
+    # Initialize OscalStore so store-backed tools work in agent mode
+    from mcp_server_for_oscal.main import _init_oscal_store
+
+    _init_oscal_store()
 
     # Build session and conversation managers from CLI args / config
     session_manager, session_id = _build_session_manager(args, config)

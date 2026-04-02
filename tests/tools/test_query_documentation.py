@@ -118,15 +118,17 @@ class TestQueryDocumentation:
         mock_session.client.return_value = mock_client
         mock_session_class.return_value = mock_session
 
-        # Execute test and verify exception
-        with pytest.raises(Exception):
-            query_oscal_documentation("What is OSCAL?", mock_context)
+        # KB failure now falls back to local search (Req 4.4) instead of raising
+        result = query_oscal_documentation("What is OSCAL?", mock_context)
 
-        # Verify error handling
+        # Verify KB error was reported to context before fallback
         mock_context.error.assert_called_once()
         error_call_args = mock_context.error.call_args[0][0]
         assert "Error running query" in error_call_args
         assert "What is OSCAL?" in error_call_args
+
+        # Verify fallback produced a result
+        assert result is not None
 
     @patch('mcp_server_for_oscal.tools.query_documentation.Session')
     @patch('mcp_server_for_oscal.tools.query_documentation.config')
@@ -139,12 +141,14 @@ class TestQueryDocumentation:
 
         mock_session_class.side_effect = NoCredentialsError()
 
-        # Execute test and verify exception
-        with pytest.raises(Exception):
-            query_oscal_documentation("What is OSCAL?", mock_context)
+        # KB failure now falls back to local search (Req 4.4) instead of raising
+        result = query_oscal_documentation("What is OSCAL?", mock_context)
 
-        # Verify error handling
+        # Verify KB error was reported to context before fallback
         mock_context.error.assert_called_once()
+
+        # Verify fallback produced a result
+        assert result is not None
 
     @patch('mcp_server_for_oscal.tools.query_documentation.Session')
     @patch('mcp_server_for_oscal.tools.query_documentation.config')

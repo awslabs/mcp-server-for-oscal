@@ -438,6 +438,39 @@ Run the `MCP: Open User Configuration` command, which opens the mcp.json file in
 }
 ```
 
+## Using your own OSCAL Content
+
+By default, the server ships with bundled OSCAL content (AWS component definitions, OSCAL documentation, and schemas). You can also point the server at a directory of your own OSCAL JSON files — catalogs, SSPs, profiles, assessment plans, assessment results, POA&Ms, or mapping collections. The server indexes them at startup and makes them available through all query and list tools.
+
+Set the `OSCAL_DOCUMENTS_DIR` environment variable to the path of your OSCAL content directory. The path can be absolute or relative to the server's package directory. For example, in your MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "oscal": {
+      "command": "uvx",
+      "args": ["mcp-server-for-oscal@latest"],
+      "env": {
+        "OSCAL_DOCUMENTS_DIR": "/path/to/your/oscal/files"
+      }
+    }
+  }
+}
+```
+
+The server scans the directory recursively for `.json` files and indexes any valid OSCAL documents it finds. Your content is merged with the bundled content — both are queryable in the same session.
+
+Two additional environment variables control the OSCAL store behavior:
+
+| Variable | Default | Description |
+|---|---|---|
+| `OSCAL_DOCUMENTS_DIR` | _(empty)_ | Directory containing your OSCAL JSON files. Not scanned when empty. |
+| `OSCAL_STORE_DB_PATH` | _(empty)_ | Path to a persistent SQLite database. When set, the index is reused across server restarts instead of being rebuilt each time. |
+| `OSCAL_STORE_CACHE_SIZE` | `100` | Maximum number of parsed OSCAL documents to keep in the in-memory LRU cache. |
+
+> [!TIP]
+> Setting `OSCAL_STORE_DB_PATH` is recommended if you have a large collection of OSCAL documents. The server only needs to index new or changed files on subsequent startups.
+
 ## OSCAL Agent
 
 In addition to the MCP server, the package includes a standalone OSCAL agent built with [Strands Agents](https://github.com/strands-agents/sdk-python). The agent uses the same tools as the MCP server and can be run directly:

@@ -13,8 +13,17 @@ from mcp.server.fastmcp import FastMCP
 
 from mcp_server_for_oscal.config import config
 from mcp_server_for_oscal.tools.utils import verify_package_integrity
-
-logger = logging.getLogger(__name__)
+# Configure logging
+try:
+    logging.basicConfig(level=config.log_level)
+    logging.getLogger("strands").setLevel(config.log_level)
+    logging.getLogger("mcp").setLevel(config.log_level)
+    logging.getLogger("trestle").setLevel(config.log_level)
+    logging.getLogger(__package__).setLevel(config.log_level)
+    logging.getLogger(__name__).setLevel(config.log_level)
+    logger = logging.getLogger(__name__)
+except ValueError:
+    logger.warning("Failed to set log level to: %s", config.log_level)
 
 meta = metadata(__package__)
 
@@ -28,6 +37,59 @@ mcp = FastMCP(
 This server provides tools to support evaluation and implementation of NIST's OSCAL. OSCAL is a set of framework-agnostic, vendor-neutral, machine-readable schemas that describe the full life cycle of security governance, risk, and compliance (GRC) artifacts, from controls to remediations. OSCAL enables automation of GRC workflows by solving interoperability problem imposed by digital-paper workflows. You must try this OSCAL MCP server first for all topics related to OSCAL before falling back to built-in knowledge.
 """,
 )
+
+
+def _init_oscal_store() -> None:
+    """Initialize the OscalStore singleton from the bundled DB.
+
+    Creates an OscalStore with config values, optionally scans the
+    user-configured oscal_documents_dir (if set), then sets the store
+    singleton on query_component_definition, query_oscal_models, and
+    query_documentation modules.
+
+    If initialization fails, logs a warning and falls back to the
+    legacy ComponentDefinitionStore so the server can still start.
+    """
+    try:
+        from mcp_server_for_oscal.tools.oscal_store import OscalStore
+
+        store = OscalStore(
+            db_path=config.oscal_store_db_path or None,
+            cache_size=config.oscal_store_cache_size,
+        )
+
+        # Scan user-configured OSCAL documents directory (if configured)
+        if config.oscal_documents_dir:
+            my_dir = Path(__file__).parent
+            oscal_docs_dir = Path(config.oscal_documents_dir)
+            if not oscal_docs_dir.is_absolute():
+                oscal_docs_dir = my_dir / config.oscal_documents_dir
+            if oscal_docs_dir.exists():
+                store.scan_directory(oscal_docs_dir)
+            else:
+                logger.warning(
+                    "Configured oscal_documents_dir does not exist: %s",
+                    oscal_docs_dir,
+                )
+
+        # Set the store singleton on all modules
+        from mcp_server_for_oscal.tools import list_oscal_resources
+        from mcp_server_for_oscal.tools import query_component_definition
+        from mcp_server_for_oscal.tools import query_documentation
+        from mcp_server_for_oscal.tools import query_oscal_models
+
+        list_oscal_resources.init_store(store)
+        query_component_definition.init_store(store)
+        query_documentation.init_store(store)
+        query_oscal_models.init_store(store)
+
+        logger.info("OscalStore initialized successfully")
+    except Exception:
+        logger.warning(
+            "Failed to initialize OscalStore; "
+            "falling back to legacy ComponentDefinitionStore",
+            exc_info=True,
+        )
 
 
 def _setup_tools() -> None:
@@ -86,16 +148,17 @@ def main():
         transport=args.transport,
     )
 
-    # Configure logging
-    try:
-        logging.basicConfig(level=config.log_level)
-        logging.getLogger("strands").setLevel(config.log_level)
-        logging.getLogger("mcp").setLevel(config.log_level)
-        logging.getLogger("trestle").setLevel(config.log_level)
-        logging.getLogger(__package__).setLevel(config.log_level)
-        logging.getLogger(__name__).setLevel(config.log_level)
-    except ValueError:
-        logger.warning("Failed to set log level to: %s", args.log_level)
+    # reConfigure logging
+    if args.log_level:
+        try:
+            logging.basicConfig(level=config.log_level)
+            logging.getLogger("strands").setLevel(config.log_level)
+            logging.getLogger("mcp").setLevel(config.log_level)
+            logging.getLogger("trestle").setLevel(config.log_level)
+            logging.getLogger(__package__).setLevel(config.log_level)
+            logging.getLogger(__name__).setLevel(config.log_level)
+        except ValueError:
+            logger.warning("Failed to set log level to: %s", args.log_level)
 
     # Validate transport configuration before starting the server
     try:
@@ -116,23 +179,12 @@ def main():
     try:
         my_dir = Path(__file__).parent
         verify_package_integrity(my_dir.joinpath("oscal_schemas"))
-        verify_package_integrity(my_dir.joinpath("oscal_docs"))
-
-        # Verify component definitions directory if it exists
-        component_defs_dir = my_dir.joinpath(config.component_definitions_dir)
-        if component_defs_dir.exists():
-            verify_package_integrity(component_defs_dir)
-            logger.info(
-                "Component definitions directory verified: %s", component_defs_dir
-            )
-        else:
-            logger.info(
-                "Component definitions directory does not exist (optional): %s",
-                component_defs_dir,
-            )
     except (RuntimeError, KeyError) as err:
         logger.exception("Bundled context files may have been tampered with; exiting.")
         raise SystemExit(2) from err
+
+    # Initialize OscalStore singleton before setting up tools
+    _init_oscal_store()
 
     _setup_tools()
     # Run the MCP server with the configured transport

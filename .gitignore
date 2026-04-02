@@ -20,7 +20,7 @@ __pycache__/
 
 .env
 *.zip
-!src/mcp_server_for_oscal/component_definitions/*.zip
+!data/component_definitions/*.zip
 
 # Don't add OSCAL schemas to the repo since we'll download and extract them during build process.
 # **/oscal_schemas/*.json
@@ -34,3 +34,10 @@ _version.py
 
 # Hypothesis
 .hypothesis/
+MagicMock
+examples
+# don't need this in repo because it's fetched fresh by the build process
+data/oscal_docs/OSCAL-Pages-main
+oscal_store.db
+# this specific hash file is excluded because DB build script creates it at build time
+src/mcp_server_for_oscal/hashes.json

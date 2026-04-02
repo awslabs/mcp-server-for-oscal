@@ -49,6 +49,11 @@ class Config:
         # Component Definition directory configuration
         self.component_definitions_dir: str = os.getenv("OSCAL_COMPONENT_DEFINITIONS_DIR", "component_definitions")
 
+        # OSCAL Store configuration
+        self.oscal_store_db_path: str = os.getenv("OSCAL_STORE_DB_PATH", "")
+        self.oscal_store_cache_size: int = int(os.getenv("OSCAL_STORE_CACHE_SIZE", "100"))
+        self.oscal_documents_dir: str = os.getenv("OSCAL_DOCUMENTS_DIR", "")
+
         # Session management configuration
         self.session_storage: str = os.getenv("OSCAL_AGENT_SESSION_STORAGE", "")
         self.session_dir: str = os.getenv("OSCAL_AGENT_SESSION_DIR", ".oscal_sessions")

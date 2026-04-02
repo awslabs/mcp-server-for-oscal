@@ -115,6 +115,10 @@ exclude = ["./build", ".hatch", "private"]
 [tool.hatch.build]
 directory = "./build"
 
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_server_for_oscal"]
+artifacts = ["src/mcp_server_for_oscal/oscal_store.db", "src/mcp_server_for_oscal/hashes.json"]
+
 [tool.hatch.env]
 python = "3.12"
 
@@ -131,10 +135,13 @@ rehash = [
   # Regenerate hash files for bundled content
   "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_schemas",
   "git add src/mcp_server_for_oscal/oscal_schemas/hashes.json",
-  "hatch run bin/update_hashes.py src/mcp_server_for_oscal/oscal_docs",
-  "git add src/mcp_server_for_oscal/oscal_docs/hashes.json",
-  "hatch run bin/update_hashes.py src/mcp_server_for_oscal/component_definitions",
-  "git add src/mcp_server_for_oscal/component_definitions/hashes.json"
+  "hatch run bin/update_hashes.py data/oscal_docs",
+  "git add data/oscal_docs/hashes.json",
+  "hatch run bin/update_hashes.py data/component_definitions",
+  "git add data/component_definitions/hashes.json",
+  # Bundled OSCAL SQLite database hash is managed by build-db script
+  # (updates hashes.json at package root level)
+  "git add src/mcp_server_for_oscal/hashes.json"
 ]
 
 # TODO: monitor OSCAL GitHub project for changes and trigger PRs in our project
@@ -143,15 +150,15 @@ update-oscal-schemas = ["bin/update-oscal-schemas.sh"]
 # TODO: monitor Awesome OSCAL GitHub project for changes and trigger PRs in our project
 # https://github.com/awslabs/mcp-server-for-oscal/issues/20
 update-awesome-oscal = [
-  '''curl -L -o src/mcp_server_for_oscal/oscal_docs/awesome-oscal.md \
+  '''curl -L -o data/oscal_docs/awesome-oscal.md \
   https://raw.githubusercontent.com/oscal-club/awesome-oscal/refs/heads/main/README.md''',
 ]
 
-release = ["hatch run tests", "git status", "hatch build"]
+release = ["hatch run tests", "git status", "./bin/refresh-nist-docs.sh", "build-db", "hatch build"]
 
 typing = [
   # Type checking using mypy
-  "mkdir -p .mypy_cache",
+  "rm -rf .mypy_cache && mkdir -p .mypy_cache",
   "mypy --install-types --non-interactive src/mcp_server_for_oscal tests",
 ]
 
@@ -178,13 +185,18 @@ checkout-oscal-steering = [
   "cd conf/powers/oscal/steering/oscal-pages && git sparse-checkout set --no-cone && git sparse-checkout set src/content/learn/concepts"
 ]
 
-tests = ["typing", "hatch test --all --cover --junitxml private/docs/pytest.xml", "hatch run bandito"]
+tests = ["typing", "hatch test --exitfirst --all --cover --junitxml private/docs/pytest.xml", "hatch run bandito"]
+
+build-db = [
+  "python bin/build_oscal_db.py",
+]
 
 build-agentcore-container = [
   "finch build -f conf/agentcore/Dockerfile -t bedrock-agentcore-oscal --build-arg VERSION=$(hatch version) ."
 ]
 
 [tool.hatch.envs.hatch-test]
+# parallel = true
 extra-dependencies = ["pytest-asyncio", "hypothesis"]
 
 [tool.hatch.envs.hatch-test.scripts]

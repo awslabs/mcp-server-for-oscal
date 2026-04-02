@@ -203,11 +203,12 @@ class TestValidateTrestle:
         )
         assert result["valid"] is True
 
-    def test_mapping_collection_skipped(self):
-        """mapping-collection should be skipped (no trestle model)."""
+    def test_mapping_collection_validated(self):
+        """mapping-collection should be validated via trestle (not skipped)."""
         result = _validate_trestle({"mapping-collection": {}}, OSCALModelType.MAPPING)
-        assert result["skipped"] is True
-        assert "does not support" in result["skip_reason"]
+        # Empty mapping-collection fails trestle validation (missing required fields)
+        assert result["skipped"] is False
+        assert result["valid"] is False
 
     @patch("mcp_server_for_oscal.tools.validate_oscal_content.importlib")
     def test_parse_error(self, mock_importlib):

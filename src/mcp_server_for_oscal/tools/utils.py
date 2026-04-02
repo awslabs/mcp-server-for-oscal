@@ -73,13 +73,14 @@ def safe_log_mcp(
 ) -> None:
     if not ctx or not msg:
         return
+    log_fn = getattr(ctx, level)
     try:
         loop = asyncio.get_running_loop()
         # Already in async context - can't use asyncio.run()
-        loop.create_task(ctx.log(level, msg))
+        loop.create_task(log_fn(msg))
     except RuntimeError:
         # Not in async context - safe to use asyncio.run()
-        asyncio.run(ctx.log(level, msg))
+        asyncio.run(log_fn(msg))
 
 
 def verify_package_integrity(directory: Path) -> None:
