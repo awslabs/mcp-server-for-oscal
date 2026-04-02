@@ -36,5 +36,8 @@ _version.py
 .hypothesis/
 MagicMock
 examples
-# this is perhaps temp and should be revisited
-conf/powers/oscal/concepts
+# don't need this in repo because it's fetched fresh by the build process
+data/oscal_docs/OSCAL-Pages-main
+oscal_store.db
+# this specific hash file is excluded because DB build script creates it at build time
+src/mcp_server_for_oscal/hashes.json
