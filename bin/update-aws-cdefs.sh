@@ -21,11 +21,11 @@
 # This ensures the script works regardless of where it's called from
 SCRIPT_DIR="$(CDPATH="" cd -- "$(dirname -- "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-CURRENT_RELEASE_VERSION="0.1.0"
+CURRENT_RELEASE_VERSION="0.2.0"
 
 # Define the target directory where OSCAL schemas will be stored
 # This is where the MCP server will look for schema definitions
-DEST_DIR="$PROJECT_ROOT/src/mcp_server_for_oscal/component_definitions"
+DEST_DIR="$PROJECT_ROOT/data/component_definitions"
 
 # Release URL
 RELEASE_URL="https://github.com/awslabs/oscal-content-for-aws-services/releases/download/v$CURRENT_RELEASE_VERSION/oscal-content-for-aws-services-$CURRENT_RELEASE_VERSION.zip"
@@ -50,7 +50,7 @@ echo "Extracting release zip to: $DOWNLOAD_DIR"
 unzip -o "${DOWNLOAD_DIR}/${RELEASE_FILE_NAME}" -d "$DOWNLOAD_DIR" 
 
 # Remove all white space from json files
-WORK_DIR="${DOWNLOAD_DIR}/oscal-content-for-aws-services-0.1.0/component-definitions"
+WORK_DIR="${DOWNLOAD_DIR}/oscal-content-for-aws-services/component-definitions"
 for json_file in "$WORK_DIR"/*.json "$WORK_DIR"/**/*.json; do
     jq -c . "$json_file" > "$WORK_DIR"/tmpws.json && mv "$WORK_DIR"/tmpws.json "$json_file"
 done

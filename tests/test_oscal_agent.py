@@ -407,7 +407,6 @@ class TestMainEntryPoint:
 
         mock_config.aws_profile = None
         mock_config.log_level = "INFO"
-        mock_config.component_definitions_dir = "component_definitions"
         mock_config.agent_max_tokens = 4096
 
         mock_agent = MagicMock()
@@ -420,6 +419,8 @@ class TestMainEntryPoint:
         mock_config.update_from_args.assert_called_once()
         call_kwargs = mock_config.update_from_args.call_args[1]
         assert call_kwargs["log_level"] == "DEBUG"
+        # Only oscal_schemas is verified (1 call, not 2)
+        mock_verify.assert_called_once()
 
     @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
     @patch("mcp_server_for_oscal.oscal_agent.verify_package_integrity")
@@ -444,7 +445,6 @@ class TestMainEntryPoint:
 
         mock_config.aws_profile = None
         mock_config.log_level = "INFO"
-        mock_config.component_definitions_dir = "component_definitions"
         mock_config.agent_max_tokens = 4096
 
         mock_agent = MagicMock()
@@ -458,17 +458,21 @@ class TestMainEntryPoint:
         assert call_kwargs["knowledge_base_id"] == "kb-123"
         # max_tokens is set directly on config
         assert mock_config.agent_max_tokens == 8192
+        # Only oscal_schemas is verified (1 call, not 2)
+        mock_verify.assert_called_once()
 
     @patch("mcp_server_for_oscal.oscal_agent.verify_package_integrity")
     @patch("mcp_server_for_oscal.oscal_agent.config")
     @patch("sys.argv", ["agent"])
     def test_exit_code_2_on_integrity_failure(self, mock_config, mock_verify):
-        """SystemExit(2) raised when verify_package_integrity raises RuntimeError."""
+        """SystemExit(2) raised when verify_package_integrity raises RuntimeError.
+
+        verify_package_integrity is called exactly once for oscal_schemas only.
+        """
         from mcp_server_for_oscal.oscal_agent import main
 
         mock_config.aws_profile = None
         mock_config.log_level = "INFO"
-        mock_config.component_definitions_dir = "component_definitions"
 
         mock_verify.side_effect = RuntimeError("tampered content")
 
@@ -476,6 +480,10 @@ class TestMainEntryPoint:
             main()
 
         assert exc_info.value.code == 2
+        # Only oscal_schemas is verified — oscal_docs and component_definitions removed
+        mock_verify.assert_called_once()
+        call_args = mock_verify.call_args[0][0]
+        assert str(call_args).endswith("oscal_schemas")
 
     @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
     @patch("mcp_server_for_oscal.oscal_agent.verify_package_integrity")
@@ -489,7 +497,6 @@ class TestMainEntryPoint:
 
         mock_config.aws_profile = None
         mock_config.log_level = "INFO"
-        mock_config.component_definitions_dir = "component_definitions"
         mock_config.agent_max_tokens = 4096
 
         mock_agent = MagicMock()
@@ -498,6 +505,9 @@ class TestMainEntryPoint:
         with patch("builtins.input", side_effect=KeyboardInterrupt):
             # Should NOT raise — KeyboardInterrupt is caught internally
             main()
+
+        # Only oscal_schemas is verified (1 call, not 2)
+        mock_verify.assert_called_once()
 
     @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
     @patch("mcp_server_for_oscal.oscal_agent.verify_package_integrity")
@@ -511,7 +521,6 @@ class TestMainEntryPoint:
 
         mock_config.aws_profile = None
         mock_config.log_level = "INFO"
-        mock_config.component_definitions_dir = "component_definitions"
 
         mock_create_agent.side_effect = ValueError("bad model")
 
@@ -519,6 +528,8 @@ class TestMainEntryPoint:
             main()
 
         assert exc_info.value.code == 1
+        # Only oscal_schemas is verified (1 call, not 2)
+        mock_verify.assert_called_once()
 
     # -----------------------------------------------------------------------
     # Task 5.5 — Session ID logging and discoverability (Req 9.1–9.4)
@@ -545,7 +556,6 @@ class TestMainEntryPoint:
 
         mock_config.aws_profile = None
         mock_config.log_level = "INFO"
-        mock_config.component_definitions_dir = "component_definitions"
         mock_config.agent_max_tokens = 4096
 
         mock_build_sm.return_value = (MagicMock(), "test-session-abc")
@@ -565,6 +575,8 @@ class TestMainEntryPoint:
         # Verify stdout contains session ID
         captured = capsys.readouterr()
         assert "Session ID: test-session-abc" in captured.out
+        # Only oscal_schemas is verified (1 call, not 2)
+        mock_verify.assert_called_once()
 
     @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
     @patch("mcp_server_for_oscal.oscal_agent._build_conversation_manager", return_value=None)
@@ -588,7 +600,6 @@ class TestMainEntryPoint:
         # Use DEBUG log level so the logger.debug() call is captured by caplog.
         mock_config.aws_profile = None
         mock_config.log_level = "DEBUG"
-        mock_config.component_definitions_dir = "component_definitions"
         mock_config.agent_max_tokens = 4096
 
         mock_build_sm.return_value = (MagicMock(), "test-session-xyz")
@@ -612,6 +623,8 @@ class TestMainEntryPoint:
         # Verify stdout does NOT contain "Session ID:" (only the agent response)
         captured = capsys.readouterr()
         assert "Session ID:" not in captured.out
+        # Only oscal_schemas is verified (1 call, not 2)
+        mock_verify.assert_called_once()
 
     @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
     @patch("mcp_server_for_oscal.oscal_agent._build_conversation_manager", return_value=None)
@@ -634,7 +647,6 @@ class TestMainEntryPoint:
 
         mock_config.aws_profile = None
         mock_config.log_level = "INFO"
-        mock_config.component_definitions_dir = "component_definitions"
         mock_config.agent_max_tokens = 4096
 
         mock_build_sm.return_value = (None, None)
@@ -652,6 +664,8 @@ class TestMainEntryPoint:
         # No "Session ID:" in stdout
         captured = capsys.readouterr()
         assert "Session ID:" not in captured.out
+        # Only oscal_schemas is verified (1 call, not 2)
+        mock_verify.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -1091,7 +1105,6 @@ class TestCLISessionArgParsing:
 
         mock_config.aws_profile = None
         mock_config.log_level = "INFO"
-        mock_config.component_definitions_dir = "component_definitions"
         mock_config.agent_max_tokens = 4096
 
         mock_create_agent.return_value = MagicMock()
@@ -1108,6 +1121,8 @@ class TestCLISessionArgParsing:
         # Verify _build_conversation_manager was called with parsed args
         cm_call_args = mock_build_cm.call_args[0][0]
         assert cm_call_args.conversation_manager == "summarizing"
+        # Only oscal_schemas is verified (1 call, not 2)
+        mock_verify.assert_called_once()
 
     @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
     @patch("mcp_server_for_oscal.oscal_agent._build_conversation_manager", return_value=None)
@@ -1136,7 +1151,6 @@ class TestCLISessionArgParsing:
 
         mock_config.aws_profile = None
         mock_config.log_level = "INFO"
-        mock_config.component_definitions_dir = "component_definitions"
         mock_config.agent_max_tokens = 4096
 
         mock_create_agent.return_value = MagicMock()
@@ -1148,6 +1162,8 @@ class TestCLISessionArgParsing:
         assert sm_call_args.session_storage == "s3"
         assert sm_call_args.session_s3_bucket == "my-bucket"
         assert sm_call_args.session_s3_prefix == "my-prefix/"
+        # Only oscal_schemas is verified (1 call, not 2)
+        mock_verify.assert_called_once()
 
     @patch("mcp_server_for_oscal.oscal_agent.create_oscal_agent")
     @patch("mcp_server_for_oscal.oscal_agent._build_conversation_manager", return_value=None)
@@ -1168,7 +1184,6 @@ class TestCLISessionArgParsing:
 
         mock_config.aws_profile = None
         mock_config.log_level = "INFO"
-        mock_config.component_definitions_dir = "component_definitions"
         mock_config.agent_max_tokens = 4096
 
         mock_create_agent.return_value = MagicMock()
@@ -1183,6 +1198,8 @@ class TestCLISessionArgParsing:
         assert sm_call_args.session_s3_bucket is None
         assert sm_call_args.session_s3_prefix is None
         assert sm_call_args.conversation_manager is None
+        # Only oscal_schemas is verified (1 call, not 2)
+        mock_verify.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

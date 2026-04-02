@@ -12,6 +12,7 @@ from strands import tool
 
 from mcp_server_for_oscal.config import config
 from mcp_server_for_oscal.tools.oscal_store import OscalStore
+from mcp_server_for_oscal.tools.utils import try_notify_client_error
 
 logger = logging.getLogger(__name__)
 
@@ -88,8 +89,7 @@ def query_kb(query: str, ctx: Context | None) -> Any:
     except Exception as e:
         msg = f"Error running query {query} documentation: {e}"
         logger.exception(msg)
-        if ctx is not None:
-            garbage = ctx.error(msg)
+        try_notify_client_error(msg, ctx)
         raise
 
 

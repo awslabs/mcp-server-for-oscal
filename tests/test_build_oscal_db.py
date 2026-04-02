@@ -45,6 +45,22 @@ def _write_minimal_component_def(directory: Path, uuid: str = "a1b2c3d4-e5f6-4a7
 # Tests
 # ---------------------------------------------------------------------------
 
+class TestPathConstants:
+    """Tests for module-level path constants."""
+
+    def test_component_defs_dir_points_to_data(self):
+        """COMPONENT_DEFS_DIR equals REPO_ROOT / 'data' / 'component_definitions'."""
+        from bin.build_oscal_db import COMPONENT_DEFS_DIR, REPO_ROOT
+
+        assert COMPONENT_DEFS_DIR == REPO_ROOT / "data" / "component_definitions"
+
+    def test_oscal_docs_dir_points_to_data(self):
+        """OSCAL_DOCS_DIR equals REPO_ROOT / 'data' / 'oscal_docs'."""
+        from bin.build_oscal_db import OSCAL_DOCS_DIR, REPO_ROOT
+
+        assert OSCAL_DOCS_DIR == REPO_ROOT / "data" / "oscal_docs"
+
+
 class TestBuildOscalDb:
     """Tests for the build_db function."""
 

@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PACKAGE_DIR = REPO_ROOT / "src" / "mcp_server_for_oscal"
 DB_PATH = PACKAGE_DIR / "oscal_store.db"
-COMPONENT_DEFS_DIR = PACKAGE_DIR / "component_definitions"
-OSCAL_DOCS_DIR = PACKAGE_DIR / "oscal_docs"
+COMPONENT_DEFS_DIR = REPO_ROOT / "data" / "component_definitions"
+OSCAL_DOCS_DIR = REPO_ROOT / "data" / "oscal_docs"
 HASHES_FILE = PACKAGE_DIR / "hashes.json"
 
 

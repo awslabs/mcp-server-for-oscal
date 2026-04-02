@@ -1257,6 +1257,8 @@ class TestStartupWiring:
         ), patch(
             "mcp_server_for_oscal.main.config"
         ) as mock_config, patch(
+            "mcp_server_for_oscal.tools.list_oscal_resources.init_store"
+        ), patch(
             "mcp_server_for_oscal.tools.query_component_definition.init_store"
         ), patch(
             "mcp_server_for_oscal.tools.query_oscal_models.init_store"
@@ -1272,10 +1274,13 @@ class TestStartupWiring:
 
             mock_doc_init.assert_called_once_with(mock_store)
 
-    def test_init_oscal_store_scans_oscal_docs_directory(self):
-        """_init_oscal_store() calls store.scan_directory() on oscal_docs/.
+    def test_init_oscal_store_does_not_scan_oscal_docs_directory(self):
+        """_init_oscal_store() no longer calls scan_directory() on oscal_docs/.
 
-        Validates: Requirement 5.3
+        oscal_docs/ was moved out of the package to data/ (build-time only).
+        The bundled DB already contains all indexed content.
+
+        Validates: Requirement 3.2
         """
         from mcp_server_for_oscal.main import _init_oscal_store
 
@@ -1287,6 +1292,8 @@ class TestStartupWiring:
         ), patch(
             "mcp_server_for_oscal.main.config"
         ) as mock_config, patch(
+            "mcp_server_for_oscal.tools.list_oscal_resources.init_store"
+        ), patch(
             "mcp_server_for_oscal.tools.query_component_definition.init_store"
         ), patch(
             "mcp_server_for_oscal.tools.query_oscal_models.init_store"
@@ -1300,15 +1307,15 @@ class TestStartupWiring:
 
             _init_oscal_store()
 
-            # Verify scan_directory was called with a path ending in "oscal_docs"
+            # Verify scan_directory was NOT called with a path ending in "oscal_docs"
             scan_calls = mock_store.scan_directory.call_args_list
             oscal_docs_scanned = any(
                 str(c.args[0]).endswith("oscal_docs")
                 for c in scan_calls
                 if c.args
             )
-            assert oscal_docs_scanned, (
-                f"Expected scan_directory to be called with a path ending in "
+            assert not oscal_docs_scanned, (
+                f"Expected scan_directory NOT to be called with a path ending in "
                 f"'oscal_docs', but got calls: {scan_calls}"
             )
 
@@ -1338,7 +1345,7 @@ class TestStartupWiring:
             query_documentation._store = old_store
 
     def test_init_oscal_store_calls_all_init_stores(self):
-        """_init_oscal_store() wires the store into all three modules.
+        """_init_oscal_store() wires the store into all four modules.
 
         Validates: Requirements 5.2
         """
@@ -1352,6 +1359,8 @@ class TestStartupWiring:
         ), patch(
             "mcp_server_for_oscal.main.config"
         ) as mock_config, patch(
+            "mcp_server_for_oscal.tools.list_oscal_resources.init_store"
+        ) as mock_lr_init, patch(
             "mcp_server_for_oscal.tools.query_component_definition.init_store"
         ) as mock_cd_init, patch(
             "mcp_server_for_oscal.tools.query_oscal_models.init_store"
@@ -1365,6 +1374,7 @@ class TestStartupWiring:
 
             _init_oscal_store()
 
+            mock_lr_init.assert_called_once_with(mock_store)
             mock_cd_init.assert_called_once_with(mock_store)
             mock_models_init.assert_called_once_with(mock_store)
             mock_doc_init.assert_called_once_with(mock_store)

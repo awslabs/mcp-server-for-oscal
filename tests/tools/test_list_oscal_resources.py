@@ -9,10 +9,26 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
+import mcp_server_for_oscal.tools.list_oscal_resources as lr_module
 from mcp_server_for_oscal.tools.list_oscal_resources import (
     list_oscal_resources,
     read_resources_file,
 )
+from mcp_server_for_oscal.tools.oscal_store import OscalStore
+
+
+@pytest.fixture(autouse=True)
+def _reset_store():
+    """Reset the module-level store to None for each test.
+
+    The ``read_resources_file()`` function falls back to reading
+    ``awesome-oscal.md`` from the filesystem (``data/oscal_docs/``)
+    when no store is set, which is the expected path in development.
+    """
+    old_store = lr_module._store
+    lr_module._store = None
+    yield
+    lr_module._store = old_store
 
 
 class TestListOscalResources:
@@ -82,50 +98,70 @@ class TestListOscalResources:
 
         assert direct_result == tool_result
 
-    @patch("mcp_server_for_oscal.tools.list_oscal_resources.open")
-    def test_list_oscal_resources_file_not_found_error(self, mock_open):
-        """Test error handling when the awesome-oscal.md file is not found."""
-        mock_open.side_effect = FileNotFoundError("File not found")
+    def test_list_oscal_resources_file_not_found_error(self):
+        """Test error handling when store is unavailable and file is not found."""
+        # Clear the store so it falls through to filesystem path
+        old_store = lr_module._store
+        lr_module._store = None
+        try:
+            ctx = AsyncMock()
+            ctx.session.client_params = {}
 
-        ctx = AsyncMock()
-        ctx.session.client_params = {}
+            # Patch Path.exists to return False so both fallback paths fail
+            with patch(
+                "mcp_server_for_oscal.tools.list_oscal_resources.Path.exists",
+                return_value=False,
+            ):
+                with pytest.raises(FileNotFoundError):
+                    list_oscal_resources(ctx)
 
-        with pytest.raises(FileNotFoundError):
-            list_oscal_resources(ctx)
-
-        # Verify error was reported to context
-        ctx.error.assert_called_once()
+            # Verify error was reported to context
+            ctx.error.assert_called_once()
+        finally:
+            lr_module._store = old_store
 
     @patch("mcp_server_for_oscal.tools.list_oscal_resources.open")
     def test_list_oscal_resources_io_error(self, mock_open):
         """Test error handling for IO errors when reading the file."""
-        mock_open.side_effect = OSError("Permission denied")
+        # Clear the store so it falls through to filesystem path
+        old_store = lr_module._store
+        lr_module._store = None
+        try:
+            mock_open.side_effect = OSError("Permission denied")
 
-        ctx = AsyncMock()
-        ctx.session.client_params = {}
+            ctx = AsyncMock()
+            ctx.session.client_params = {}
 
-        with pytest.raises(IOError):
-            list_oscal_resources(ctx)
+            with pytest.raises(IOError):
+                list_oscal_resources(ctx)
 
-        # Verify error was reported to context
-        ctx.error.assert_called_once()
-        assert "Failed to read" in ctx.error.call_args[0][0]
+            # Verify error was reported to context
+            ctx.error.assert_called_once()
+            assert "Failed to read" in ctx.error.call_args[0][0]
+        finally:
+            lr_module._store = old_store
 
     @patch("mcp_server_for_oscal.tools.list_oscal_resources.open")
     def test_list_oscal_resources_unicode_decode_error(self, mock_open):
         """Test error handling for encoding issues."""
-        mock_open.side_effect = UnicodeDecodeError(
-            "utf-8", b"", 0, 1, "invalid start byte"
-        )
+        # Clear the store so it falls through to filesystem path
+        old_store = lr_module._store
+        lr_module._store = None
+        try:
+            mock_open.side_effect = UnicodeDecodeError(
+                "utf-8", b"", 0, 1, "invalid start byte"
+            )
 
-        ctx = AsyncMock()
-        ctx.session.client_params = {}
+            ctx = AsyncMock()
+            ctx.session.client_params = {}
 
-        with pytest.raises(UnicodeDecodeError):
-            list_oscal_resources(ctx)
+            with pytest.raises(UnicodeDecodeError):
+                list_oscal_resources(ctx)
 
-        # Verify error was reported to context
-        ctx.error.assert_called_once()
+            # Verify error was reported to context
+            ctx.error.assert_called_once()
+        finally:
+            lr_module._store = old_store
 
     def test_read_resources_file_with_temporary_file(self):
         """Test reading a temporary file with known content."""
@@ -262,3 +298,28 @@ class TestListOscalResources:
             # Check that success message was logged
             info_calls = [call[0][0] for call in mock_logger.debug.call_args_list]
             assert any("Successfully read" in msg for msg in info_calls)
+
+    def test_init_store_sets_module_singleton(self, tmp_path):
+        """init_store() sets the module-level _store variable."""
+        db_path = str(tmp_path / "test.db")
+        store = OscalStore(db_path=db_path)
+        try:
+            old = lr_module._store
+            lr_module.init_store(store)
+            assert lr_module._store is store
+            lr_module._store = old
+        finally:
+            store.close()
+
+    def test_read_from_store_returns_none_when_no_store(self):
+        """_read_from_store returns None when the store is not set."""
+        old = lr_module._store
+        lr_module._store = None
+        try:
+            from mcp_server_for_oscal.tools.list_oscal_resources import (
+                _read_from_store,
+            )
+
+            assert _read_from_store() is None
+        finally:
+            lr_module._store = old

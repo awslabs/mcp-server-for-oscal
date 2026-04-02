@@ -37,9 +37,9 @@ class TestFileIntegrityIntegration:
     def test_successful_server_startup_with_valid_packages(
         self, mock_logging_config, mock_config, mock_mcp, mock_verify_integrity
     ):
-        """Test successful server startup when both packages pass integrity checks.
+        """Test successful server startup when oscal_schemas passes integrity check.
 
-        Requirements: 6.1, 6.2, 6.4
+        Requirements: 8.1, 8.2, 8.6
         """
         # Setup mocks
         mock_config.aws_profile = "default"
@@ -53,18 +53,15 @@ class TestFileIntegrityIntegration:
         # Execute test
         main()
 
-        # Verify integrity was checked for both directories
-        assert mock_verify_integrity.call_count == 2
+        # Verify integrity was checked only for oscal_schemas
+        assert mock_verify_integrity.call_count == 1
 
-        # Get the call arguments to verify correct directories were checked
+        # Get the call arguments to verify correct directory was checked
         call_args = [call[0][0] for call in mock_verify_integrity.call_args_list]
 
-        # Verify both oscal_schemas and oscal_docs directories were checked
+        # Verify only oscal_schemas directory was checked
         schema_dir_checked = any("oscal_schemas" in str(arg) for arg in call_args)
-        docs_dir_checked = any("oscal_docs" in str(arg) for arg in call_args)
-
         assert schema_dir_checked, "oscal_schemas directory should be verified"
-        assert docs_dir_checked, "oscal_docs directory should be verified"
 
         # Verify transport validation was called
         mock_config.validate_transport.assert_called_once()
@@ -169,12 +166,12 @@ class TestFileIntegrityIntegration:
     @patch("mcp_server_for_oscal.main.config")
     @patch("mcp_server_for_oscal.main.logging.basicConfig")
     @patch("sys.argv", ["main.py"])
-    def test_verification_of_both_oscal_directories(
+    def test_verification_of_oscal_schemas_directory_only(
         self, mock_logging_config, mock_config, mock_mcp, mock_verify_integrity
     ):
-        """Test that both oscal_schemas and oscal_docs directories are verified.
+        """Test that only the oscal_schemas directory is verified at startup.
 
-        Requirements: 6.1, 6.2
+        Requirements: 8.1, 8.2, 8.6
         """
         # Setup mocks
         mock_config.aws_profile = "default"
@@ -188,46 +185,41 @@ class TestFileIntegrityIntegration:
         # Execute test
         main()
 
-        # Verify integrity was checked exactly twice (once for each directory)
-        assert mock_verify_integrity.call_count == 2
+        # Verify integrity was checked exactly once (only oscal_schemas)
+        assert mock_verify_integrity.call_count == 1
 
-        # Get the call arguments to verify correct directories were checked
+        # Get the call arguments to verify correct directory was checked
         call_args = [call[0][0] for call in mock_verify_integrity.call_args_list]
 
         # Convert Path objects to strings for easier checking
         call_paths = [str(arg) for arg in call_args]
 
-        # Verify both required directories were checked
+        # Verify only oscal_schemas was checked
         schema_dir_checked = any("oscal_schemas" in path for path in call_paths)
-        docs_dir_checked = any("oscal_docs" in path for path in call_paths)
-
         assert schema_dir_checked, (
             f"oscal_schemas directory should be verified. Actual calls: {call_paths}"
         )
-        assert docs_dir_checked, (
-            f"oscal_docs directory should be verified. Actual calls: {call_paths}"
-        )
 
     @patch("mcp_server_for_oscal.main.verify_package_integrity")
     @patch("mcp_server_for_oscal.main.mcp")
     @patch("mcp_server_for_oscal.main.config")
     @patch("mcp_server_for_oscal.main.logging.basicConfig")
     @patch("sys.argv", ["main.py"])
-    def test_first_directory_failure_prevents_second_check(
+    def test_oscal_schemas_failure_causes_exit_code_2(
         self, mock_logging_config, mock_config, mock_mcp, mock_verify_integrity
     ):
-        """Test that failure in first directory check prevents second directory check.
+        """Test that failure in oscal_schemas integrity check causes exit code 2.
 
-        Requirements: 6.3, 6.5
+        Requirements: 8.1, 8.3
         """
         # Setup mocks
         mock_config.aws_profile = "default"
         mock_config.log_level = "INFO"
         mock_config.transport = "stdio"
 
-        # Make first integrity check fail
+        # Make integrity check fail
         mock_verify_integrity.side_effect = RuntimeError(
-            "First directory integrity failure"
+            "oscal_schemas integrity failure"
         )
 
         # Import main function
@@ -239,46 +231,8 @@ class TestFileIntegrityIntegration:
 
         assert exc_info.value.code == 2
 
-        # Verify integrity was checked only once (first check failed)
+        # Verify integrity was checked only once (for oscal_schemas)
         assert mock_verify_integrity.call_count == 1
-
-        # Verify MCP server was NOT started
-        mock_mcp.run.assert_not_called()
-
-    @patch("mcp_server_for_oscal.main.verify_package_integrity")
-    @patch("mcp_server_for_oscal.main.mcp")
-    @patch("mcp_server_for_oscal.main.config")
-    @patch("mcp_server_for_oscal.main.logging.basicConfig")
-    @patch("sys.argv", ["main.py"])
-    def test_second_directory_failure_after_first_success(
-        self, mock_logging_config, mock_config, mock_mcp, mock_verify_integrity
-    ):
-        """Test that failure in second directory check still causes server exit.
-
-        Requirements: 6.2, 6.3, 6.5
-        """
-        # Setup mocks
-        mock_config.aws_profile = "default"
-        mock_config.log_level = "INFO"
-        mock_config.transport = "stdio"
-
-        # Make second integrity check fail (first succeeds, second fails)
-        mock_verify_integrity.side_effect = [
-            None,
-            RuntimeError("Second directory integrity failure"),
-        ]
-
-        # Import main function
-        from mcp_server_for_oscal.main import main
-
-        # Execute test and verify SystemExit with code 2 is raised
-        with pytest.raises(SystemExit) as exc_info:
-            main()
-
-        assert exc_info.value.code == 2
-
-        # Verify integrity was checked twice (first succeeded, second failed)
-        assert mock_verify_integrity.call_count == 2
 
         # Verify MCP server was NOT started
         mock_mcp.run.assert_not_called()
@@ -289,7 +243,7 @@ class TestFileIntegrityIntegration:
     @patch("mcp_server_for_oscal.main.logging.basicConfig")
     @patch("mcp_server_for_oscal.main.logger")
     @patch("sys.argv", ["main.py"])
-    def test_integrity_check_order_and_path_resolution(
+    def test_integrity_check_path_resolution_for_oscal_schemas(
         self,
         mock_logger,
         mock_logging_config,
@@ -297,9 +251,9 @@ class TestFileIntegrityIntegration:
         mock_mcp,
         mock_verify_integrity,
     ):
-        """Test that integrity checks happen in correct order with proper path resolution.
+        """Test that integrity check uses proper path resolution for oscal_schemas.
 
-        Requirements: 6.1, 6.2
+        Requirements: 8.1, 8.6
         """
         # Setup mocks
         mock_config.aws_profile = "default"
@@ -313,31 +267,22 @@ class TestFileIntegrityIntegration:
         # Execute test
         main()
 
-        # Verify integrity was checked twice
-        assert mock_verify_integrity.call_count == 2
+        # Verify integrity was checked once (only oscal_schemas)
+        assert mock_verify_integrity.call_count == 1
 
-        # Get the call arguments to verify path resolution
-        call_args = [call[0][0] for call in mock_verify_integrity.call_args_list]
+        # Get the call argument to verify path resolution
+        call_arg = mock_verify_integrity.call_args_list[0][0][0]
 
-        # Verify paths are resolved relative to main.py location
-        for call_arg in call_args:
-            assert isinstance(call_arg, Path), (
-                f"Expected Path object, got {type(call_arg)}"
-            )
-            # Path should be absolute and contain the expected directory names
-            path_str = str(call_arg)
-            assert call_arg.is_absolute(), f"Path should be absolute: {path_str}"
-
-        # Verify both expected directories are present in calls
-        call_paths = [str(arg) for arg in call_args]
-        schema_dir_checked = any("oscal_schemas" in path for path in call_paths)
-        docs_dir_checked = any("oscal_docs" in path for path in call_paths)
-
-        assert schema_dir_checked, (
-            f"oscal_schemas directory should be verified. Calls: {call_paths}"
+        # Verify path is resolved relative to main.py location
+        assert isinstance(call_arg, Path), (
+            f"Expected Path object, got {type(call_arg)}"
         )
-        assert docs_dir_checked, (
-            f"oscal_docs directory should be verified. Calls: {call_paths}"
+        path_str = str(call_arg)
+        assert call_arg.is_absolute(), f"Path should be absolute: {path_str}"
+
+        # Verify only oscal_schemas path
+        assert "oscal_schemas" in path_str, (
+            f"oscal_schemas directory should be verified. Call: {path_str}"
         )
 
     @patch("mcp_server_for_oscal.main.verify_package_integrity")
@@ -356,7 +301,7 @@ class TestFileIntegrityIntegration:
     ):
         """Test that server continues normal initialization after successful integrity checks.
 
-        Requirements: 6.4, 6.6
+        Requirements: 8.1, 8.6
         """
         # Setup mocks
         mock_config.aws_profile = "default"
@@ -370,8 +315,8 @@ class TestFileIntegrityIntegration:
         # Execute test
         main()
 
-        # Verify integrity checks completed successfully
-        assert mock_verify_integrity.call_count == 2
+        # Verify integrity check completed successfully (only oscal_schemas)
+        assert mock_verify_integrity.call_count == 1
 
         # Verify transport validation was called (part of normal initialization)
         mock_config.validate_transport.assert_called_once()

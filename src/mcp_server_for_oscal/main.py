@@ -40,13 +40,12 @@ This server provides tools to support evaluation and implementation of NIST's OS
 
 
 def _init_oscal_store() -> None:
-    """Initialize the OscalStore singleton and scan directories.
+    """Initialize the OscalStore singleton from the bundled DB.
 
-    Creates an OscalStore with config values, scans the
-    component_definitions_dir (backward compat), oscal_documents_dir
-    (if configured), and the bundled oscal_docs/ directory, then sets
-    the store singleton on query_component_definition,
-    query_oscal_models, and query_documentation modules.
+    Creates an OscalStore with config values, optionally scans the
+    user-configured oscal_documents_dir (if set), then sets the store
+    singleton on query_component_definition, query_oscal_models, and
+    query_documentation modules.
 
     If initialization fails, logs a warning and falls back to the
     legacy ComponentDefinitionStore so the server can still start.
@@ -59,35 +58,27 @@ def _init_oscal_store() -> None:
             cache_size=config.oscal_store_cache_size,
         )
 
-        # Scan component definitions directory (backward compat)
-        my_dir = Path(__file__).parent
-        comp_defs_dir = my_dir / config.component_definitions_dir
-        if comp_defs_dir.exists():
-            store.scan_directory(comp_defs_dir)
-
-        # Scan general OSCAL documents directory (if configured)
-        scanned_dirs: set[Path] = set()
+        # Scan user-configured OSCAL documents directory (if configured)
         if config.oscal_documents_dir:
+            my_dir = Path(__file__).parent
             oscal_docs_dir = Path(config.oscal_documents_dir)
             if not oscal_docs_dir.is_absolute():
                 oscal_docs_dir = my_dir / config.oscal_documents_dir
             if oscal_docs_dir.exists():
                 store.scan_directory(oscal_docs_dir)
-                scanned_dirs.add(oscal_docs_dir.resolve())
-
-        # Scan bundled oscal_docs/ directory for markdown documentation
-        bundled_docs_dir = my_dir / "oscal_docs"
-        if (
-            bundled_docs_dir.exists()
-            and bundled_docs_dir.resolve() not in scanned_dirs
-        ):
-            store.scan_directory(bundled_docs_dir)
+            else:
+                logger.warning(
+                    "Configured oscal_documents_dir does not exist: %s",
+                    oscal_docs_dir,
+                )
 
         # Set the store singleton on all modules
+        from mcp_server_for_oscal.tools import list_oscal_resources
         from mcp_server_for_oscal.tools import query_component_definition
         from mcp_server_for_oscal.tools import query_documentation
         from mcp_server_for_oscal.tools import query_oscal_models
 
+        list_oscal_resources.init_store(store)
         query_component_definition.init_store(store)
         query_documentation.init_store(store)
         query_oscal_models.init_store(store)
@@ -188,20 +179,6 @@ def main():
     try:
         my_dir = Path(__file__).parent
         verify_package_integrity(my_dir.joinpath("oscal_schemas"))
-        verify_package_integrity(my_dir.joinpath("oscal_docs"))
-
-        # Verify component definitions directory if it exists
-        component_defs_dir = my_dir.joinpath(config.component_definitions_dir)
-        if component_defs_dir.exists():
-            verify_package_integrity(component_defs_dir)
-            logger.info(
-                "Component definitions directory verified: %s", component_defs_dir
-            )
-        else:
-            logger.info(
-                "Component definitions directory does not exist (optional): %s",
-                component_defs_dir,
-            )
     except (RuntimeError, KeyError) as err:
         logger.exception("Bundled context files may have been tampered with; exiting.")
         raise SystemExit(2) from err

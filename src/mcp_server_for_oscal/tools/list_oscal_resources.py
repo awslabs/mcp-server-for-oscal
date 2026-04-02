@@ -2,14 +2,29 @@
 Tool for listing OSCAL community resources.
 """
 
-import asyncio
 import logging
 from pathlib import Path
 
 from mcp.server.fastmcp.server import Context
 from strands import tool
 
+from mcp_server_for_oscal.tools.oscal_store import OscalStore
+from mcp_server_for_oscal.tools.utils import try_notify_client_error
+
 logger = logging.getLogger(__name__)
+
+# Module-level singleton — initialised lazily by ``init_store()``.
+_store: OscalStore | None = None
+
+
+def init_store(store: OscalStore) -> None:
+    """Set the module-level OscalStore singleton.
+
+    Called during server startup after the store has been
+    initialised and directories have been scanned.
+    """
+    global _store  # noqa: PLW0603
+    _store = store
 
 
 @tool
@@ -46,9 +61,8 @@ def list_oscal_resources(ctx: Context | None = None) -> str:
              tools, documentation, examples, and educational materials
 
     Raises:
-        FileNotFoundError: If the awesome-oscal.md file cannot be found
-        IOError: If there are issues reading the file
-        UnicodeDecodeError: If there are encoding issues with the file
+        FileNotFoundError: If the awesome-oscal.md content cannot be found
+        IOError: If there are issues reading the content
     """
     logger.debug(
         "list_oscal_resources() called with session client params: %s",
@@ -62,33 +76,65 @@ def list_oscal_resources(ctx: Context | None = None) -> str:
     except Exception:
         msg = "Failed to read OSCAL resources file."
         logger.exception(msg)
-        if ctx is not None:
-            try:
-                loop = asyncio.get_running_loop()
-                # Already in async context - can't use asyncio.run()
-                loop.run_until_complete(ctx.error(msg))
-            except RuntimeError:
-                # Not in async context - safe to use asyncio.run()
-                result = asyncio.run(ctx.error(msg))
+        try_notify_client_error(msg, ctx)
         raise
+
+
+def _read_from_store() -> str | None:
+    """Try to read awesome-oscal content from the bundled OscalStore DB.
+
+    Returns the content string, or None if the store is not initialised
+    or the document is not found.
+    """
+    if _store is None:
+        return None
+
+    try:
+        row = _store._conn.execute(
+            "SELECT raw_json FROM documents "
+            "WHERE model_type = 'documentation' "
+            "AND file_path LIKE '%awesome-oscal.md'",
+        ).fetchone()
+        if row and row["raw_json"]:
+            return row["raw_json"]
+    except Exception:
+        logger.debug("Failed to read awesome-oscal from OscalStore", exc_info=True)
+
+    return None
 
 
 def read_resources_file() -> str:
     """
-    Read the awesome-oscal.md file from the oscal_docs directory.
+    Read the awesome-oscal.md content.
+
+    First attempts to read from the bundled OscalStore database (runtime
+    path). Falls back to reading the file from the ``oscal_docs/``
+    directory relative to this package (development path).
 
     Returns:
         str: The complete content of the awesome-oscal.md file
 
     Raises:
-        FileNotFoundError: If the awesome-oscal.md file cannot be found
+        FileNotFoundError: If the awesome-oscal.md content cannot be found
         IOError: If there are issues reading the file
         UnicodeDecodeError: If there are encoding issues with the file
     """
-    # Get the directory of this file and navigate to oscal_docs relative to it
+    # Primary path: read from the bundled DB
+    content = _read_from_store()
+    if content is not None:
+        logger.debug("Read OSCAL resources from bundled OscalStore DB")
+        if not content.strip():
+            logger.warning("OSCAL resources content from DB is empty")
+        return content
+
+    # Fallback: read from filesystem (development / build-time)
     current_file_dir = Path(__file__).parent
-    docs_path = current_file_dir.parent / "oscal_docs"
-    resources_file_path = docs_path / "awesome-oscal.md"
+    # Try repo-root data/ directory first (post-move location)
+    repo_root = current_file_dir.parent.parent.parent
+    resources_file_path = repo_root / "data" / "oscal_docs" / "awesome-oscal.md"
+    if not resources_file_path.exists():
+        # Legacy path (pre-move, inside package)
+        resources_file_path = current_file_dir.parent / "oscal_docs" / "awesome-oscal.md"
 
     logger.debug("Reading OSCAL resources from: %s", resources_file_path)
 

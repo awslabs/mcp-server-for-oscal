@@ -160,7 +160,7 @@ class TestGetSchema:
             get_oscal_schema(mock_context, model_name="catalog", schema_type="invalid")
 
         # Verify error context call
-        mock_context.log.assert_called_once_with("error", "Invalid schema type: invalid.")
+        mock_context.error.assert_called_once_with("Invalid schema type: invalid.")
 
 
     def test_get_schema_invalid_model_name(self, mock_context):
@@ -172,8 +172,8 @@ class TestGetSchema:
             )
 
         # Verify error context call
-        mock_context.log.assert_called_once()
-        error_call_args = mock_context.log.call_args[0][1]
+        mock_context.error.assert_called_once()
+        error_call_args = mock_context.error.call_args[0][0]
         assert "Invalid model: invalid-model" in error_call_args
         assert (
             "Use the tool list_oscal_models to get valid model names" in error_call_args
@@ -191,7 +191,7 @@ class TestGetSchema:
             get_oscal_schema(mock_context, model_name="catalog", schema_type="json")
 
         # Verify error handling
-        mock_context.log.assert_called_once_with("error", "failed to open schema oscal_catalog_schema.json")
+        mock_context.error.assert_called_once_with("failed to open schema oscal_catalog_schema.json")
 
 
     @patch("mcp_server_for_oscal.tools.get_schema.open_schema_file")
@@ -211,9 +211,9 @@ class TestGetSchema:
 
         # Verify error handling
         # mock_context.error.assert_called_once()
-        mock_context.log.assert_called_once()
-        level = mock_context.log.call_args[0]
-        assert "error" in level
+        mock_context.error.assert_called_once()
+        error_msg = mock_context.error.call_args[0][0]
+        assert "failed to open schema" in error_msg
 
 
     @patch("mcp_server_for_oscal.tools.get_schema.logger")
