@@ -38,8 +38,8 @@ MatchedTerm = _mod.MatchedTerm
 load_glossary = _mod.load_glossary
 generate_markdown = _mod.generate_markdown
 to_human_readable = _mod.to_human_readable
-generate_markdown = _mod.generate_markdown
-to_human_readable = _mod.to_human_readable
+extract_terms = _mod.extract_terms
+read_terms = _mod.read_terms
 
 
 # ---------------------------------------------------------------------------
@@ -901,40 +901,27 @@ class TestProperty10GlossaryEntryCompletenessInvariant:
 
     @settings(max_examples=100, deadline=None)
     @given(
-        object_keys=st.lists(
-            definition_key(), min_size=1, max_size=10, unique=True
-        ),
-        scalar_keys=st.lists(
-            definition_key(), min_size=0, max_size=5, unique=True
+        short_names=st.lists(
+            _hyphenated_short_name, min_size=1, max_size=10, unique=True
         ),
         data=st.data(),
     )
     def test_completeness_invariant(
-        self, object_keys, scalar_keys, data, tmp_path_factory
+        self, short_names, data, tmp_path_factory
     ):
         """Feature: oscal-glossary-generator, Property 10: Glossary Entry Completeness Invariant"""
         tmp_dir = tmp_path_factory.mktemp("completeness")
 
-        # --- Build a schema with a mix of object and scalar definitions ---
-        definitions: dict = {}
-        for key in object_keys:
-            definitions[key] = data.draw(object_type_entry)
-        for key in scalar_keys:
-            # Ensure scalar keys don't collide with object keys
-            if key not in definitions:
-                definitions[key] = data.draw(scalar_type_entry())
+        # --- Write short names to a Term_List_File via extract_terms ---
+        terms_path = tmp_dir / "oscal-terms.txt"
+        extract_terms(short_names, terms_path)
 
-        schema_path = tmp_dir / "schema.json"
-        schema_path.write_text(
-            json.dumps({"definitions": definitions}), encoding="utf-8"
-        )
-
-        # --- Parse schema to get deduplicated Object_Type short names ---
-        short_names = parse_schema(schema_path)
+        # --- Read them back with read_terms ---
+        read_back = read_terms(terms_path)
 
         # --- Build a glossary where some short names match and some don't ---
         glossary: dict[str, dict] = {}
-        for sn in short_names:
+        for sn in read_back:
             lookup_key = sn.replace("-", " ").lower()
             choice = data.draw(
                 st.sampled_from(["with_defs", "without_defs", "no_match"])
@@ -950,21 +937,21 @@ class TestProperty10GlossaryEntryCompletenessInvariant:
             # "no_match" → no glossary entry for this short name
 
         # --- Run match_terms ---
-        matched, unmatched = match_terms(short_names, glossary)
+        matched, unmatched = match_terms(read_back, glossary)
 
         # --- Run generate_markdown ---
         output_path = tmp_dir / "glossary.md"
         generate_markdown(matched, unmatched, output_path)
         content = output_path.read_text(encoding="utf-8")
 
-        # --- Verify: matched + unmatched == total deduplicated Object_Types ---
-        total_object_types = len(short_names)
-        assert len(matched) + len(unmatched) == total_object_types, (
+        # --- Verify: matched + unmatched == total input terms ---
+        total_terms = len(read_back)
+        assert len(matched) + len(unmatched) == total_terms, (
             f"matched ({len(matched)}) + unmatched ({len(unmatched)}) "
-            f"!= total Object_Types ({total_object_types})"
+            f"!= total terms ({total_terms})"
         )
 
-        # --- Verify: every Object_Type short name appears exactly once ---
+        # --- Verify: every term appears exactly once ---
         # Extract matched headings (level-2 headings excluding "Unmatched Terms")
         all_headings = re.findall(r"^## (.+)$", content, re.MULTILINE)
         matched_headings = [h for h in all_headings if h != "Unmatched Terms"]
@@ -975,8 +962,8 @@ class TestProperty10GlossaryEntryCompletenessInvariant:
         # Build set of all human-readable names that appear in the output
         output_names = set(matched_headings) | set(unmatched_bullets)
 
-        # Build expected set of human-readable names from short_names
-        expected_names = {to_human_readable(sn) for sn in short_names}
+        # Build expected set of human-readable names from read_back terms
+        expected_names = {to_human_readable(sn) for sn in read_back}
 
         assert output_names == expected_names, (
             f"Output names {output_names} != expected names {expected_names}"
@@ -985,11 +972,11 @@ class TestProperty10GlossaryEntryCompletenessInvariant:
         # Verify each name appears exactly once across both sections
         all_output_names = matched_headings + unmatched_bullets
         assert len(all_output_names) == len(set(all_output_names)), (
-            "Some Object_Type names appear more than once in the output"
+            "Some term names appear more than once in the output"
         )
-        assert len(all_output_names) == total_object_types, (
+        assert len(all_output_names) == total_terms, (
             f"Total entries in output ({len(all_output_names)}) "
-            f"!= total Object_Types ({total_object_types})"
+            f"!= total terms ({total_terms})"
         )
 
 

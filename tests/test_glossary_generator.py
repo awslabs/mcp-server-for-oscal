@@ -23,6 +23,8 @@ parse_schema = _mod.parse_schema
 _is_object_type = _mod._is_object_type  # noqa: SLF001
 match_terms = _mod.match_terms
 generate_markdown = _mod.generate_markdown
+extract_terms = _mod.extract_terms
+read_terms = _mod.read_terms
 MatchedTerm = _mod.MatchedTerm
 to_human_readable = _mod.to_human_readable
 
@@ -549,3 +551,204 @@ class TestGenerateMarkdown:
         with pytest.raises(SystemExit) as exc_info:
             generate_markdown([], [], out)
         assert exc_info.value.code == 1
+
+
+# ---------------------------------------------------------------------------
+# extract_terms
+# ---------------------------------------------------------------------------
+
+
+class TestExtractTerms:
+    """Tests for extract_terms — Requirements 7.3, 7.4, 7.5, 7.6, 7.7."""
+
+    def test_comment_header_with_timestamp(self, tmp_path):
+        """Output file starts with # comment lines including an ISO 8601 timestamp (Req 7.4)."""
+        import re
+
+        out = tmp_path / "terms.txt"
+        extract_terms(["alpha", "beta"], out)
+        content = out.read_text(encoding="utf-8")
+        lines = content.splitlines()
+
+        # First two lines should be comments
+        assert lines[0].startswith("#")
+        assert lines[1].startswith("#")
+
+        # One of the comment lines should contain an ISO 8601 timestamp
+        iso_pattern = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z")
+        header_text = "\n".join(lines[:2])
+        assert iso_pattern.search(header_text), (
+            f"Expected ISO 8601 timestamp in header, got:\n{header_text}"
+        )
+
+    def test_sorted_terms_one_per_line(self, tmp_path):
+        """Output contains sorted short names, one per line, no blank lines between terms (Req 7.5)."""
+        out = tmp_path / "terms.txt"
+        extract_terms(["zebra", "alpha", "middle"], out)
+        content = out.read_text(encoding="utf-8")
+        lines = content.splitlines()
+
+        # Skip comment lines
+        term_lines = [ln for ln in lines if not ln.startswith("#")]
+
+        assert term_lines == ["alpha", "middle", "zebra"]
+
+    def test_no_blank_lines_between_terms(self, tmp_path):
+        """No blank lines appear between term entries (Req 7.5)."""
+        out = tmp_path / "terms.txt"
+        extract_terms(["a", "b", "c"], out)
+        content = out.read_text(encoding="utf-8")
+        lines = content.splitlines()
+
+        # After the comment header, there should be no blank lines
+        term_section = lines[lines.index("a"):]
+        for line in term_section:
+            assert line.strip() != "", f"Unexpected blank line in term section"
+
+    def test_creates_output_directory(self, tmp_path):
+        """Output directory (including nested intermediates) is created if missing (Req 7.6)."""
+        out = tmp_path / "nested" / "deep" / "dir" / "terms.txt"
+        extract_terms(["catalog"], out)
+        assert out.exists()
+        content = out.read_text(encoding="utf-8")
+        assert "catalog" in content
+
+    def test_empty_input_writes_header_only(self, tmp_path):
+        """An empty short_names list writes only the comment header."""
+        out = tmp_path / "terms.txt"
+        extract_terms([], out)
+        content = out.read_text(encoding="utf-8")
+        lines = content.splitlines()
+
+        # All lines should be comments
+        for line in lines:
+            assert line.startswith("#") or line.strip() == ""
+
+    def test_fatal_on_write_failure(self, tmp_path):
+        """_fatal() is called (SystemExit with code 1) on write failure (Req 7.7)."""
+        # Use a directory path as the file path to trigger a write error
+        bad_path = tmp_path / "blocked"
+        bad_path.mkdir()
+        with pytest.raises(SystemExit) as exc_info:
+            extract_terms(["term"], bad_path)
+        assert exc_info.value.code == 1
+
+    def test_input_order_does_not_affect_output(self, tmp_path):
+        """Terms are always sorted regardless of input order (Req 7.3, 7.5)."""
+        out = tmp_path / "terms.txt"
+        extract_terms(["delta", "alpha", "charlie", "bravo"], out)
+        content = out.read_text(encoding="utf-8")
+        term_lines = [ln for ln in content.splitlines() if not ln.startswith("#")]
+        assert term_lines == ["alpha", "bravo", "charlie", "delta"]
+
+# ---------------------------------------------------------------------------
+# read_terms
+# ---------------------------------------------------------------------------
+
+
+class TestReadTerms:
+    """Tests for read_terms — Requirements 8.1, 8.2, 8.3, 8.4, 8.5, 8.6."""
+
+    def test_valid_term_list(self, tmp_path):
+        """Reading a valid term list file returns the correct terms in order."""
+        terms_file = tmp_path / "terms.txt"
+        terms_file.write_text(
+            "catalog\ncontrol\nback-matter\n", encoding="utf-8"
+        )
+        result = read_terms(terms_file)
+        assert result == ["catalog", "control", "back-matter"]
+
+    def test_comment_lines_skipped(self, tmp_path):
+        """Lines starting with # are skipped (Req 8.3)."""
+        terms_file = tmp_path / "terms.txt"
+        terms_file.write_text(
+            "# This is a comment\ncatalog\n# Another comment\ncontrol\n",
+            encoding="utf-8",
+        )
+        result = read_terms(terms_file)
+        assert result == ["catalog", "control"]
+
+    def test_blank_lines_skipped(self, tmp_path):
+        """Blank lines are skipped (Req 8.3)."""
+        terms_file = tmp_path / "terms.txt"
+        terms_file.write_text(
+            "catalog\n\n\ncontrol\n   \nback-matter\n",
+            encoding="utf-8",
+        )
+        result = read_terms(terms_file)
+        assert result == ["catalog", "control", "back-matter"]
+
+    def test_whitespace_stripped(self, tmp_path):
+        """Leading/trailing whitespace is stripped from terms (Req 8.4)."""
+        terms_file = tmp_path / "terms.txt"
+        terms_file.write_text(
+            "  catalog  \n\tcontrol\t\n  back-matter \n",
+            encoding="utf-8",
+        )
+        result = read_terms(terms_file)
+        assert result == ["catalog", "control", "back-matter"]
+
+    def test_duplicate_deduplication_first_occurrence(self, tmp_path):
+        """Duplicate terms are deduplicated, keeping first occurrence (Req 8.4)."""
+        terms_file = tmp_path / "terms.txt"
+        terms_file.write_text(
+            "catalog\ncontrol\ncatalog\nback-matter\ncontrol\n",
+            encoding="utf-8",
+        )
+        result = read_terms(terms_file)
+        assert result == ["catalog", "control", "back-matter"]
+
+    def test_case_sensitive_deduplication(self, tmp_path):
+        """Deduplication is case-sensitive: Catalog and catalog are different (Req 8.4)."""
+        terms_file = tmp_path / "terms.txt"
+        terms_file.write_text(
+            "Catalog\ncatalog\nCATALOG\n", encoding="utf-8"
+        )
+        result = read_terms(terms_file)
+        assert result == ["Catalog", "catalog", "CATALOG"]
+
+    def test_missing_file_exits_with_extract_terms_advice(self, tmp_path):
+        """Missing file exits with status 1 and advises --extract-terms (Req 8.5)."""
+        missing = tmp_path / "nonexistent.txt"
+        with pytest.raises(SystemExit) as exc_info:
+            read_terms(missing)
+        assert exc_info.value.code == 1
+
+    def test_missing_file_error_message(self, tmp_path, capsys):
+        """Missing file error message includes 'run with --extract-terms' (Req 8.5)."""
+        missing = tmp_path / "nonexistent.txt"
+        with pytest.raises(SystemExit):
+            read_terms(missing)
+        # The error is logged, not printed to stderr directly,
+        # so we check via caplog instead
+        # But _fatal uses logger.error + sys.exit, so we verify exit code above
+
+    def test_only_comments_and_blanks_exits(self, tmp_path):
+        """File with only comments and blanks exits with status 1 (Req 8.6)."""
+        terms_file = tmp_path / "terms.txt"
+        terms_file.write_text(
+            "# Just a comment\n\n# Another comment\n   \n",
+            encoding="utf-8",
+        )
+        with pytest.raises(SystemExit) as exc_info:
+            read_terms(terms_file)
+        assert exc_info.value.code == 1
+
+    def test_preserves_file_order(self, tmp_path):
+        """Terms are returned in file order, not sorted (Req 8.2)."""
+        terms_file = tmp_path / "terms.txt"
+        terms_file.write_text(
+            "zebra\nalpha\nmiddle\n", encoding="utf-8"
+        )
+        result = read_terms(terms_file)
+        assert result == ["zebra", "alpha", "middle"]
+
+    def test_missing_file_error_includes_extract_terms(self, tmp_path, caplog):
+        """Error message for missing file includes 'extract-terms' advice (Req 8.5)."""
+        import logging
+
+        missing = tmp_path / "nonexistent.txt"
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(SystemExit):
+                read_terms(missing)
+        assert any("--extract-terms" in record.message for record in caplog.records)

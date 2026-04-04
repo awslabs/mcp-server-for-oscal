@@ -5,31 +5,52 @@
 The OSCAL Glossary Generator is a build-time Python utility script (`bin/generate_oscal_glossary.py`) that produces a markdown glossary of OSCAL object types with definitions sourced from the NIST CSRC glossary. It bridges the gap between OSCAL's structured schema definitions and human-readable terminology by:
 
 1. Parsing the OSCAL complete JSON schema to extract non-primitive object type definitions
-2. Matching extracted type names against the NIST CSRC glossary export
-3. Generating a well-formatted markdown glossary with definitions, source references, and links
+2. Writing extracted terms to a curated term list file for human review
+3. Reading terms from the curated term list file
+4. Matching terms against the NIST CSRC glossary export
+5. Generating a well-formatted markdown glossary with definitions, source references, and links
+
+The script supports a two-step workflow with a human-in-the-loop curation stage:
+
+- **Extract Mode** (`--extract-terms`): Parses the OSCAL schema and writes extracted object type short names to a Term List File (`data/oscal-terms.txt`). The user can then edit this file — removing noisy terms, adding custom terms, or fixing names to improve NIST glossary matching.
+- **Generate Mode** (default): Reads terms from the Term List File, matches them against the NIST glossary, and produces the Markdown Glossary.
 
 The script follows the same pattern as existing build-time utilities in `bin/` (e.g., `build_oscal_db.py`, `update_hashes.py`) and is invoked via `hatch run bin/generate_oscal_glossary.py`. The output file (`data/oscal_docs/oscal-glossary.md`) becomes a bundled project resource.
 
 ## Architecture
 
-The script is a standalone CLI utility with three logical processing stages arranged in a pipeline:
+The script is a standalone CLI utility with two operational modes arranged as separate pipelines:
 
 ```mermaid
 flowchart LR
-    A[CLI Entry Point] --> B[Schema Parser]
-    B --> C[Term Matcher]
-    C --> D[Markdown Generator]
-    D --> E[oscal-glossary.md]
+    subgraph Extract_Mode["Extract Mode (--extract-terms)"]
+        A1[CLI Entry Point] --> B1[Schema Parser]
+        B1 --> C1[Term Writer]
+        C1 --> D1[oscal-terms.txt]
+        F1[oscal_complete_schema.json] --> B1
+    end
 
-    F[oscal_complete_schema.json] --> B
-    G[glossary-export.json] --> C
+    subgraph Human_Curation["Human Curation (manual)"]
+        D1 -.->|edit| D2[oscal-terms.txt]
+    end
+
+    subgraph Generate_Mode["Generate Mode (default)"]
+        A2[CLI Entry Point] --> B2[Term Reader]
+        B2 --> C2[Term Matcher]
+        C2 --> D3[Markdown Generator]
+        D3 --> E2[oscal-glossary.md]
+        D2 --> B2
+        G2[glossary-export.json] --> C2
+    end
 ```
 
 ### Component Responsibilities
 
-- **CLI Entry Point** (`main()`): Parses `argparse` arguments (`--output`, `--schema`, `--glossary`, `--verbose`), orchestrates the pipeline, handles top-level error reporting, and sets the exit code.
+- **CLI Entry Point** (`main()`): Parses `argparse` arguments (`--output`, `--schema`, `--glossary`, `--terms`, `--extract-terms`, `--verbose`), selects the operational mode, orchestrates the appropriate pipeline, handles top-level error reporting, and sets the exit code.
 - **Schema Parser** (`parse_schema()`): Loads the OSCAL complete JSON schema, iterates over `definitions`, classifies each as Object_Type or Scalar_Type, extracts and deduplicates short names.
-- **Term Matcher** (`match_terms()`): Loads the NIST glossary, builds a case-insensitive index by term, and matches OSCAL short names (hyphen-to-space conversion) against the index.
+- **Term Writer** (`extract_terms()`): Writes the sorted, deduplicated short names to the Term List File with a comment header.
+- **Term Reader** (`read_terms()`): Reads the Term List File, skips comments and blank lines, strips whitespace, deduplicates, and returns a list of short names.
+- **Term Matcher** (`match_terms()`): Loads the NIST glossary, builds a case-insensitive index by term, and matches short names (hyphen-to-space conversion) against the index.
 - **Markdown Generator** (`generate_markdown()`): Renders matched and unmatched terms into a structured markdown file with headings, definitions, source references, links, and a timestamp.
 
 ### Design Decisions
@@ -37,6 +58,8 @@ flowchart LR
 1. **Single-file script**: The generator lives in `bin/generate_oscal_glossary.py` as a self-contained script, consistent with other `bin/` utilities. No new package modules are needed since this is a build-time tool, not a runtime MCP tool.
 2. **No external dependencies beyond stdlib**: The script uses only `json`, `argparse`, `logging`, `pathlib`, `re`, `datetime`, and `sys` — all stdlib. No new pip dependencies required.
 3. **Deterministic output**: The markdown output is fully deterministic for the same inputs (excluding the timestamp line), enabling byte-identical comparison for CI validation.
+4. **Two-step workflow with human curation**: Splitting extraction from generation allows users to curate the term list — removing noisy terms, adding custom terms not in the schema, or fixing term names to improve NIST glossary matching. This is more flexible than a single-pass pipeline.
+5. **Simple term list format**: The Term List File uses plain text with one term per line, `#` comments, and blank line separators. This is easy to edit in any text editor and easy to diff in version control.
 
 ## Components and Interfaces
 
@@ -57,6 +80,33 @@ Loads the OSCAL complete JSON schema and returns a deduplicated, sorted list of 
 6. Return sorted list of unique short names
 
 **Raises:** `SystemExit` on missing file, invalid JSON, or missing `definitions` key.
+
+### `extract_terms(short_names: list[str], terms_path: Path) -> None`
+
+Writes the extracted short names to the Term List File.
+
+**Algorithm:**
+1. Create the output directory (including intermediates) if it doesn't exist
+2. Write a comment header line with `#` describing the file purpose and ISO 8601 generation timestamp
+3. Write each short name on its own line, sorted alphabetically, with no blank lines between terms
+
+**Raises:** `SystemExit` on write failure (permissions, disk full).
+
+### `read_terms(terms_path: Path) -> list[str]`
+
+Reads terms from the Term List File and returns a deduplicated list of short names.
+
+**Algorithm:**
+1. Load the file, exit with error if missing (advising user to run `--extract-terms` first)
+2. For each line:
+   - Strip leading and trailing whitespace
+   - Skip blank lines (lines containing only whitespace)
+   - Skip comment lines (lines starting with `#` after stripping)
+   - Otherwise, treat the line as a term (hyphenated short name)
+3. Deduplicate terms, retaining only the first occurrence (case-sensitive comparison)
+4. Exit with error if no valid terms found
+
+**Raises:** `SystemExit` on missing file, or file with no valid terms.
 
 ### `load_glossary(glossary_path: Path) -> dict[str, dict]`
 
@@ -99,6 +149,23 @@ Renders the glossary to a markdown file.
 
 Converts a hyphenated short name to title-cased display name.
 Example: `back-matter` → `Back Matter`
+
+### `main() -> None`
+
+CLI entry point that selects the operational mode based on arguments.
+
+**Algorithm:**
+1. Parse arguments: `--output`, `--schema`, `--glossary`, `--terms`, `--extract-terms`, `--verbose`
+2. If `--extract-terms` is set (Extract Mode):
+   - Call `parse_schema(args.schema)` to get short names
+   - Call `extract_terms(short_names, args.terms)` to write the Term List File
+   - Log output path and count, exit 0
+3. If `--extract-terms` is not set (Generate Mode):
+   - Call `read_terms(args.terms)` to get short names from the Term List File
+   - Call `load_glossary(args.glossary)` to load the NIST glossary
+   - Call `match_terms(short_names, glossary)` to classify terms
+   - Call `generate_markdown(matched, unmatched, args.output)` to write the glossary
+   - Log output path, matched count, unmatched count, exit 0
 
 ### Data Types
 
@@ -176,6 +243,27 @@ The glossary at `data/glossary-export.json`:
 - `definitions` can be `null`, an empty array, or an array of definition objects
 - Each definition has `text` and `sources` (array of `{text, link}`)
 - `abbrSyn` is optional, contains abbreviations/synonyms
+
+### Term List File Structure (Input/Output)
+
+The term list file at `data/oscal-terms.txt`:
+
+```text
+# OSCAL object type terms extracted from oscal_complete_schema.json
+# Generated: 2024-01-15T10:30:00Z
+assessment-assets
+assessment-part
+assessment-platform
+back-matter
+catalog
+control
+```
+
+- Plain text, one term per line
+- Lines starting with `#` are comments (ignored during reading)
+- Blank lines are separators (ignored during reading)
+- Terms are hyphenated short names (e.g., `back-matter`, `system-security-plan`)
+- Terms may contain hyphens, lowercase letters, uppercase letters, and digits
 
 ### Markdown Glossary Structure (Output)
 
@@ -266,7 +354,7 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 
 ### Property 10: Glossary Entry Completeness Invariant
 
-*For any* set of deduplicated Object_Types extracted from the schema, the generated markdown SHALL contain exactly one entry per Object_Type — either in the matched terms section or the unmatched terms section — and the total count of entries (matched + unmatched) SHALL equal the count of deduplicated Object_Types.
+*For any* set of terms read from the Term_List_File, the generated markdown SHALL contain exactly one entry per term — either in the matched terms section or the unmatched terms section — and the total count of entries (matched + unmatched) SHALL equal the count of input terms.
 
 **Validates: Requirements 6.1, 6.2**
 
@@ -278,9 +366,21 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 
 ### Property 12: Deterministic Output
 
-*For any* pair of runs on the same OSCAL schema and NIST glossary inputs, the generated markdown output SHALL be byte-identical after excluding the generation timestamp line.
+*For any* pair of runs on the same input terms and NIST glossary, the generated markdown output SHALL be byte-identical after excluding the generation timestamp line.
 
 **Validates: Requirements 6.5**
+
+### Property 13: Term List File Round Trip
+
+*For any* sorted, deduplicated list of valid short names, writing them with `extract_terms()` and then reading them back with `read_terms()` SHALL produce an identical list with no terms lost or added.
+
+**Validates: Requirements 10.5**
+
+### Property 14: Term List Reading Correctness
+
+*For any* Term_List_File containing a mix of valid term lines, comment lines (starting with `#`), blank lines, and duplicate terms, `read_terms()` SHALL return only the valid terms (skipping comments and blanks), deduplicated by first occurrence, with leading and trailing whitespace stripped from each term.
+
+**Validates: Requirements 8.2, 8.3, 8.4**
 
 ## Error Handling
 
@@ -294,13 +394,17 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 | Glossary file missing | Log error with file path, exit | 1 |
 | Glossary file invalid JSON | Log error with path + parse error, exit | 1 |
 | Glossary missing `parentTerms` | Log error indicating expected structure, exit | 1 |
+| Term List File missing | Log error with file path, advise running `--extract-terms` first, exit | 1 |
+| Term List File has no valid terms | Log error indicating file contains no terms, exit | 1 |
 
 ### Output Errors
 
 | Error Condition | Behavior | Exit Code |
 |---|---|---|
 | Output directory doesn't exist | Create directory (including intermediates) via `Path.mkdir(parents=True, exist_ok=True)` | N/A (recovered) |
+| Term List File directory doesn't exist | Create directory (including intermediates) via `Path.mkdir(parents=True, exist_ok=True)` | N/A (recovered) |
 | Cannot write output file | Log error with path + reason (permissions, disk full), exit | 1 |
+| Cannot write Term List File | Log error with path + reason (permissions, disk full), exit | 1 |
 
 ### Error Implementation Pattern
 
@@ -322,12 +426,14 @@ Unit tests cover specific examples, edge cases, and error conditions:
 - **Schema parsing edge cases**: Missing file, invalid JSON, missing `definitions` key, schema with only scalar types, schema with mixed object/scalar types
 - **Glossary loading edge cases**: Missing file, invalid JSON, missing `parentTerms`, entries with null/empty definitions
 - **Term matching edge cases**: Terms with null definitions (classified as unmatched), no matches found, all terms matched
+- **Term extraction**: Verify output file format (comment header, sorted terms, no blank lines between terms), directory creation
+- **Term reading**: Missing file error with `--extract-terms` advice, empty file error, files with only comments/blanks, whitespace stripping
 - **Markdown rendering**: Header structure validation, unmatched terms bulleted list, output directory creation
-- **CLI**: Default argument values, `--help` output, unrecognized arguments, `--verbose` logging, exit codes
+- **CLI**: Default argument values, `--help` output, unrecognized arguments, `--verbose` logging, exit codes, `--extract-terms` mode selection, `--terms` argument, `--extract-terms` ignoring `--glossary`/`--output`
 
 ### Property-Based Tests (Hypothesis)
 
-Property-based tests verify the 12 correctness properties using the `hypothesis` library (already a project dev dependency). Each property test runs a minimum of 100 iterations.
+Property-based tests verify the 14 correctness properties using the `hypothesis` library (already a project dev dependency). Each property test runs a minimum of 100 iterations.
 
 **Library**: `hypothesis` (already in `pyproject.toml` devtest group)
 
@@ -351,6 +457,8 @@ Feature: oscal-glossary-generator, Property {N}: {property_text}
 - `definition_key()`: Generates random namespaced and non-namespaced definition keys
 - `glossary_entry()`: Generates random NIST glossary entries with varying term names, definitions (including null/empty), sources, and abbrSyn
 - `matched_term()`: Generates random MatchedTerm instances for rendering tests
+- `valid_short_name()`: Generates random valid short names (hyphenated, lowercase/uppercase letters, digits) for term list file tests
+- `term_list_file_content()`: Generates random term list file content with valid terms, comments, blank lines, and duplicates
 
 **Property test mapping**:
 
@@ -365,6 +473,8 @@ Feature: oscal-glossary-generator, Property {N}: {property_text}
 | 7: Alphabetical Ordering | `test_alphabetical_ordering` | Sets of matched term names |
 | 8: Rendering Completeness | `test_rendering_completeness` | Matched terms with varying definition counts |
 | 9: AbbrSyn Rendering | `test_abbrsyn_rendering` | Matched terms with varying abbrSyn entries |
-| 10: Completeness Invariant | `test_completeness_invariant` | Schema + glossary combinations |
+| 10: Completeness Invariant | `test_completeness_invariant` | Term list + glossary combinations |
 | 11: Definition Fidelity | `test_definition_fidelity` | Definition texts with special characters, HTML |
-| 12: Deterministic Output | `test_deterministic_output` | Random schema + glossary inputs, two runs |
+| 12: Deterministic Output | `test_deterministic_output` | Random term list + glossary inputs, two runs |
+| 13: Term List Round Trip | `test_term_list_round_trip` | Random lists of valid short names |
+| 14: Term List Reading | `test_term_list_reading_correctness` | Files with comments, blanks, duplicates, whitespace |

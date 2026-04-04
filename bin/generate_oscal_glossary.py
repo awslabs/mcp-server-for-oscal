@@ -2,16 +2,21 @@
 """
 Generate a markdown glossary of OSCAL object types with NIST CSRC definitions.
 
-Parses the OSCAL complete JSON schema to extract non-primitive object type
-definitions, matches them against the NIST CSRC glossary export, and produces
-a well-formatted markdown glossary.
+This script supports a two-step workflow with human-in-the-loop curation:
 
-Usage:
+  Step 1 — Extract terms from the OSCAL schema:
+    hatch run bin/generate_oscal_glossary.py --extract-terms
+    hatch run bin/generate_oscal_glossary.py --extract-terms --schema path/to/schema.json --terms path/to/terms.txt
+
+  Step 2 — Generate the glossary from the curated term list:
     hatch run bin/generate_oscal_glossary.py
     hatch run bin/generate_oscal_glossary.py --verbose
-    hatch run bin/generate_oscal_glossary.py --output path/to/output.md
+    hatch run bin/generate_oscal_glossary.py --terms path/to/terms.txt --output path/to/output.md
 
-Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8
+Between steps, edit the term list file to remove noisy terms, add custom
+terms, or fix names to improve NIST glossary matching.
+
+Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 7.1, 7.8, 8.1, 9.1, 9.2, 9.3, 9.4, 9.5
 """
 
 from __future__ import annotations
@@ -115,6 +120,75 @@ def parse_schema(schema_path: Path) -> list[str]:
             result.append(short_name)
 
     return sorted(result)
+
+
+def extract_terms(short_names: list[str], terms_path: Path) -> None:
+    """Write extracted short names to the Term List File.
+
+    Creates the output directory (including intermediates) if needed,
+    writes a comment header with file purpose and ISO 8601 timestamp,
+    then writes each short name on its own line sorted alphabetically.
+
+    Requirements: 7.2, 7.3, 7.4, 7.5, 7.6, 7.7
+    """
+    try:
+        terms_path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        _fatal(f"Cannot create output directory {terms_path.parent}: {exc}")
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    lines: list[str] = []
+    lines.append(
+        "# OSCAL object type terms extracted from the OSCAL complete schema"
+    )
+    lines.append(f"# Generated: {timestamp}")
+    for name in sorted(short_names):
+        lines.append(name)
+
+    content = "\n".join(lines) + "\n"
+
+    try:
+        terms_path.write_text(content, encoding="utf-8")
+    except OSError as exc:
+        _fatal(f"Cannot write term list file {terms_path}: {exc}")
+
+
+def read_terms(terms_path: Path) -> list[str]:
+    """Read terms from the Term List File and return a deduplicated list.
+
+    Loads the file, skips comment lines (starting with ``#``) and blank
+    lines, strips leading/trailing whitespace from each term, and
+    deduplicates by first occurrence (case-sensitive).
+
+    Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
+    """
+    if not terms_path.exists():
+        _fatal(
+            f"Term list file not found: {terms_path} "
+            "— run with --extract-terms to generate it"
+        )
+
+    try:
+        raw = terms_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        _fatal(f"Cannot read term list file {terms_path}: {exc}")
+
+    seen: set[str] = set()
+    terms: list[str] = []
+
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped not in seen:
+            seen.add(stripped)
+            terms.append(stripped)
+
+    if not terms:
+        _fatal(f"Term list file {terms_path} contains no terms")
+
+    return terms
 
 
 def load_glossary(glossary_path: Path) -> dict[str, dict]:
@@ -306,9 +380,47 @@ def generate_markdown(
 
 
 def main() -> None:
-    """Parse arguments, run the pipeline, and report results."""
+    """Parse arguments, run the pipeline, and report results.
+
+    Supports two operational modes:
+
+    Extract Mode (``--extract-terms``):
+        Parses the OSCAL schema and writes extracted object type short names
+        to the Term List File for human curation.
+
+    Generate Mode (default):
+        Reads terms from the curated Term List File, matches them against
+        the NIST glossary, and produces the Markdown Glossary.
+    """
     parser = argparse.ArgumentParser(
-        description="Generate an OSCAL glossary from the NIST CSRC glossary.",
+        description=(
+            "OSCAL Glossary Generator — two-step workflow.\n\n"
+            "Step 1: Extract terms from the OSCAL schema into a curated "
+            "term list file:\n"
+            "  %(prog)s --extract-terms\n\n"
+            "Step 2: Generate the glossary from the curated term list:\n"
+            "  %(prog)s\n\n"
+            "Between steps, edit the term list to remove noisy terms, add "
+            "custom terms, or fix names to improve NIST glossary matching."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--extract-terms",
+        action="store_true",
+        help=(
+            "Activate Extract Mode: parse the OSCAL schema and write "
+            "extracted object type short names to the term list file"
+        ),
+    )
+    parser.add_argument(
+        "--terms",
+        type=Path,
+        default=Path("data/oscal-terms.txt"),
+        help=(
+            "Path to the term list file "
+            "(default: data/oscal-terms.txt)"
+        ),
     )
     parser.add_argument(
         "--output",
@@ -322,13 +434,13 @@ def main() -> None:
         default=Path(
             "src/mcp_server_for_oscal/oscal_schemas/oscal_complete_schema.json"
         ),
-        help="Path to the OSCAL complete JSON schema",
+        help="Path to the OSCAL complete JSON schema (used in Extract Mode)",
     )
     parser.add_argument(
         "--glossary",
         type=Path,
         default=Path("data/glossary-export.json"),
-        help="Path to the NIST CSRC glossary export JSON",
+        help="Path to the NIST CSRC glossary export JSON (used in Generate Mode)",
     )
     parser.add_argument(
         "--verbose",
@@ -340,10 +452,21 @@ def main() -> None:
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    logger.info("Starting OSCAL glossary generation")
+    if args.extract_terms:
+        # --- Extract Mode ---
+        logger.info("Starting OSCAL term extraction")
+        short_names = parse_schema(args.schema)
+        extract_terms(short_names, args.terms)
+        logger.info(
+            "Done — wrote %d terms to %s",
+            len(short_names),
+            args.terms,
+        )
+        sys.exit(0)
 
-    # --- Pipeline ---
-    short_names = parse_schema(args.schema)
+    # --- Generate Mode (default) ---
+    logger.info("Starting OSCAL glossary generation")
+    short_names = read_terms(args.terms)
     glossary = load_glossary(args.glossary)
     matched, unmatched = match_terms(short_names, glossary)
     generate_markdown(matched, unmatched, args.output)

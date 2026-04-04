@@ -120,6 +120,74 @@ Build a single-file Python utility script (`bin/generate_oscal_glossary.py`) tha
 - [x] 7. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
+- [x] 8. Implement term extraction and writing
+  - [x] 8.1 Implement `extract_terms(short_names: list[str], terms_path: Path) -> None` in `bin/generate_oscal_glossary.py`
+    - Create the output directory (including intermediates) if it doesn't exist
+    - Write a comment header line starting with `#` that includes the file purpose and an ISO 8601 generation timestamp
+    - Write each short name on its own line, sorted alphabetically, with no blank lines between terms
+    - Call `_fatal()` on write failure (permissions, disk full)
+    - _Requirements: 7.2, 7.3, 7.4, 7.5, 7.6, 7.7_
+
+  - [x] 8.2 Implement `read_terms(terms_path: Path) -> list[str]` in `bin/generate_oscal_glossary.py`
+    - Load the file; exit with error if missing, advising user to run `--extract-terms` first
+    - For each line: strip leading/trailing whitespace, skip blank lines, skip lines starting with `#`
+    - Treat remaining lines as terms (hyphenated short names)
+    - Deduplicate terms retaining only the first occurrence (case-sensitive comparison)
+    - Exit with error if no valid terms found after filtering
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
+
+- [ ] 9. Update CLI for two-step workflow
+  - [x] 9.1 Update `main()` in `bin/generate_oscal_glossary.py` to add `--extract-terms` flag and `--terms` argument
+    - Add `--extract-terms` flag (store_true) that activates Extract_Mode
+    - Add `--terms` argument (default: `data/oscal-terms.txt`) for the Term_List_File path
+    - When `--extract-terms` is set: call `parse_schema()` then `extract_terms()`, log output path and count, exit 0
+    - When `--extract-terms` is not set: call `read_terms()` instead of `parse_schema()`, then proceed with existing `load_glossary()` → `match_terms()` → `generate_markdown()` pipeline
+    - Update `--help` description to document the two-step workflow
+    - _Requirements: 7.1, 7.8, 8.1, 9.1, 9.2, 9.3, 9.4, 9.5_
+
+- [x] 10. Checkpoint - Verify term extraction and reading
+  - Ensure all tests pass, ask the user if questions arise.
+
+- [x] 11. Write unit tests for extract_terms and read_terms
+  - [x] 11.1 Write unit tests for `extract_terms()` in `tests/test_glossary_generator.py`
+    - Test output file contains comment header starting with `#` and ISO 8601 timestamp
+    - Test output file contains sorted short names, one per line, no blank lines between terms
+    - Test output directory is created if it doesn't exist
+    - Test `_fatal()` is called on write failure
+    - _Requirements: 7.3, 7.4, 7.5, 7.6, 7.7_
+
+  - [x] 11.2 Write unit tests for `read_terms()` in `tests/test_glossary_generator.py`
+    - Test reading a valid term list file returns correct terms
+    - Test comment lines (starting with `#`) are skipped
+    - Test blank lines are skipped
+    - Test leading/trailing whitespace is stripped from terms
+    - Test duplicate terms are deduplicated (first occurrence kept, case-sensitive)
+    - Test missing file exits with status 1 and advises running `--extract-terms`
+    - Test file with only comments/blanks exits with status 1
+    - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
+
+- [ ] 12. Write property tests for term list round trip and reading
+  - [ ]* 12.1 Write property test: Term List File Round Trip (Property 13)
+    - **Property 13: Term List File Round Trip**
+    - **Validates: Requirements 10.5**
+    - Generate random sorted, deduplicated lists of valid short names; write with `extract_terms()` then read back with `read_terms()`; verify the lists are identical
+
+  - [ ]* 12.2 Write property test: Term List Reading Correctness (Property 14)
+    - **Property 14: Term List Reading Correctness**
+    - **Validates: Requirements 8.2, 8.3, 8.4**
+    - Generate random term list file content with valid terms, comment lines, blank lines, and duplicate terms; write to file; call `read_terms()`; verify only valid terms returned, comments and blanks skipped, duplicates removed (first occurrence kept), whitespace stripped
+
+- [x] 13. Update Property 10 to use read_terms instead of parse_schema
+  - [x] 13.1 Refactor Property 10 (Glossary Entry Completeness Invariant) in `tests/test_glossary_generator_properties.py`
+    - Update the test to build a Term_List_File (using `extract_terms()` or direct file write), then call `read_terms()` to get short names instead of calling `parse_schema()` directly
+    - This validates the end-to-end flow: terms file → `read_terms()` → `match_terms()` → `generate_markdown()` → completeness check
+    - Import `extract_terms` and `read_terms` at the top of the test file
+    - **Property 10: Glossary Entry Completeness Invariant**
+    - **Validates: Requirements 6.1, 6.2**
+
+- [x] 14. Final checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+
 ## Notes
 
 - Tasks marked with `*` are optional and can be skipped for faster MVP
@@ -129,6 +197,8 @@ Build a single-file Python utility script (`bin/generate_oscal_glossary.py`) tha
 - Unit tests validate specific examples and edge cases
 - All property tests go in `tests/test_glossary_generator_properties.py` using Hypothesis with `@settings(max_examples=100, deadline=None)`
 - The script follows the same patterns as `bin/build_oscal_db.py` (logging, `_fatal()` for errors, `sys.exit()`)
+- Tasks 1–7 implemented Requirements 1–6 and Properties 1–12 (all completed)
+- Tasks 8–14 implement Requirements 7–10 and Properties 13–14 (term extraction, term list reading, two-step CLI workflow)
 
 ## Task Dependency Graph
 
@@ -140,7 +210,11 @@ Build a single-file Python utility script (`bin/generate_oscal_glossary.py`) tha
     { "id": 2, "tasks": ["2.2", "2.3", "2.4", "2.5", "3.2"] },
     { "id": 3, "tasks": ["3.3", "3.4", "5.1"] },
     { "id": 4, "tasks": ["5.2", "5.3", "5.4"] },
-    { "id": 5, "tasks": ["6.1", "6.2", "6.3"] }
+    { "id": 5, "tasks": ["6.1", "6.2", "6.3"] },
+    { "id": 6, "tasks": ["8.1", "8.2"] },
+    { "id": 7, "tasks": ["9.1"] },
+    { "id": 8, "tasks": ["11.1", "11.2"] },
+    { "id": 9, "tasks": ["12.1", "12.2", "13.1"] }
   ]
 }
 ```
