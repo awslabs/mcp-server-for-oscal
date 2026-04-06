@@ -1,8 +1,8 @@
 # OSCAL Glossary
 
-Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary).
+Definitions sourced from the [OSCAL Terminology Page](https://pages.nist.gov/OSCAL/learn/concepts/terminology/) and the [NIST CSRC Glossary](https://csrc.nist.gov/glossary).
 
-*Generated: 2026-04-03T22:49:26Z*
+*Generated: 2026-04-04T16:10:33Z*
 
 ## Activity
 
@@ -11,6 +11,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
    *Source: [NIST SP 800-160v1r1](https://doi.org/10.6028/NIST.SP.800-160v1r1)*
 
 [CSRC Glossary: Activity](https://csrc.nist.gov/glossary/term/activity)
+
+*Source: NIST CSRC*
 
 ---
 
@@ -36,6 +38,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Address](https://csrc.nist.gov/glossary/term/address)
 
+*Source: NIST CSRC*
+
 ---
 
 ## Assessment Method
@@ -54,6 +58,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Assessment Method](https://csrc.nist.gov/glossary/term/assessment_method)
 
+*Source: NIST CSRC*
+
 ---
 
 ## Assessment Plan
@@ -67,6 +73,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Assessment Plan](https://csrc.nist.gov/glossary/term/assessment_plan)
 
+*Source: NIST CSRC*
+
 ---
 
 ## Assessment Results
@@ -76,6 +84,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
    *Source: [NIST SP 800-55v2](https://doi.org/10.6028/NIST.SP.800-55v2)*
 
 [CSRC Glossary: Assessment Results](https://csrc.nist.gov/glossary/term/assessment_results)
+
+*Source: NIST CSRC*
 
 ---
 
@@ -123,6 +133,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Authorization Boundary](https://csrc.nist.gov/glossary/term/authorization_boundary)
 
+*Source: NIST CSRC*
+
 ---
 
 ## Capability
@@ -153,14 +165,26 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Capability](https://csrc.nist.gov/glossary/term/capability)
 
+*Source: NIST CSRC*
+
 ---
 
 ## Catalog
 
-1. The collection of all assessment elements.
-   *Source: [NIST SP 800-137A](https://doi.org/10.6028/NIST.SP.800-137A)*
 
-[CSRC Glossary: Catalog](https://csrc.nist.gov/glossary/term/catalog)
+Framework providers organize control requirements into a **catalog**.
+The OSCAL [catalog model](/concepts/layer/control/catalog/) is designed to represent control requirement information and its catalog organization in a machine-readable format with a high degree of fidelity and granularity.
+
+An OSCAL catalog allows control requirements to be grouped, and allows individual control requirements to contain subordinate control requirements (enhancements), control objectives, assessment methods, references, and other content as may be necessary in some frameworks.
+
+In OSCAL a control catalog is *an organized collection of controls*.
+
+Typically, catalogs are represented in human readable documentary form, in which controls are represented as parts of a catalog document. Controls, as defined and described in catalogs, may also be referenced and configured in other documents; thus control information must be composed in a way to make it possible to use control information across different types of documents for different purposes, while maintaining a consistent control "identity" and referential integrity for traceability.
+
+Additionally, catalogs may also define objectives and methods for assessing the controls (e.g., NIST SP 800-53A). Combining assessment objectives and methods with security controls is supported in OSCAL because some control catalog formats, such as COBIT 5, address assessment information directly. Others, like 800-53A, have it separately.
+
+
+*Source: OSCAL Page*
 
 ---
 
@@ -171,6 +195,19 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
    *Source: [NIST IR 8323r1](https://doi.org/10.6028/NIST.IR.8323r1)*
 
 [CSRC Glossary: Characterization](https://csrc.nist.gov/glossary/term/characterization)
+
+*Source: NIST CSRC*
+
+---
+
+## Controls
+
+1. Policies, procedures, guidelines, practices, or organizational structures that manage security, privacy, and other risks.
+   *Source: [NIST SP 800-63-4](https://doi.org/10.6028/NIST.SP.800-63-4)*
+
+[CSRC Glossary: Controls](https://csrc.nist.gov/glossary/term/controls)
+
+*Source: NIST CSRC*
 
 ---
 
@@ -190,6 +227,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Coverage](https://csrc.nist.gov/glossary/term/coverage)
 
+*Source: NIST CSRC*
+
 ---
 
 ## Group
@@ -202,14 +241,7 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Group](https://csrc.nist.gov/glossary/term/group)
 
----
-
-## Import
-
-1. A process available to end users by which an SCAP source data stream can be loaded into the vendor’s product. During this process, the vendor process may optionally translate this file into a proprietary format.
-   *Source: [NISTIR 7511 Rev. 4](https://doi.org/10.6028/NIST.IR.7511r4)*
-
-[CSRC Glossary: Import](https://csrc.nist.gov/glossary/term/import)
+*Source: NIST CSRC*
 
 ---
 
@@ -226,6 +258,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Mapping](https://csrc.nist.gov/glossary/term/mapping)
 
+*Source: NIST CSRC*
+
 ---
 
 ## Matching
@@ -235,38 +269,7 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Matching](https://csrc.nist.gov/glossary/term/matching)
 
----
-
-## Metadata
-
-1. Information describing the characteristics of data including, for example, structural metadata describing data structures (e.g., data format, syntax, and semantics) and descriptive metadata describing data contents (e.g., information security labels).
-   *Source: [CNSSI 4009-2015](https://www.cnss.gov/CNSS/issuances/Instructions.cfm)*
-   *Source: [NIST SP 800-150](https://doi.org/10.6028/NIST.SP.800-150)*
-   *Source: [NIST SP 800-53 Rev. 4](https://doi.org/10.6028/NIST.SP.800-53r4)*
-
-2. Information used to describe specific characteristics, constraints, acceptable uses and parameters of another data item (e.g., a cryptographic key).
-   *Source: [NIST SP 800-57 Part 1 Rev. 4](https://doi.org/10.6028/NIST.SP.800-57pt1r4)*
-   *Source: [NIST SP 800-57 Part 1 Rev. 3](https://doi.org/10.6028/NIST.SP.800-57p1r3)*
-
-3. Data about data. For filesystems, metadata is data that provides information about a file’s contents.
-   *Source: [NIST SP 800-86](https://doi.org/10.6028/NIST.SP.800-86)*
-
-4. The information associated with a key that describes its specific characteristics, constraints, acceptable uses, ownership, etc. Sometimes called the key's attributes.
-   *Source: [NIST SP 800-57 Part 2 Rev.1](https://doi.org/10.6028/NIST.SP.800-57pt2r1)*
-
-5. The information associated with a key that describes its specific characteristics, constraints, acceptable uses, ownership, etc.; sometimes called the key's attributes.
-   *Source: [NIST SP 800-175B Rev. 1](https://doi.org/10.6028/NIST.SP.800-175Br1)*
-
-6. The information associated with a key that describes its specific characteristics, constraints, acceptable uses, ownership, etc.; sometimes called the key’s attributes.
-   *Source: [NIST SP 800-57 Part 1 Rev. 5](https://doi.org/10.6028/NIST.SP.800-57pt1r5)*
-
-7. Information that describes the characteristics of data, including structural metadata that describes data structures (i.e., data format, syntax, semantics) and descriptive metadata that describes data contents (i.e., security labels).
-   *Source: [NIST SP 800-53 Rev. 5](https://doi.org/10.6028/NIST.SP.800-53r5)*
-
-8. Information describing the characteristics of data. This may include, for example, structural metadata describing data structures (i.e., data format, syntax, semantics) and descriptive metadata describing data contents
-   *Source: [NIST Privacy Framework Version 1.0](https://doi.org/10.6028/NIST.CSWP.01162020)*
-
-[CSRC Glossary: Metadata](https://csrc.nist.gov/glossary/term/metadata)
+*Source: NIST CSRC*
 
 ---
 
@@ -281,6 +284,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Parameter](https://csrc.nist.gov/glossary/term/parameter)
 
+*Source: NIST CSRC*
+
 ---
 
 ## Plan Of Action And Milestones
@@ -290,6 +295,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
    *Source: [NIST SP 800-53A Rev. 5](https://doi.org/10.6028/NIST.SP.800-53Ar5)*
 
 [CSRC Glossary: Plan Of Action And Milestones](https://csrc.nist.gov/glossary/term/plan_of_action_and_milestones)
+
+*Source: NIST CSRC*
 
 ---
 
@@ -343,6 +350,8 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
    *Source: [NIST SP 800-160 Vol. 1](https://doi.org/10.6028/NIST.SP.800-160v1)*
 
 [CSRC Glossary: System Component](https://csrc.nist.gov/glossary/term/system_component)
+
+*Source: NIST CSRC*
 
 ---
 
@@ -427,6 +436,8 @@ See System Security Plan.
 
 [CSRC Glossary: System Security Plan](https://csrc.nist.gov/glossary/term/system_security_plan)
 
+*Source: NIST CSRC*
+
 ---
 
 ## System User
@@ -445,6 +456,8 @@ Note: With respect to SecCM, an information system user is an individual who use
    *Source: [NIST SP 800-128](https://doi.org/10.6028/NIST.SP.800-128)*
 
 [CSRC Glossary: System User](https://csrc.nist.gov/glossary/term/systemuser)
+
+*Source: NIST CSRC*
 
 ---
 
@@ -470,11 +483,13 @@ Note: With respect to SecCM, an information system user is an individual who use
 
 [CSRC Glossary: Task](https://csrc.nist.gov/glossary/term/task)
 
+*Source: NIST CSRC*
+
 ---
 
 ## Unmatched Terms
 
-The following OSCAL object types did not have matching entries in the NIST CSRC glossary:
+The following OSCAL object types did not have matching entries in the OSCAL terminology page or the NIST CSRC glossary:
 
 - Action
 - Assessment Assets
@@ -484,10 +499,8 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 - Associated Risk
 - Authorized Privilege
 - Back Matter
-- By Component
 - Component Definition
 - Confidence Score
-- Control
 - Control Implementation
 - Data Flow
 - Defined Component
@@ -496,19 +509,11 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 - Finding
 - Finding Target
 - Gap Summary
-- Hash
 - Impact
 - Implementation Status
 - Implemented Requirement
-- Import Ap
-- Import Component Definition
-- Import Profile
-- Import Ssp
-- Include All
 - Incorporates Component
-- Insert Controls
 - Inventory Item
-- Link
 - Local Definitions
 - Local Objective
 - Logged By
@@ -517,8 +522,6 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 - Mapping Item
 - Mapping Provenance
 - Mapping Resource Reference
-- Merge
-- Modify
 - Network Architecture
 - Observation
 - Origin
@@ -530,11 +533,8 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 - Poam Item
 - Port Range
 - Profile
-- Property
 - Protocol
 - Qualifier Item
-- Related Observation
-- Related Task
 - Response
 - Responsible Party
 - Responsible Role
@@ -545,7 +545,6 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 - Select Control By Id
 - Select Objective By Id
 - Select Subject By Id
-- Set Parameter
 - Statement
 - Status
 - Subject Reference

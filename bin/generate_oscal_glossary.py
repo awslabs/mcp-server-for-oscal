@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Generate a markdown glossary of OSCAL object types with NIST CSRC definitions.
+Generate a markdown glossary of OSCAL object types with definitions from
+the OSCAL terminology page (priority) and the NIST CSRC glossary (fallback).
 
 This script supports a two-step workflow with human-in-the-loop curation:
 
@@ -12,11 +13,16 @@ This script supports a two-step workflow with human-in-the-loop curation:
     hatch run bin/generate_oscal_glossary.py
     hatch run bin/generate_oscal_glossary.py --verbose
     hatch run bin/generate_oscal_glossary.py --terms path/to/terms.txt --output path/to/output.md
+    hatch run bin/generate_oscal_glossary.py --oscal-terms-page path/to/terminology.md
 
 Between steps, edit the term list file to remove noisy terms, add custom
-terms, or fix names to improve NIST glossary matching.
+terms, or fix names to improve matching.
 
-Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 7.1, 7.8, 8.1, 9.1, 9.2, 9.3, 9.4, 9.5
+In Generate Mode, definitions are sourced from the OSCAL terminology page
+(priority) and the NIST CSRC glossary (fallback).  Use --oscal-terms-page
+to specify a custom path to the OSCAL terminology markdown file.
+
+Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 5.8, 7.1, 7.8, 8.1, 9.1, 9.2, 9.3, 9.4, 9.5, 14.1, 14.2, 14.3, 14.4
 """
 
 from __future__ import annotations
@@ -46,6 +52,8 @@ class MatchedTerm:
     definitions: list[dict] = field(default_factory=list)
     link: str = ""
     abbr_syn: list[dict] | None = None
+    source: str = "NIST CSRC"  # Definition_Source: "OSCAL Page" or "NIST CSRC"
+    oscal_definition: str = ""  # Plain text definition from OSCAL page
 
 
 def to_human_readable(short_name: str) -> str:
@@ -191,6 +199,130 @@ def read_terms(terms_path: Path) -> list[str]:
     return terms
 
 
+def parse_oscal_terms_page(page_path: Path) -> dict[str, str]:
+    """Parse the Hugo-format OSCAL terminology page into a term index.
+
+    Returns a dict mapping lowercase term names to their definition text
+    (prose paragraphs + callout content, with Hugo shortcode delimiters
+    stripped).  Degrades gracefully: missing file or no ``###`` headings
+    result in a WARNING and an empty dict.
+
+    Requirements: 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 11.9, 11.10
+    """
+    if not page_path.exists():
+        logger.warning("OSCAL terms page not found: %s", page_path)
+        return {}
+
+    try:
+        raw = page_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Cannot read OSCAL terms page %s: %s", page_path, exc)
+        return {}
+
+    lines = raw.splitlines()
+
+    # --- Skip Hugo front matter ---
+    content_start = 0
+    if lines and lines[0].strip() == "---":
+        for i in range(1, len(lines)):
+            if lines[i].strip() == "---":
+                content_start = i + 1
+                break
+
+    # --- Parse content line by line ---
+    terms: dict[str, list[str]] = {}
+    current_term: str | None = None
+    current_lines: list[str] = []
+    in_todo = False
+
+    for line in lines[content_start:]:
+        stripped = line.strip()
+
+        # Handle todo block boundaries
+        if "{{<todo>}}" in stripped:
+            in_todo = True
+            continue
+        if "{{</todo>}}" in stripped:
+            in_todo = False
+            continue
+        if in_todo:
+            continue
+
+        # Strip callout delimiters (both percent and angle-bracket variants)
+        if stripped in (
+            "{{% callout %}}",
+            "{{<callout>}}",
+            "{{% /callout %}}",
+            "{{</callout>}}",
+        ):
+            continue
+
+        # Inline callout markers on the same line as content
+        for marker in (
+            "{{% callout %}}",
+            "{{<callout>}}",
+            "{{% /callout %}}",
+            "{{</callout>}}",
+        ):
+            stripped = stripped.replace(marker, "")
+        line = line.replace("{{% callout %}}", "").replace("{{<callout>}}", "")
+        line = line.replace("{{% /callout %}}", "").replace("{{</callout>}}", "")
+
+        # Detect heading levels
+        if stripped.startswith("#"):
+            # Count the heading level
+            level = 0
+            for ch in stripped:
+                if ch == "#":
+                    level += 1
+                else:
+                    break
+
+            # Must be followed by a space to be a valid heading
+            if level < len(stripped) and stripped[level] == " ":
+                heading_text = stripped[level:].strip()
+
+                if level == 2:
+                    # ## heading: section boundary — close current term
+                    if current_term is not None:
+                        terms[current_term] = current_lines
+                        current_term = None
+                        current_lines = []
+                elif level == 3:
+                    # ### heading: new term entry
+                    if current_term is not None:
+                        terms[current_term] = current_lines
+                    current_term = heading_text
+                    current_lines = []
+                # #### or deeper: sub-section, content continues accumulating
+                # under the current ### term — just add the line
+                elif level >= 4 and current_term is not None:
+                    current_lines.append(line)
+                continue
+
+        # Accumulate prose lines under the current term
+        if current_term is not None:
+            current_lines.append(line)
+
+    # Flush the last term if the file ends without a closing ## heading
+    if current_term is not None:
+        terms[current_term] = current_lines
+
+    # Build the lowercase index, joining accumulated lines
+    index: dict[str, str] = {}
+    for term_name, def_lines in terms.items():
+        definition = "\n".join(def_lines)
+        index[term_name.lower()] = definition
+
+    if not index:
+        logger.warning(
+            "OSCAL terms page %s contains no parseable ### headings",
+            page_path,
+        )
+
+    return index
+
+
 def load_glossary(glossary_path: Path) -> dict[str, dict]:
     """Load the NIST CSRC glossary and return a case-insensitive index.
 
@@ -233,30 +365,73 @@ def load_glossary(glossary_path: Path) -> dict[str, dict]:
 
 
 def match_terms(
-    short_names: list[str], glossary: dict[str, dict]
+    short_names: list[str],
+    glossary: dict[str, dict],
+    oscal_terms: dict[str, str] | None = None,
 ) -> tuple[list[MatchedTerm], list[str]]:
-    """Match OSCAL short names against the glossary index.
+    """Match OSCAL short names against both the OSCAL terms page and NIST glossary.
 
-    For each short name, converts hyphens to spaces and performs a
-    case-insensitive lookup in the glossary.  A term is classified as
-    *matched* only when the glossary entry has a non-null, non-empty
-    ``definitions`` list; otherwise it is *unmatched*.
+    For each short name, converts hyphens to spaces and normalises to
+    lowercase for lookup.  The OSCAL terms page index is checked first
+    (priority); if not found there, the NIST glossary is used as a
+    fallback.  A term is classified as *matched* only when a definition
+    is available from either source; otherwise it is *unmatched*.
+
+    When ``oscal_terms`` is ``None`` or empty the function behaves
+    exactly as before (NIST-only matching).
 
     Returns a tuple of (matched_terms, unmatched_short_names).
 
-    Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
+    Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.7, 12.1, 12.2, 12.3, 12.4, 12.5, 13.1, 13.2, 13.3
     """
     matched: list[MatchedTerm] = []
     unmatched: list[str] = []
+    oscal_count = 0
+    nist_count = 0
+    override_count = 0
+
+    use_oscal = bool(oscal_terms)
 
     for short_name in short_names:
         lookup_key = short_name.replace("-", " ").lower()
-        entry = glossary.get(lookup_key)
 
+        # --- Priority lookup: OSCAL terms page ---
+        if use_oscal and lookup_key in oscal_terms:
+            oscal_def = oscal_terms[lookup_key]
+            logger.debug("Matched (OSCAL Page): %s", short_name)
+
+            # Check if NIST glossary also has a definition for this term
+            nist_entry = glossary.get(lookup_key)
+            if nist_entry is not None:
+                nist_defs = nist_entry.get("definitions")
+                if nist_defs:
+                    logger.warning(
+                        "OSCAL page definition overriding NIST definition "
+                        "for term '%s'",
+                        short_name,
+                    )
+                    override_count += 1
+
+            matched.append(
+                MatchedTerm(
+                    short_name=short_name,
+                    human_name=to_human_readable(short_name),
+                    definitions=[],
+                    link="",
+                    abbr_syn=None,
+                    source="OSCAL Page",
+                    oscal_definition=oscal_def,
+                )
+            )
+            oscal_count += 1
+            continue
+
+        # --- Fallback lookup: NIST glossary ---
+        entry = glossary.get(lookup_key)
         if entry is not None:
             definitions = entry.get("definitions")
             if definitions:
-                logger.debug("Matched: %s", short_name)
+                logger.debug("Matched (NIST CSRC): %s", short_name)
                 matched.append(
                     MatchedTerm(
                         short_name=short_name,
@@ -264,18 +439,24 @@ def match_terms(
                         definitions=definitions,
                         link=entry.get("link", ""),
                         abbr_syn=entry.get("abbrSyn"),
+                        source="NIST CSRC",
                     )
                 )
+                nist_count += 1
                 continue
 
         logger.debug("Unmatched: %s", short_name)
         unmatched.append(short_name)
 
     logger.info(
-        "Term matching complete: %d matched, %d unmatched, %d total",
+        "Term matching complete: %d matched, %d unmatched, %d total "
+        "(OSCAL Page: %d, NIST CSRC: %d, overrides: %d)",
         len(matched),
         len(unmatched),
         len(short_names),
+        oscal_count,
+        nist_count,
+        override_count,
     )
     return matched, unmatched
 
@@ -299,6 +480,9 @@ def generate_markdown(
     lines.append("")
     lines.append(
         "Definitions sourced from the "
+        "[OSCAL Terminology Page]"
+        "(https://pages.nist.gov/OSCAL/learn/concepts/terminology/) "
+        "and the "
         "[NIST CSRC Glossary](https://csrc.nist.gov/glossary)."
     )
     lines.append("")
@@ -312,39 +496,60 @@ def generate_markdown(
         lines.append(f"## {term.human_name}")
         lines.append("")
 
-        # Abbreviations / synonyms
-        if term.abbr_syn:
-            abbr_texts = [a.get("text", "") for a in term.abbr_syn if a.get("text")]
-            if abbr_texts:
-                lines.append(f"**Also known as:** {', '.join(abbr_texts)}")
+        if term.source == "OSCAL Page":
+            # OSCAL-sourced: definition text as body, no numbered list,
+            # no CSRC link, no "Also known as:"
+            if term.oscal_definition:
+                lines.append(term.oscal_definition)
                 lines.append("")
 
-        # Definitions
-        if term.definitions:
-            for idx, defn in enumerate(term.definitions, start=1):
-                text = defn.get("text", "")
-                lines.append(f"{idx}. {text}")
-
-                # Inline source references
-                sources = defn.get("sources") or []
-                for source in sources:
-                    src_text = source.get("text", "")
-                    src_link = source.get("link", "")
-                    if src_text and src_link:
-                        lines.append(f"   *Source: [{src_text}]({src_link})*")
-                    elif src_text:
-                        lines.append(f"   *Source: {src_text}*")
-
-                lines.append("")
-        else:
-            lines.append("*No definition available from NIST.*")
+            lines.append("*Source: OSCAL Page*")
             lines.append("")
+        else:
+            # NIST-sourced: existing rendering with source annotation
 
-        # CSRC glossary link
-        if term.link:
-            lines.append(
-                f"[CSRC Glossary: {term.human_name}]({term.link})"
-            )
+            # Abbreviations / synonyms
+            if term.abbr_syn:
+                abbr_texts = [
+                    a.get("text", "") for a in term.abbr_syn if a.get("text")
+                ]
+                if abbr_texts:
+                    lines.append(
+                        f"**Also known as:** {', '.join(abbr_texts)}"
+                    )
+                    lines.append("")
+
+            # Definitions
+            if term.definitions:
+                for idx, defn in enumerate(term.definitions, start=1):
+                    text = defn.get("text", "")
+                    lines.append(f"{idx}. {text}")
+
+                    # Inline source references
+                    sources = defn.get("sources") or []
+                    for source in sources:
+                        src_text = source.get("text", "")
+                        src_link = source.get("link", "")
+                        if src_text and src_link:
+                            lines.append(
+                                f"   *Source: [{src_text}]({src_link})*"
+                            )
+                        elif src_text:
+                            lines.append(f"   *Source: {src_text}*")
+
+                    lines.append("")
+            else:
+                lines.append("*No definition available from NIST.*")
+                lines.append("")
+
+            # CSRC glossary link
+            if term.link:
+                lines.append(
+                    f"[CSRC Glossary: {term.human_name}]({term.link})"
+                )
+                lines.append("")
+
+            lines.append("*Source: NIST CSRC*")
             lines.append("")
 
         lines.append("---")
@@ -356,7 +561,8 @@ def generate_markdown(
         lines.append("")
         lines.append(
             "The following OSCAL object types did not have matching "
-            "entries in the NIST CSRC glossary:"
+            "entries in the OSCAL terminology page or the "
+            "NIST CSRC glossary:"
         )
         lines.append("")
         sorted_unmatched = sorted(
@@ -389,8 +595,10 @@ def main() -> None:
         to the Term List File for human curation.
 
     Generate Mode (default):
-        Reads terms from the curated Term List File, matches them against
-        the NIST glossary, and produces the Markdown Glossary.
+        Reads terms from the curated Term List File, parses the OSCAL
+        terminology page for OSCAL-specific definitions, loads the NIST
+        glossary, matches terms against both sources (OSCAL page priority),
+        and produces the Markdown Glossary with Definition_Source annotations.
     """
     parser = argparse.ArgumentParser(
         description=(
@@ -399,9 +607,14 @@ def main() -> None:
             "term list file:\n"
             "  %(prog)s --extract-terms\n\n"
             "Step 2: Generate the glossary from the curated term list:\n"
-            "  %(prog)s\n\n"
+            "  %(prog)s\n"
+            "  %(prog)s --oscal-terms-page path/to/terminology.md\n\n"
             "Between steps, edit the term list to remove noisy terms, add "
-            "custom terms, or fix names to improve NIST glossary matching."
+            "custom terms, or fix names to improve matching.\n\n"
+            "In Generate Mode, definitions are sourced from the OSCAL "
+            "terminology page (priority) and the NIST CSRC glossary "
+            "(fallback). Use --oscal-terms-page to specify a custom path "
+            "to the OSCAL terminology markdown file."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -443,9 +656,27 @@ def main() -> None:
         help="Path to the NIST CSRC glossary export JSON (used in Generate Mode)",
     )
     parser.add_argument(
+        "--oscal-terms-page",
+        type=Path,
+        default=Path(
+            "data/oscal_docs/OSCAL-Pages-main/src/content/learn/"
+            "concepts/terminology/_index.md"
+        ),
+        help=(
+            "Path to the OSCAL terminology markdown page for "
+            "OSCAL-specific definitions (used in Generate Mode; "
+            "ignored in Extract Mode). "
+            "(default: data/oscal_docs/OSCAL-Pages-main/src/content/"
+            "learn/concepts/terminology/_index.md)"
+        ),
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
-        help="Log each term's match status during processing",
+        help=(
+            "Log each term's match result including which source "
+            "provided the definition (OSCAL Page or NIST CSRC)"
+        ),
     )
     args = parser.parse_args()
 
@@ -454,6 +685,7 @@ def main() -> None:
 
     if args.extract_terms:
         # --- Extract Mode ---
+        # --oscal-terms-page is ignored in Extract Mode
         logger.info("Starting OSCAL term extraction")
         short_names = parse_schema(args.schema)
         extract_terms(short_names, args.terms)
@@ -467,8 +699,24 @@ def main() -> None:
     # --- Generate Mode (default) ---
     logger.info("Starting OSCAL glossary generation")
     short_names = read_terms(args.terms)
+    oscal_terms = parse_oscal_terms_page(args.oscal_terms_page)
     glossary = load_glossary(args.glossary)
-    matched, unmatched = match_terms(short_names, glossary)
+    matched, unmatched = match_terms(short_names, glossary, oscal_terms)
+
+    # When --verbose is set, log each term's match result with source
+    if args.verbose:
+        for term in matched:
+            logger.debug(
+                "Term '%s': matched (source: %s)",
+                term.short_name,
+                term.source,
+            )
+        for short_name in unmatched:
+            logger.debug(
+                "Term '%s': unmatched (no definition in OSCAL Page or NIST CSRC)",
+                short_name,
+            )
+
     generate_markdown(matched, unmatched, args.output)
 
     logger.info(

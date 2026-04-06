@@ -14,9 +14,11 @@ _spec = importlib.util.spec_from_file_location(
     "generate_oscal_glossary",
     Path(__file__).resolve().parent.parent / "bin" / "generate_oscal_glossary.py",
 )
+assert _spec is not None, "Could not find generate_oscal_glossary.py"
 _mod = importlib.util.module_from_spec(_spec)
 _mod.__name__ = "generate_oscal_glossary"
 sys.modules["generate_oscal_glossary"] = _mod
+assert _spec.loader is not None, "Module spec has no loader"
 _spec.loader.exec_module(_mod)
 
 parse_schema = _mod.parse_schema
@@ -25,6 +27,7 @@ match_terms = _mod.match_terms
 generate_markdown = _mod.generate_markdown
 extract_terms = _mod.extract_terms
 read_terms = _mod.read_terms
+parse_oscal_terms_page = _mod.parse_oscal_terms_page
 MatchedTerm = _mod.MatchedTerm
 to_human_readable = _mod.to_human_readable
 
@@ -752,3 +755,437 @@ class TestReadTerms:
             with pytest.raises(SystemExit):
                 read_terms(missing)
         assert any("--extract-terms" in record.message for record in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# match_terms — OSCAL page priority (dual-source)
+# ---------------------------------------------------------------------------
+
+
+class TestMatchTermsOscalPagePriority:
+    """Tests for match_terms with oscal_terms parameter — Requirements 3.2, 12.1–12.4, 13.1–13.3."""
+
+    def test_oscal_page_priority_over_nist(self):
+        """When a term exists in both OSCAL page and NIST glossary, OSCAL page definition is used (Req 12.1)."""
+        oscal_terms = {"catalog": "An OSCAL-specific catalog definition."}
+        glossary = _build_glossary([
+            _make_glossary_entry(
+                "catalog",
+                definitions=[{"text": "A NIST catalog definition.", "sources": []}],
+            ),
+        ])
+        matched, unmatched = match_terms(["catalog"], glossary, oscal_terms)
+        assert len(matched) == 1
+        assert matched[0].source == "OSCAL Page"
+        assert matched[0].oscal_definition == "An OSCAL-specific catalog definition."
+        assert matched[0].definitions == []
+        assert matched[0].link == ""
+        assert unmatched == []
+
+    def test_override_warning_logged(self, caplog):
+        """When OSCAL page overrides NIST definition, a WARNING is emitted (Req 12.2)."""
+        import logging
+
+        oscal_terms = {"control": "OSCAL control definition."}
+        glossary = _build_glossary([
+            _make_glossary_entry(
+                "control",
+                definitions=[{"text": "NIST control definition.", "sources": []}],
+            ),
+        ])
+        with caplog.at_level(logging.WARNING):
+            match_terms(["control"], glossary, oscal_terms)
+        warning_messages = [
+            r.message for r in caplog.records if r.levelno == logging.WARNING
+        ]
+        assert any("overriding" in msg.lower() or "override" in msg.lower() for msg in warning_messages), (
+            f"Expected a WARNING about OSCAL overriding NIST, got: {warning_messages}"
+        )
+
+    def test_oscal_only_term_no_warning(self, caplog):
+        """Term in OSCAL page but not NIST glossary: matched with source='OSCAL Page', no warning (Req 12.3)."""
+        import logging
+
+        oscal_terms = {"baseline": "A baseline definition from OSCAL page."}
+        glossary = _build_glossary([])  # empty NIST glossary
+        with caplog.at_level(logging.WARNING):
+            matched, unmatched = match_terms(["baseline"], glossary, oscal_terms)
+        assert len(matched) == 1
+        assert matched[0].source == "OSCAL Page"
+        assert matched[0].oscal_definition == "A baseline definition from OSCAL page."
+        assert unmatched == []
+        # No override warning should be emitted
+        warning_messages = [
+            r.message for r in caplog.records if r.levelno == logging.WARNING
+        ]
+        assert not any("overrid" in msg.lower() for msg in warning_messages), (
+            f"Unexpected override warning: {warning_messages}"
+        )
+
+    def test_nist_only_term_no_warning(self, caplog):
+        """Term in NIST glossary but not OSCAL page: matched with source='NIST CSRC', no warning (Req 12.4)."""
+        import logging
+
+        oscal_terms = {}  # empty OSCAL terms
+        glossary = _build_glossary([
+            _make_glossary_entry(
+                "access control",
+                definitions=[{"text": "NIST access control def.", "sources": []}],
+                link="https://csrc.nist.gov/glossary/term/access_control",
+            ),
+        ])
+        with caplog.at_level(logging.WARNING):
+            matched, unmatched = match_terms(
+                ["access-control"], glossary, oscal_terms
+            )
+        assert len(matched) == 1
+        assert matched[0].source == "NIST CSRC"
+        assert matched[0].link == "https://csrc.nist.gov/glossary/term/access_control"
+        assert unmatched == []
+        # No override warning should be emitted
+        warning_messages = [
+            r.message for r in caplog.records if r.levelno == logging.WARNING
+        ]
+        assert not any("overrid" in msg.lower() for msg in warning_messages)
+
+    def test_mixed_sources(self):
+        """Some terms from OSCAL, some from NIST, some unmatched — correct classification (Req 3.2, 13.1–13.3)."""
+        oscal_terms = {
+            "catalog": "OSCAL catalog definition.",
+            "baseline": "OSCAL baseline definition.",
+        }
+        glossary = _build_glossary([
+            _make_glossary_entry(
+                "catalog",
+                definitions=[{"text": "NIST catalog def.", "sources": []}],
+            ),
+            _make_glossary_entry(
+                "access control",
+                definitions=[{"text": "NIST AC def.", "sources": []}],
+            ),
+        ])
+        matched, unmatched = match_terms(
+            ["catalog", "access-control", "baseline", "unknown-term"],
+            glossary,
+            oscal_terms,
+        )
+        # Build lookup by short_name
+        by_name = {m.short_name: m for m in matched}
+        assert len(matched) == 3
+        assert len(unmatched) == 1
+
+        # catalog: in both → OSCAL page wins
+        assert by_name["catalog"].source == "OSCAL Page"
+        assert by_name["catalog"].oscal_definition == "OSCAL catalog definition."
+
+        # access-control: NIST only
+        assert by_name["access-control"].source == "NIST CSRC"
+
+        # baseline: OSCAL only
+        assert by_name["baseline"].source == "OSCAL Page"
+        assert by_name["baseline"].oscal_definition == "OSCAL baseline definition."
+
+        # unknown-term: unmatched
+        assert unmatched == ["unknown-term"]
+
+    def test_oscal_terms_none_backward_compatibility(self):
+        """When oscal_terms=None, existing NIST-only behavior is unchanged (Req 13.3)."""
+        glossary = _build_glossary([
+            _make_glossary_entry(
+                "catalog",
+                definitions=[{"text": "A NIST catalog.", "sources": []}],
+            ),
+        ])
+        matched, unmatched = match_terms(["catalog", "missing"], glossary, None)
+        assert len(matched) == 1
+        assert matched[0].source == "NIST CSRC"
+        assert matched[0].short_name == "catalog"
+        assert unmatched == ["missing"]
+
+    def test_oscal_terms_default_parameter(self):
+        """When oscal_terms is omitted entirely, NIST-only behavior is unchanged."""
+        glossary = _build_glossary([
+            _make_glossary_entry(
+                "control",
+                definitions=[{"text": "A NIST control.", "sources": []}],
+            ),
+        ])
+        # Call without the third argument at all
+        matched, unmatched = match_terms(["control"], glossary)
+        assert len(matched) == 1
+        assert matched[0].source == "NIST CSRC"
+        assert unmatched == []
+
+
+# ---------------------------------------------------------------------------
+# parse_oscal_terms_page
+# ---------------------------------------------------------------------------
+
+
+class TestParseOscalTermsPage:
+    """Tests for parse_oscal_terms_page — Requirements 11.1–11.10."""
+
+    def test_front_matter_skipping(self, tmp_path):
+        """YAML front matter between --- markers is not in any definition (Req 11.2)."""
+        page = tmp_path / "terms.md"
+        page.write_text(
+            "---\ntitle: My Page\ndate: 2024-01-01\n---\n\n"
+            "### Alpha\n\nAlpha definition.\n",
+            encoding="utf-8",
+        )
+        result = parse_oscal_terms_page(page)
+        assert "alpha" in result
+        assert "title" not in result["alpha"]
+        assert "My Page" not in result["alpha"]
+        assert "2024-01-01" not in result["alpha"]
+
+    def test_h3_heading_extraction(self, tmp_path):
+        """Multiple ### headings each become a key in the returned dict (Req 11.3)."""
+        page = tmp_path / "terms.md"
+        page.write_text(
+            "### Control\n\nControl def.\n\n"
+            "### Catalog\n\nCatalog def.\n\n"
+            "### Baseline\n\nBaseline def.\n",
+            encoding="utf-8",
+        )
+        result = parse_oscal_terms_page(page)
+        assert "control" in result
+        assert "catalog" in result
+        assert "baseline" in result
+        assert len(result) == 3
+
+    def test_h4_headings_not_top_level_keys(self, tmp_path):
+        """#### headings do NOT appear as top-level dict keys (Req 11.4)."""
+        page = tmp_path / "terms.md"
+        page.write_text(
+            "### Control\n\nControl def.\n\n"
+            "#### Examples of Controls\n\nSome examples.\n\n"
+            "### Catalog\n\nCatalog def.\n",
+            encoding="utf-8",
+        )
+        result = parse_oscal_terms_page(page)
+        assert "control" in result
+        assert "catalog" in result
+        assert "examples of controls" not in result
+        # The #### content should be part of the Control definition
+        assert "Some examples." in result["control"]
+
+    def test_callout_block_inclusion(self, tmp_path):
+        """Callout block content is included with delimiters stripped (Req 11.6)."""
+        page = tmp_path / "terms.md"
+        page.write_text(
+            "### Control\n\nControl intro.\n\n"
+            "{{% callout %}}\nA security control is defined.\n{{% /callout %}}\n\n"
+            "### Catalog\n\nCatalog intro.\n\n"
+            "{{<callout>}}NIST defines a catalog.{{</callout>}}\n",
+            encoding="utf-8",
+        )
+        result = parse_oscal_terms_page(page)
+        assert "A security control is defined." in result["control"]
+        assert "{{% callout %}}" not in result["control"]
+        assert "{{% /callout %}}" not in result["control"]
+        assert "NIST defines a catalog." in result["catalog"]
+        assert "{{<callout>}}" not in result["catalog"]
+        assert "{{</callout>}}" not in result["catalog"]
+
+    def test_todo_block_exclusion(self, tmp_path):
+        """Content within {{<todo>}}...{{</todo>}} blocks is excluded (Req 11.7)."""
+        page = tmp_path / "terms.md"
+        page.write_text(
+            "### Control\n\nControl def.\n\n"
+            "{{<todo>}}\n#### Objective\nTODO placeholder\n{{</todo>}}\n\n"
+            "More control content.\n",
+            encoding="utf-8",
+        )
+        result = parse_oscal_terms_page(page)
+        assert "control" in result
+        assert "TODO placeholder" not in result["control"]
+        assert "Objective" not in result["control"]
+        assert "More control content." in result["control"]
+
+    def test_missing_file_returns_empty_dict_with_warning(self, tmp_path, caplog):
+        """Missing file returns empty dict and logs WARNING (Req 11.9)."""
+        import logging
+
+        missing = tmp_path / "nonexistent.md"
+        with caplog.at_level(logging.WARNING):
+            result = parse_oscal_terms_page(missing)
+        assert result == {}
+        assert any("not found" in r.message for r in caplog.records)
+
+    def test_no_h3_headings_returns_empty_dict_with_warning(self, tmp_path, caplog):
+        """File with no ### headings returns empty dict and logs WARNING (Req 11.10)."""
+        import logging
+
+        page = tmp_path / "terms.md"
+        page.write_text(
+            "---\ntitle: Empty\n---\n\n"
+            "## Section One\n\nSome prose.\n\n"
+            "## Section Two\n\nMore prose.\n",
+            encoding="utf-8",
+        )
+        with caplog.at_level(logging.WARNING):
+            result = parse_oscal_terms_page(page)
+        assert result == {}
+        assert any("no parseable" in r.message.lower() for r in caplog.records)
+
+    def test_real_oscal_terminology_page_smoke_test(self):
+        """Smoke test: parse the actual OSCAL terminology page and verify known terms."""
+        page_path = Path(
+            "data/oscal_docs/OSCAL-Pages-main/src/content/learn/"
+            "concepts/terminology/_index.md"
+        )
+        if not page_path.exists():
+            pytest.skip("Real OSCAL terminology page not available")
+
+        result = parse_oscal_terms_page(page_path)
+
+        # Known terms should be present as keys (lowercased)
+        assert "control" in result
+        assert "catalog" in result
+        assert "baseline" in result
+
+        # Definitions should be non-empty
+        assert len(result["control"]) > 0
+        assert len(result["catalog"]) > 0
+        assert len(result["baseline"]) > 0
+
+        # Front matter should not leak into definitions
+        for term, definition in result.items():
+            assert "title: Key Concepts" not in definition
+
+
+# ---------------------------------------------------------------------------
+# generate_markdown — source annotations (dual-source rendering)
+# ---------------------------------------------------------------------------
+
+
+class TestGenerateMarkdownSourceAnnotations:
+    """Tests for generate_markdown with source annotations — Requirements 4.2, 4.4, 4.5, 4.7, 4.12."""
+
+    def test_oscal_sourced_term_rendering(self, tmp_path):
+        """OSCAL-sourced term: level-2 heading, body text (not numbered), *Source: OSCAL Page*, no CSRC link, no 'Also known as:' (Req 4.7, 4.12)."""
+        term = MatchedTerm(
+            short_name="catalog",
+            human_name="Catalog",
+            definitions=[],
+            link="",
+            abbr_syn=None,
+            source="OSCAL Page",
+            oscal_definition="Framework providers organize control requirements into a **catalog**.",
+        )
+        out = tmp_path / "glossary.md"
+        generate_markdown([term], [], out)
+        content = out.read_text(encoding="utf-8")
+
+        # Level-2 heading present
+        assert "## Catalog" in content
+        # Definition text rendered as body (not numbered)
+        assert "Framework providers organize control requirements into a **catalog**." in content
+        assert "1. Framework" not in content  # not numbered
+        # Source annotation
+        assert "*Source: OSCAL Page*" in content
+        # No CSRC link
+        assert "CSRC Glossary:" not in content
+        assert "csrc.nist.gov/glossary/term" not in content
+        # No "Also known as:"
+        assert "Also known as" not in content
+
+    def test_nist_sourced_term_rendering_with_annotation(self, tmp_path):
+        """NIST-sourced term: existing behavior plus *Source: NIST CSRC* annotation (Req 4.4, 4.5, 4.12)."""
+        term = MatchedTerm(
+            short_name="access-control",
+            human_name="Access Control",
+            definitions=[
+                {
+                    "text": "The process of granting or denying specific requests.",
+                    "sources": [
+                        {
+                            "text": "NIST SP 800-53 Rev. 5",
+                            "link": "https://doi.org/10.6028/NIST.SP.800-53r5",
+                        }
+                    ],
+                },
+            ],
+            link="https://csrc.nist.gov/glossary/term/access_control",
+            abbr_syn=[{"text": "AC"}],
+            source="NIST CSRC",
+        )
+        out = tmp_path / "glossary.md"
+        generate_markdown([term], [], out)
+        content = out.read_text(encoding="utf-8")
+
+        # Level-2 heading
+        assert "## Access Control" in content
+        # Abbreviation
+        assert "**Also known as:** AC" in content
+        # Numbered definition
+        assert "1. The process of granting or denying specific requests." in content
+        # Inline source reference
+        assert "*Source: [NIST SP 800-53 Rev. 5](https://doi.org/10.6028/NIST.SP.800-53r5)*" in content
+        # CSRC link
+        assert "[CSRC Glossary: Access Control](https://csrc.nist.gov/glossary/term/access_control)" in content
+        # Definition_Source annotation
+        assert "*Source: NIST CSRC*" in content
+
+    def test_mixed_oscal_and_nist_rendering(self, tmp_path):
+        """Both OSCAL and NIST terms in output have correct source annotations (Req 4.7, 4.12)."""
+        oscal_term = MatchedTerm(
+            short_name="catalog",
+            human_name="Catalog",
+            definitions=[],
+            link="",
+            abbr_syn=None,
+            source="OSCAL Page",
+            oscal_definition="An OSCAL catalog organizes controls.",
+        )
+        nist_term = MatchedTerm(
+            short_name="access-control",
+            human_name="Access Control",
+            definitions=[
+                {"text": "Granting or denying access.", "sources": []},
+            ],
+            link="https://csrc.nist.gov/glossary/term/access_control",
+            source="NIST CSRC",
+        )
+        out = tmp_path / "glossary.md"
+        generate_markdown([oscal_term, nist_term], [], out)
+        content = out.read_text(encoding="utf-8")
+
+        # Both terms present (alphabetical: Access Control before Catalog)
+        ac_pos = content.index("## Access Control")
+        cat_pos = content.index("## Catalog")
+        assert ac_pos < cat_pos
+
+        # NIST term has *Source: NIST CSRC*
+        # OSCAL term has *Source: OSCAL Page*
+        assert "*Source: NIST CSRC*" in content
+        assert "*Source: OSCAL Page*" in content
+
+        # OSCAL term should NOT have CSRC link or numbered definitions
+        # Find the Catalog section and check its content
+        catalog_section = content[cat_pos:]
+        # The catalog section ends at the next --- separator
+        separator_pos = catalog_section.index("---")
+        catalog_section = catalog_section[:separator_pos]
+        assert "An OSCAL catalog organizes controls." in catalog_section
+        assert "*Source: OSCAL Page*" in catalog_section
+        assert "CSRC Glossary:" not in catalog_section
+        assert "1." not in catalog_section
+
+        # NIST term should have CSRC link and numbered definitions
+        ac_section = content[ac_pos:cat_pos]
+        assert "1. Granting or denying access." in ac_section
+        assert "*Source: NIST CSRC*" in ac_section
+        assert "CSRC Glossary: Access Control" in ac_section
+
+    def test_intro_paragraph_references_both_sources(self, tmp_path):
+        """Intro paragraph references both OSCAL terminology page and NIST CSRC glossary (Req 4.2)."""
+        out = tmp_path / "glossary.md"
+        generate_markdown([], [], out)
+        content = out.read_text(encoding="utf-8")
+
+        assert "[OSCAL Terminology Page]" in content
+        assert "https://pages.nist.gov/OSCAL/learn/concepts/terminology/" in content
+        assert "[NIST CSRC Glossary]" in content
+        assert "https://csrc.nist.gov/glossary" in content

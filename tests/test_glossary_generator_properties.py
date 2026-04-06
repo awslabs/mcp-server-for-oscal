@@ -26,9 +26,11 @@ _spec = importlib.util.spec_from_file_location(
     "generate_oscal_glossary",
     Path(__file__).resolve().parent.parent / "bin" / "generate_oscal_glossary.py",
 )
+assert _spec is not None, "Could not find generate_oscal_glossary.py"
 _mod = importlib.util.module_from_spec(_spec)
 _mod.__name__ = "generate_oscal_glossary"
 sys.modules["generate_oscal_glossary"] = _mod
+assert _spec.loader is not None, "Module spec has no loader"
 _spec.loader.exec_module(_mod)
 
 parse_schema = _mod.parse_schema
@@ -40,6 +42,7 @@ generate_markdown = _mod.generate_markdown
 to_human_readable = _mod.to_human_readable
 extract_terms = _mod.extract_terms
 read_terms = _mod.read_terms
+parse_oscal_terms_page = _mod.parse_oscal_terms_page
 
 
 # ---------------------------------------------------------------------------
@@ -1179,3 +1182,709 @@ class TestProperty11DefinitionAndLinkFidelity:
                     f"Source reference not found in output.\n"
                     f"Expected: {expected_source!r}"
                 )
+
+# ---------------------------------------------------------------------------
+# Property 13: Term List File Round Trip
+# ---------------------------------------------------------------------------
+
+
+class TestProperty13TermListFileRoundTrip:
+    """
+    Feature: oscal-glossary-generator, Property 13: Term List File Round Trip
+
+    **Validates: Requirements 10.5**
+
+    For any sorted, deduplicated list of valid short names, writing them
+    with extract_terms() and then reading them back with read_terms()
+    SHALL produce an identical list with no terms lost or added.
+    """
+
+    @settings(max_examples=100, deadline=None)
+    @given(
+        short_names=st.lists(
+            _hyphenated_short_name, min_size=1, max_size=20, unique=True
+        ),
+    )
+    def test_round_trip_preserves_terms(self, short_names, tmp_path_factory):
+        """Feature: oscal-glossary-generator, Property 13: Term List File Round Trip"""
+        tmp_dir = tmp_path_factory.mktemp("round_trip")
+        terms_path = tmp_dir / "oscal-terms.txt"
+
+        # extract_terms sorts the names internally, so compute expected
+        expected = sorted(short_names)
+
+        # Write with extract_terms
+        extract_terms(short_names, terms_path)
+
+        # Read back with read_terms
+        result = read_terms(terms_path)
+
+        # The round-tripped list must be identical
+        assert result == expected, (
+            f"Round-trip mismatch:\n"
+            f"  Written (sorted): {expected}\n"
+            f"  Read back:        {result}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Property 14: Term List Reading Correctness
+# ---------------------------------------------------------------------------
+
+# Strategy for generating a valid term (hyphenated short name)
+_valid_term = st.from_regex(r"[a-zA-Z][a-zA-Z0-9\-]{0,30}", fullmatch=True)
+
+# Strategy for generating a comment line (starts with #)
+_comment_line = st.from_regex(r"#[a-zA-Z0-9 \-]{0,50}", fullmatch=True)
+
+# Strategy for generating a blank line (only whitespace)
+_blank_line = st.from_regex(r"[ \t]{0,10}", fullmatch=True)
+
+
+@st.composite
+def _term_list_file_content(draw):
+    """Generate random term list file content mixing valid terms, comments,
+    blank lines, and duplicate terms.
+
+    Returns a tuple of (file_content_string, expected_terms_in_order).
+    The expected terms list reflects deduplication by first occurrence
+    (case-sensitive) and whitespace stripping.
+    """
+    # Generate some unique valid terms (at least 1)
+    valid_terms = draw(
+        st.lists(_valid_term, min_size=1, max_size=15, unique=True)
+    )
+
+    # Decide how many lines to generate: all valid terms + extras
+    num_comments = draw(st.integers(min_value=0, max_value=5))
+    num_blanks = draw(st.integers(min_value=0, max_value=5))
+    num_dupes = draw(
+        st.integers(min_value=0, max_value=min(5, len(valid_terms)))
+    )
+
+    # Build a list of tagged line items, then shuffle them
+    line_items: list[tuple[str, str | None]] = []
+    #   ("term", term_value)  — a valid term line
+    #   ("comment", None)     — a comment line
+    #   ("blank", None)       — a blank line
+    #   ("dupe", term_value)  — a duplicate of an existing term
+
+    for term in valid_terms:
+        line_items.append(("term", term))
+
+    for _ in range(num_dupes):
+        dupe = draw(st.sampled_from(valid_terms))
+        line_items.append(("dupe", dupe))
+
+    for _ in range(num_comments):
+        line_items.append(("comment", None))
+
+    for _ in range(num_blanks):
+        line_items.append(("blank", None))
+
+    # Shuffle the items to get a random ordering
+    shuffled = draw(st.permutations(line_items))
+
+    # Now build the actual file lines and compute expected output
+    lines: list[str] = []
+    expected_order: list[str] = []
+    seen: set[str] = set()
+
+    for kind, value in shuffled:
+        if kind in ("term", "dupe"):
+            padding_left = draw(
+                st.from_regex(r"[ \t]{0,3}", fullmatch=True)
+            )
+            padding_right = draw(
+                st.from_regex(r"[ \t]{0,3}", fullmatch=True)
+            )
+            lines.append(f"{padding_left}{value}{padding_right}")
+            if value not in seen:
+                seen.add(value)
+                expected_order.append(value)
+        elif kind == "comment":
+            comment = draw(_comment_line)
+            lines.append(comment)
+        else:  # blank
+            blank = draw(_blank_line)
+            lines.append(blank)
+
+    content = "\n".join(lines)
+    return content, expected_order
+
+
+class TestProperty14TermListReadingCorrectness:
+    """Property 14: Term List Reading Correctness
+
+    **Validates: Requirements 8.2, 8.3, 8.4**
+
+    For any Term_List_File containing a mix of valid term lines, comment
+    lines (starting with #), blank lines, and duplicate terms,
+    read_terms() SHALL return only the valid terms (skipping comments and
+    blanks), deduplicated by first occurrence, with leading and trailing
+    whitespace stripped from each term.
+    """
+
+    @given(data=_term_list_file_content())
+    @settings(max_examples=100, deadline=None)
+    def test_property_14_term_list_reading_correctness(self, data):
+        content, expected_terms = data
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            terms_path = Path(tmp_dir) / "terms.txt"
+            terms_path.write_text(content, encoding="utf-8")
+
+            result = read_terms(terms_path)
+
+            # 1. Only valid terms returned (no comments, no blanks)
+            for term in result:
+                assert term.strip() == term, (
+                    f"Term not stripped: {term!r}"
+                )
+                assert term != "", "Empty string in result"
+                assert not term.startswith("#"), (
+                    f"Comment line leaked through: {term!r}"
+                )
+
+            # 2. Duplicates removed — result has unique entries
+            assert len(result) == len(set(result)), (
+                "Duplicate terms found in result"
+            )
+
+            # 3. First occurrence kept — order matches expected
+            assert result == expected_terms, (
+                f"Expected {expected_terms!r}, got {result!r}"
+            )
+
+            # 4. Count matches expected deduplicated count
+            assert len(result) == len(expected_terms), (
+                f"Expected {len(expected_terms)} terms, got {len(result)}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# Strategies for Hugo-format markdown files (Property 15)
+# ---------------------------------------------------------------------------
+
+# Strategy for a heading text (letters, digits, spaces — no '#' or newlines)
+# We strip to match the parser's behavior of stripping heading text.
+_heading_text = st.text(
+    alphabet=st.characters(
+        whitelist_categories=("L", "N"),
+        whitelist_characters=" -",
+        max_codepoint=127,
+    ),
+    min_size=1,
+    max_size=30,
+).map(lambda s: s.strip()).filter(lambda s: s and not s.startswith("#"))
+
+# Strategy for a prose paragraph line
+_prose_line = st.text(
+    alphabet=st.characters(
+        whitelist_categories=("L", "N", "Z", "P"),
+        max_codepoint=127,
+    ),
+    min_size=1,
+    max_size=60,
+).filter(lambda s: s.strip() and not s.startswith("#") and "---" not in s)
+
+# Strategy for YAML front matter content (simple key: value lines)
+_yaml_line = st.from_regex(r"[a-z]{1,10}: [a-zA-Z0-9 ]{1,20}", fullmatch=True)
+
+
+@st.composite
+def _hugo_markdown_with_headings(draw):
+    """Generate a random Hugo-format markdown file with front matter,
+    ## section headings, ### term headings, and #### sub-section headings.
+
+    Returns a tuple of (file_content, set_of_h3_heading_texts_lowercase,
+    set_of_h4_heading_texts_lowercase).
+    """
+    lines: list[str] = []
+
+    # --- Hugo front matter ---
+    lines.append("---")
+    num_yaml = draw(st.integers(min_value=1, max_value=3))
+    for _ in range(num_yaml):
+        lines.append(draw(_yaml_line))
+    lines.append("---")
+    lines.append("")
+
+    # Optional intro prose before any heading
+    if draw(st.booleans()):
+        lines.append(draw(_prose_line))
+        lines.append("")
+
+    # Generate sections with ### terms and #### sub-sections
+    h3_headings: list[str] = []
+    h4_headings: list[str] = []
+
+    num_sections = draw(st.integers(min_value=1, max_value=4))
+    for _ in range(num_sections):
+        # ## section heading (section boundary, not a term)
+        section_text = draw(_heading_text)
+        lines.append(f"## {section_text}")
+        lines.append("")
+
+        # Optional prose after section heading
+        if draw(st.booleans()):
+            lines.append(draw(_prose_line))
+            lines.append("")
+
+        # ### term headings within this section
+        num_terms = draw(st.integers(min_value=0, max_value=3))
+        for _ in range(num_terms):
+            term_text = draw(_heading_text)
+            h3_headings.append(term_text)
+            lines.append(f"### {term_text}")
+            lines.append("")
+
+            # Prose paragraphs after the term heading
+            num_prose = draw(st.integers(min_value=0, max_value=2))
+            for _ in range(num_prose):
+                lines.append(draw(_prose_line))
+                lines.append("")
+
+            # #### sub-section headings within this term
+            num_subsections = draw(st.integers(min_value=0, max_value=2))
+            for _ in range(num_subsections):
+                sub_text = draw(_heading_text)
+                h4_headings.append(sub_text)
+                lines.append(f"#### {sub_text}")
+                lines.append("")
+
+                # Prose after sub-section heading
+                if draw(st.booleans()):
+                    lines.append(draw(_prose_line))
+                    lines.append("")
+
+    content = "\n".join(lines)
+
+    # Compute expected keys: lowercase of each ### heading
+    # (heading text is already stripped by the strategy)
+    expected_h3_keys = {h.lower() for h in h3_headings}
+    h4_keys = {h.lower() for h in h4_headings}
+
+    return content, expected_h3_keys, h4_keys
+
+
+# ---------------------------------------------------------------------------
+# Property 15: OSCAL Page Term Extraction
+# ---------------------------------------------------------------------------
+
+
+class TestProperty15OscalPageTermExtraction:
+    """
+    Feature: oscal-glossary-generator, Property 15: OSCAL Page Term Extraction
+
+    **Validates: Requirements 11.3, 11.4, 11.8**
+    """
+
+    @settings(max_examples=100, deadline=None)
+    @given(data=_hugo_markdown_with_headings())
+    def test_property_15_oscal_page_term_extraction(self, data):
+        """Feature: oscal-glossary-generator, Property 15: OSCAL Page Term Extraction"""
+        content, expected_h3_keys, h4_keys = data
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            page_path = Path(tmp_dir) / "_index.md"
+            page_path.write_text(content, encoding="utf-8")
+
+            result = parse_oscal_terms_page(page_path)
+
+            # 1. All keys are lowercase
+            for key in result:
+                assert key == key.lower(), (
+                    f"Key {key!r} is not lowercase"
+                )
+
+            # 2. Returned dict keys are exactly the lowercase text
+            #    of each ### heading
+            assert set(result.keys()) == expected_h3_keys, (
+                f"Keys mismatch.\n"
+                f"  Expected (from ### headings): {expected_h3_keys}\n"
+                f"  Got: {set(result.keys())}"
+            )
+
+            # 3. #### headings do NOT appear as top-level keys
+            #    (unless they happen to share text with a ### heading)
+            h4_only_keys = h4_keys - expected_h3_keys
+            for h4_key in h4_only_keys:
+                assert h4_key not in result, (
+                    f"#### heading {h4_key!r} should not be a top-level key"
+                )
+
+
+# ---------------------------------------------------------------------------
+# Strategies for Hugo-format markdown (Property 16)
+# ---------------------------------------------------------------------------
+
+# Strategy for a simple term heading name (letters only, no special chars)
+_heading_name = st.from_regex(r"[A-Z][a-z]{2,12}", fullmatch=True)
+
+# Strategy for a unique marker string (used to verify inclusion/exclusion)
+_marker = st.from_regex(r"MARKER_[a-z]{4,8}_[0-9]{3}", fullmatch=True)
+
+
+@st.composite
+def _hugo_page_with_prose_callout_todo(draw):
+    """Generate a Hugo-format markdown page with front matter, ### headings,
+    prose paragraphs, callout blocks, and todo blocks.
+
+    Returns a tuple of:
+      (file_content, expected_term_names, prose_markers, callout_markers,
+       todo_markers, front_matter_marker)
+
+    - prose_markers: list of (term_name, marker) tuples for prose content
+    - callout_markers: list of (term_name, marker) tuples for callout content
+    - todo_markers: list of markers that should be EXCLUDED from definitions
+    - front_matter_marker: a marker in front matter that should be EXCLUDED
+
+    All markers are guaranteed to be unique across the entire page so that
+    inclusion/exclusion checks are unambiguous.
+    """
+    # Generate 1-5 unique term heading names
+    num_terms = draw(st.integers(min_value=1, max_value=5))
+    term_names = draw(
+        st.lists(
+            _heading_name,
+            min_size=num_terms,
+            max_size=num_terms,
+            unique=True,
+        )
+    )
+
+    # Pre-generate all markers we'll need, ensuring global uniqueness.
+    # Worst case: 1 front matter + N prose + N callout + N todo = 1 + 3*N
+    max_markers = 1 + 3 * num_terms
+    all_markers = draw(
+        st.lists(
+            _marker, min_size=max_markers, max_size=max_markers, unique=True
+        )
+    )
+    marker_iter = iter(all_markers)
+
+    # Front matter with a unique marker
+    front_matter_marker = next(marker_iter)
+    lines = [
+        "---",
+        f"title: {front_matter_marker}",
+        "date: 2024-01-15",
+        "weight: 10",
+        "---",
+        "",
+    ]
+
+    prose_markers: list[tuple[str, str]] = []
+    callout_markers: list[tuple[str, str]] = []
+    todo_markers: list[str] = []
+
+    for term_name in term_names:
+        # Write the ### heading
+        lines.append(f"### {term_name}")
+        lines.append("")
+
+        # Always add a prose paragraph with a unique marker
+        prose_marker = next(marker_iter)
+        prose_markers.append((term_name, prose_marker))
+        lines.append(f"This is the definition of {term_name}. {prose_marker}")
+        lines.append("")
+
+        # Optionally add a callout block
+        if draw(st.booleans()):
+            callout_marker = next(marker_iter)
+            callout_markers.append((term_name, callout_marker))
+            # Choose between percent and angle-bracket variant
+            if draw(st.booleans()):
+                lines.append("{{% callout %}}")
+                lines.append(f"Callout content for {term_name}. {callout_marker}")
+                lines.append("{{% /callout %}}")
+            else:
+                lines.append("{{<callout>}}")
+                lines.append(f"Callout content for {term_name}. {callout_marker}")
+                lines.append("{{</callout>}}")
+            lines.append("")
+
+        # Optionally add a todo block
+        if draw(st.booleans()):
+            todo_marker = next(marker_iter)
+            todo_markers.append(todo_marker)
+            lines.append("{{<todo>}}")
+            lines.append(f"TODO placeholder content. {todo_marker}")
+            lines.append("{{</todo>}}")
+            lines.append("")
+
+    content = "\n".join(lines)
+    return (
+        content,
+        term_names,
+        prose_markers,
+        callout_markers,
+        todo_markers,
+        front_matter_marker,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Property 16: OSCAL Page Definition Assembly
+# ---------------------------------------------------------------------------
+
+
+class TestProperty16OSCALPageDefinitionAssembly:
+    """
+    Feature: oscal-glossary-generator, Property 16: OSCAL Page Definition Assembly
+
+    **Validates: Requirements 11.2, 11.5, 11.6, 11.7**
+    """
+
+    @settings(max_examples=100, deadline=None)
+    @given(data=_hugo_page_with_prose_callout_todo())
+    def test_property_16_definition_assembly(self, data):
+        """Feature: oscal-glossary-generator, Property 16: OSCAL Page Definition Assembly"""
+        (
+            content,
+            term_names,
+            prose_markers,
+            callout_markers,
+            todo_markers,
+            front_matter_marker,
+        ) = data
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            page_path = Path(tmp_dir) / "terminology.md"
+            page_path.write_text(content, encoding="utf-8")
+
+            result = parse_oscal_terms_page(page_path)
+
+            # 1. Prose paragraph content is included in definitions
+            for term_name, marker in prose_markers:
+                key = term_name.lower()
+                assert key in result, (
+                    f"Term '{term_name}' not found in parsed result"
+                )
+                assert marker in result[key], (
+                    f"Prose marker '{marker}' not found in definition "
+                    f"for term '{term_name}'"
+                )
+
+            # 2. Callout content is included in definitions (delimiters stripped)
+            for term_name, marker in callout_markers:
+                key = term_name.lower()
+                assert key in result, (
+                    f"Term '{term_name}' not found in parsed result"
+                )
+                assert marker in result[key], (
+                    f"Callout marker '{marker}' not found in definition "
+                    f"for term '{term_name}'"
+                )
+
+            # 3. Callout delimiters are stripped from definitions
+            all_definitions = "\n".join(result.values())
+            for delimiter in (
+                "{{% callout %}}",
+                "{{% /callout %}}",
+                "{{<callout>}}",
+                "{{</callout>}}",
+            ):
+                assert delimiter not in all_definitions, (
+                    f"Callout delimiter '{delimiter}' found in definitions"
+                )
+
+            # 4. Todo content is excluded from definitions
+            for marker in todo_markers:
+                for key, definition in result.items():
+                    assert marker not in definition, (
+                        f"Todo marker '{marker}' found in definition "
+                        f"for term '{key}'"
+                    )
+
+            # 5. Todo delimiters are excluded from definitions
+            for delimiter in ("{{<todo>}}", "{{</todo>}}"):
+                assert delimiter not in all_definitions, (
+                    f"Todo delimiter '{delimiter}' found in definitions"
+                )
+
+            # 6. Front matter content is excluded from definitions
+            for key, definition in result.items():
+                assert front_matter_marker not in definition, (
+                    f"Front matter marker '{front_matter_marker}' found "
+                    f"in definition for term '{key}'"
+                )
+
+
+# ---------------------------------------------------------------------------
+# Strategies for dual-source term matching (Property 17)
+# ---------------------------------------------------------------------------
+
+# Strategy for OSCAL short names (hyphenated lowercase strings)
+_oscal_short_name = st.from_regex(
+    r"[a-z][a-z]{0,7}(-[a-z]{1,6}){0,2}", fullmatch=True
+)
+
+# Strategy for OSCAL terms page definition text
+_oscal_def_text = st.text(
+    min_size=5,
+    max_size=80,
+    alphabet=st.characters(whitelist_categories=("L", "N", "Z", "P"), max_codepoint=127),
+).filter(lambda s: len(s.strip()) >= 5)
+
+
+@st.composite
+def _dual_source_inputs(draw):
+    """Generate random OSCAL short names with controlled overlap across
+    OSCAL terms page and NIST glossary sources.
+
+    Returns a tuple of:
+      (short_names, oscal_terms_index, nist_glossary_index,
+       expected_oscal_matched, expected_nist_matched, expected_unmatched)
+    """
+    # Generate a pool of unique short names
+    short_names = draw(
+        st.lists(_oscal_short_name, min_size=1, max_size=12, unique=True)
+    )
+
+    oscal_terms_index: dict[str, str] = {}
+    nist_glossary_index: dict[str, dict] = {}
+    expected_oscal_matched: set[str] = set()
+    expected_nist_matched: set[str] = set()
+    expected_unmatched: set[str] = set()
+
+    for sn in short_names:
+        lookup_key = sn.replace("-", " ").lower()
+
+        # Decide which sources contain this term
+        category = draw(
+            st.sampled_from([
+                "oscal_only",
+                "nist_only_with_defs",
+                "nist_only_empty_defs",
+                "both_sources",
+                "neither",
+            ])
+        )
+
+        if category == "oscal_only":
+            # Term in OSCAL page only → matched with source="OSCAL Page"
+            oscal_terms_index[lookup_key] = draw(_oscal_def_text)
+            expected_oscal_matched.add(sn)
+
+        elif category == "nist_only_with_defs":
+            # Term in NIST only with non-empty definitions → matched with source="NIST CSRC"
+            nist_glossary_index[lookup_key] = {
+                "term": lookup_key,
+                "link": f"https://csrc.nist.gov/glossary/term/{sn}",
+                "definitions": [{"text": f"NIST def for {sn}", "sources": []}],
+                "abbrSyn": None,
+            }
+            expected_nist_matched.add(sn)
+
+        elif category == "nist_only_empty_defs":
+            # Term in NIST only with empty/null definitions → unmatched
+            empty_defs = draw(st.sampled_from([None, []]))
+            nist_glossary_index[lookup_key] = {
+                "term": lookup_key,
+                "link": f"https://csrc.nist.gov/glossary/term/{sn}",
+                "definitions": empty_defs,
+                "abbrSyn": None,
+            }
+            expected_unmatched.add(sn)
+
+        elif category == "both_sources":
+            # Term in both OSCAL page and NIST glossary → OSCAL page wins
+            oscal_terms_index[lookup_key] = draw(_oscal_def_text)
+            nist_glossary_index[lookup_key] = {
+                "term": lookup_key,
+                "link": f"https://csrc.nist.gov/glossary/term/{sn}",
+                "definitions": [{"text": f"NIST def for {sn}", "sources": []}],
+                "abbrSyn": None,
+            }
+            expected_oscal_matched.add(sn)
+
+        else:
+            # Neither source → unmatched
+            expected_unmatched.add(sn)
+
+    return (
+        short_names,
+        oscal_terms_index,
+        nist_glossary_index,
+        expected_oscal_matched,
+        expected_nist_matched,
+        expected_unmatched,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Property 17: Dual-Source Term Matching Priority
+# ---------------------------------------------------------------------------
+
+
+class TestProperty17DualSourceTermMatchingPriority:
+    """
+    Feature: oscal-glossary-generator, Property 17: Dual-Source Term Matching Priority
+
+    **Validates: Requirements 3.2, 12.1, 12.3, 12.4, 13.1, 13.2, 13.3**
+    """
+
+    @settings(max_examples=100, deadline=None)
+    @given(inputs=_dual_source_inputs())
+    def test_property_17_dual_source_term_matching_priority(self, inputs):
+        """Feature: oscal-glossary-generator, Property 17: Dual-Source Term Matching Priority"""
+        (
+            short_names,
+            oscal_terms_index,
+            nist_glossary_index,
+            expected_oscal_matched,
+            expected_nist_matched,
+            expected_unmatched,
+        ) = inputs
+
+        matched, unmatched = match_terms(
+            short_names, nist_glossary_index, oscal_terms_index
+        )
+
+        # --- Verify total count invariant ---
+        assert len(matched) + len(unmatched) == len(short_names), (
+            f"matched ({len(matched)}) + unmatched ({len(unmatched)}) "
+            f"!= total ({len(short_names)})"
+        )
+
+        # --- Classify actual results by source ---
+        actual_oscal_matched: set[str] = set()
+        actual_nist_matched: set[str] = set()
+
+        for m in matched:
+            if m.source == "OSCAL Page":
+                actual_oscal_matched.add(m.short_name)
+            elif m.source == "NIST CSRC":
+                actual_nist_matched.add(m.short_name)
+            else:
+                raise AssertionError(
+                    f"Unexpected source '{m.source}' for term '{m.short_name}'"
+                )
+
+        actual_unmatched = set(unmatched)
+
+        # --- Verify OSCAL page priority: terms in OSCAL page are matched
+        #     with source="OSCAL Page" regardless of NIST presence ---
+        assert actual_oscal_matched == expected_oscal_matched, (
+            f"OSCAL-matched mismatch:\n"
+            f"  Expected: {expected_oscal_matched}\n"
+            f"  Actual:   {actual_oscal_matched}"
+        )
+
+        # --- Verify NIST fallback: terms only in NIST (with non-empty defs)
+        #     are matched with source="NIST CSRC" ---
+        assert actual_nist_matched == expected_nist_matched, (
+            f"NIST-matched mismatch:\n"
+            f"  Expected: {expected_nist_matched}\n"
+            f"  Actual:   {actual_nist_matched}"
+        )
+
+        # --- Verify unmatched: terms in neither source (or NIST with
+        #     empty definitions) are unmatched ---
+        assert actual_unmatched == expected_unmatched, (
+            f"Unmatched mismatch:\n"
+            f"  Expected: {expected_unmatched}\n"
+            f"  Actual:   {actual_unmatched}"
+        )

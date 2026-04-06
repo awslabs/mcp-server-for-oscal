@@ -2,15 +2,29 @@
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import sys
 from pathlib import Path
 
 import pytest
 
-# Add bin/ to path so we can import the script as a module
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "bin"))
-from generate_oscal_glossary import load_glossary
+# Load the script as a module since it lives in bin/ (not a package)
+_spec = importlib.util.spec_from_file_location(
+    "generate_oscal_glossary",
+    Path(__file__).resolve().parent.parent / "bin" / "generate_oscal_glossary.py",
+)
+assert _spec is not None, "Could not find generate_oscal_glossary.py"
+_mod = importlib.util.module_from_spec(_spec)
+_mod.__name__ = "generate_oscal_glossary"
+if "generate_oscal_glossary" not in sys.modules:
+    sys.modules["generate_oscal_glossary"] = _mod
+    assert _spec.loader is not None, "Module spec has no loader"
+    _spec.loader.exec_module(_mod)
+else:
+    _mod = sys.modules["generate_oscal_glossary"]
+
+load_glossary = _mod.load_glossary
 
 
 class TestLoadGlossary:
@@ -53,7 +67,7 @@ class TestLoadGlossary:
 
     def test_indexes_entries_with_null_definitions(self, tmp_path: Path) -> None:
         """Entries with null definitions are still indexed."""
-        data = {
+        data: dict = {
             "parentTerms": [
                 {"term": "SomeAbbr", "link": "https://x", "definitions": None, "abbrSyn": [{"text": "SA"}]},
             ]
@@ -68,7 +82,7 @@ class TestLoadGlossary:
 
     def test_indexes_entries_with_empty_definitions(self, tmp_path: Path) -> None:
         """Entries with empty definitions list are still indexed."""
-        data = {
+        data: dict = {
             "parentTerms": [
                 {"term": "EmptyDef", "link": "", "definitions": [], "abbrSyn": None},
             ]

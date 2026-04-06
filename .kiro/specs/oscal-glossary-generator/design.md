@@ -2,18 +2,19 @@
 
 ## Overview
 
-The OSCAL Glossary Generator is a build-time Python utility script (`bin/generate_oscal_glossary.py`) that produces a markdown glossary of OSCAL object types with definitions sourced from the NIST CSRC glossary. It bridges the gap between OSCAL's structured schema definitions and human-readable terminology by:
+The OSCAL Glossary Generator is a build-time Python utility script (`bin/generate_oscal_glossary.py`) that produces a markdown glossary of OSCAL object types with definitions sourced from two complementary sources: the OSCAL terminology page (priority) and the NIST CSRC glossary (secondary). It bridges the gap between OSCAL's structured schema definitions and human-readable terminology by:
 
 1. Parsing the OSCAL complete JSON schema to extract non-primitive object type definitions
 2. Writing extracted terms to a curated term list file for human review
 3. Reading terms from the curated term list file
-4. Matching terms against the NIST CSRC glossary export
-5. Generating a well-formatted markdown glossary with definitions, source references, and links
+4. Parsing the OSCAL terminology page for authoritative OSCAL-specific definitions
+5. Matching terms against the OSCAL terminology page (priority) and the NIST CSRC glossary (fallback)
+6. Generating a well-formatted markdown glossary with definitions, source annotations, and links
 
 The script supports a two-step workflow with a human-in-the-loop curation stage:
 
-- **Extract Mode** (`--extract-terms`): Parses the OSCAL schema and writes extracted object type short names to a Term List File (`data/oscal-terms.txt`). The user can then edit this file — removing noisy terms, adding custom terms, or fixing names to improve NIST glossary matching.
-- **Generate Mode** (default): Reads terms from the Term List File, matches them against the NIST glossary, and produces the Markdown Glossary.
+- **Extract Mode** (`--extract-terms`): Parses the OSCAL schema and writes extracted object type short names to a Term List File (`data/oscal-terms.txt`). The user can then edit this file — removing noisy terms, adding custom terms, or fixing names to improve matching.
+- **Generate Mode** (default): Reads terms from the Term List File, parses the OSCAL terminology page, loads the NIST glossary, matches terms against both sources with OSCAL page priority, and produces the Markdown Glossary with Definition_Source annotations.
 
 The script follows the same pattern as existing build-time utilities in `bin/` (e.g., `build_oscal_db.py`, `update_hashes.py`) and is invoked via `hatch run bin/generate_oscal_glossary.py`. The output file (`data/oscal_docs/oscal-glossary.md`) becomes a bundled project resource.
 
@@ -41,25 +42,30 @@ flowchart LR
         D3 --> E2[oscal-glossary.md]
         D2 --> B2
         G2[glossary-export.json] --> C2
+        H2[OSCAL Terms Page] --> P2[OSCAL Terms Parser]
+        P2 --> C2
     end
 ```
 
 ### Component Responsibilities
 
-- **CLI Entry Point** (`main()`): Parses `argparse` arguments (`--output`, `--schema`, `--glossary`, `--terms`, `--extract-terms`, `--verbose`), selects the operational mode, orchestrates the appropriate pipeline, handles top-level error reporting, and sets the exit code.
+- **CLI Entry Point** (`main()`): Parses `argparse` arguments (`--output`, `--schema`, `--glossary`, `--terms`, `--extract-terms`, `--oscal-terms-page`, `--verbose`), selects the operational mode, orchestrates the appropriate pipeline, handles top-level error reporting, and sets the exit code.
 - **Schema Parser** (`parse_schema()`): Loads the OSCAL complete JSON schema, iterates over `definitions`, classifies each as Object_Type or Scalar_Type, extracts and deduplicates short names.
 - **Term Writer** (`extract_terms()`): Writes the sorted, deduplicated short names to the Term List File with a comment header.
 - **Term Reader** (`read_terms()`): Reads the Term List File, skips comments and blank lines, strips whitespace, deduplicates, and returns a list of short names.
-- **Term Matcher** (`match_terms()`): Loads the NIST glossary, builds a case-insensitive index by term, and matches short names (hyphen-to-space conversion) against the index.
-- **Markdown Generator** (`generate_markdown()`): Renders matched and unmatched terms into a structured markdown file with headings, definitions, source references, links, and a timestamp.
+- **OSCAL Terms Parser** (`parse_oscal_terms_page()`): Parses the Hugo-format OSCAL terminology markdown file, extracting term names from `###` headings and their definitions from subsequent prose paragraphs and callout blocks, while skipping front matter and todo blocks.
+- **Term Matcher** (`match_terms()`): Matches short names against both the OSCAL terms page index (priority) and the NIST glossary index (fallback), using hyphen-to-space conversion and case-insensitive lookup. Records the Definition_Source for each matched term.
+- **Markdown Generator** (`generate_markdown()`): Renders matched and unmatched terms into a structured markdown file with headings, definitions, Definition_Source annotations, source references, links, and a timestamp.
 
 ### Design Decisions
 
 1. **Single-file script**: The generator lives in `bin/generate_oscal_glossary.py` as a self-contained script, consistent with other `bin/` utilities. No new package modules are needed since this is a build-time tool, not a runtime MCP tool.
 2. **No external dependencies beyond stdlib**: The script uses only `json`, `argparse`, `logging`, `pathlib`, `re`, `datetime`, and `sys` — all stdlib. No new pip dependencies required.
 3. **Deterministic output**: The markdown output is fully deterministic for the same inputs (excluding the timestamp line), enabling byte-identical comparison for CI validation.
-4. **Two-step workflow with human curation**: Splitting extraction from generation allows users to curate the term list — removing noisy terms, adding custom terms not in the schema, or fixing term names to improve NIST glossary matching. This is more flexible than a single-pass pipeline.
+4. **Two-step workflow with human curation**: Splitting extraction from generation allows users to curate the term list — removing noisy terms, adding custom terms not in the schema, or fixing term names to improve matching. This is more flexible than a single-pass pipeline.
 5. **Simple term list format**: The Term List File uses plain text with one term per line, `#` comments, and blank line separators. This is easy to edit in any text editor and easy to diff in version control.
+6. **OSCAL page priority over NIST**: When a term is defined in both the OSCAL terminology page and the NIST CSRC glossary, the OSCAL page definition takes priority because it is more specific to the OSCAL context. A WARNING-level log message is emitted when an override occurs, providing visibility into source conflicts.
+7. **Graceful degradation for missing OSCAL page**: If the OSCAL terminology page file is missing, the generator logs a warning and continues using only the NIST glossary. This ensures backward compatibility and allows the generator to work even when the OSCAL documentation is not available locally.
 
 ## Components and Interfaces
 
@@ -108,6 +114,42 @@ Reads terms from the Term List File and returns a deduplicated list of short nam
 
 **Raises:** `SystemExit` on missing file, or file with no valid terms.
 
+### `parse_oscal_terms_page(page_path: Path) -> dict[str, str]`
+
+Parses the Hugo-format OSCAL terminology markdown file and returns a case-insensitive index of term names to definition text.
+
+**Returns:** `dict` mapping lowercase term names to their definition text (prose paragraphs + callout content, with Hugo shortcode delimiters stripped).
+
+**Algorithm:**
+1. Load the file; if missing, log a WARNING and return an empty dict (graceful degradation)
+2. Skip the Hugo front matter block (YAML between opening `---` and closing `---` markers at the top of the file)
+3. Parse the remaining content line by line:
+   - When a `###` heading is encountered (but not `####` or deeper): start a new term entry using the heading text as the term name
+   - When a `####` or deeper heading is encountered: treat as a sub-section of the current term (content continues to accumulate under the current `###` term)
+   - When a `##` heading is encountered: close the current term (section boundary)
+   - When a `{{<todo>}}` opening marker is encountered: enter "skip mode" — discard all content until the matching `{{</todo>}}` closing marker
+   - When a `{{% callout %}}` or `{{<callout>}}` opening marker is encountered: strip the delimiter and continue collecting content
+   - When a `{{% /callout %}}` or `{{</callout>}}` closing marker is encountered: strip the delimiter and continue
+   - All other lines (prose paragraphs, blockquotes, links, images, etc.): accumulate as part of the current term's definition text
+4. For each collected term, join the accumulated lines into a single definition string (preserving paragraph structure)
+5. Build the index by normalizing each term name to lowercase
+6. If the file exists but contains no parseable `###` headings, log a WARNING and return an empty dict
+
+**Raises:** Nothing — this function degrades gracefully. Missing file or no headings result in warnings and an empty dict.
+
+**Parsing details derived from the actual OSCAL terminology page:**
+
+The file at `data/oscal_docs/OSCAL-Pages-main/src/content/learn/concepts/terminology/_index.md` has this structure:
+- Hugo YAML front matter between `---` markers (title, date, weight, aliases, toc config)
+- Introductory prose (before any `##` heading) — not associated with any term
+- `##` headings define sections (e.g., "Control Definition", "Implementation", "Assessment") — these are section boundaries, not terms
+- `###` headings define terms (e.g., "Control", "Catalog", "Baseline") — these are the terms to extract
+- `####` headings are sub-sections within a term (e.g., "Examples of Controls and Catalogs") — content under these still belongs to the parent `###` term
+- `{{% callout %}}...{{% /callout %}}` blocks contain supplementary quotes and references — include in definition
+- `{{<callout>}}...{{</callout>}}` blocks (angle-bracket variant) — same treatment as percent-bracket variant
+- `{{<todo>}}...{{</todo>}}` blocks contain incomplete placeholder content — skip entirely
+- Image references (`![...](...)`), markdown links, blockquotes, bold/italic — preserved as-is in definition text
+
 ### `load_glossary(glossary_path: Path) -> dict[str, dict]`
 
 Loads the NIST CSRC glossary export and returns a case-insensitive lookup dictionary.
@@ -121,14 +163,19 @@ Loads the NIST CSRC glossary export and returns a case-insensitive lookup dictio
 
 **Raises:** `SystemExit` on missing file, invalid JSON, or missing `parentTerms`.
 
-### `match_terms(short_names: list[str], glossary: dict[str, dict]) -> tuple[list[MatchedTerm], list[str]]`
+### `match_terms(short_names: list[str], glossary: dict[str, dict], oscal_terms: dict[str, str] | None = None) -> tuple[list[MatchedTerm], list[str]]`
 
-Matches OSCAL short names against the glossary index.
+Matches OSCAL short names against both the OSCAL terms page index (priority) and the NIST glossary index (fallback).
 
 **Algorithm:**
-1. For each short name, convert hyphens to spaces and look up in glossary (case-insensitive)
-2. If found and `definitions` is non-null and non-empty → Matched_Term
-3. Otherwise → Unmatched_Term
+1. For each short name, convert hyphens to spaces and normalize to lowercase for lookup
+2. **Priority lookup**: Check the `oscal_terms` dict first (if provided and non-empty):
+   - If found → create a Matched_Term with `source="OSCAL Page"`, the definition text from the OSCAL page, and no CSRC link/abbrSyn
+   - If the term also exists in the NIST glossary with non-empty definitions, log a WARNING indicating the OSCAL page definition is overriding the NIST definition
+3. **Fallback lookup**: If not found in `oscal_terms`, check the NIST glossary:
+   - If found and `definitions` is non-null and non-empty → create a Matched_Term with `source="NIST CSRC"`
+   - Otherwise → Unmatched_Term
+4. Log a summary: matched count, unmatched count, OSCAL page source count, NIST source count, override count, total processed
 
 **Returns:** Tuple of (matched terms list, unmatched short names list).
 
@@ -137,12 +184,13 @@ Matches OSCAL short names against the glossary index.
 Renders the glossary to a markdown file.
 
 **Sections:**
-1. Level-1 heading + intro paragraph + ISO 8601 timestamp
+1. Level-1 heading + intro paragraph (referencing both OSCAL terminology page and NIST CSRC glossary) + ISO 8601 timestamp
 2. Matched terms (alphabetical by Human_Readable_Name), each with:
    - Level-2 heading (Human_Readable_Name)
-   - "Also known as:" line if `abbrSyn` is present
-   - Numbered definitions with inline source references
-   - CSRC glossary link
+   - "Also known as:" line if `abbrSyn` is present (NIST-sourced terms only)
+   - Definition text (single text block for OSCAL-sourced terms, or numbered definitions for NIST-sourced terms with inline source references)
+   - CSRC glossary link (NIST-sourced terms only)
+   - Definition_Source annotation: `*Source: OSCAL Page*` or `*Source: NIST CSRC*`
 3. Level-2 "Unmatched Terms" heading + alphabetical bulleted list
 
 ### `to_human_readable(short_name: str) -> str`
@@ -155,15 +203,17 @@ Example: `back-matter` → `Back Matter`
 CLI entry point that selects the operational mode based on arguments.
 
 **Algorithm:**
-1. Parse arguments: `--output`, `--schema`, `--glossary`, `--terms`, `--extract-terms`, `--verbose`
+1. Parse arguments: `--output`, `--schema`, `--glossary`, `--terms`, `--extract-terms`, `--oscal-terms-page`, `--verbose`
 2. If `--extract-terms` is set (Extract Mode):
    - Call `parse_schema(args.schema)` to get short names
    - Call `extract_terms(short_names, args.terms)` to write the Term List File
+   - Ignore `--oscal-terms-page`, `--glossary`, and `--output` arguments
    - Log output path and count, exit 0
 3. If `--extract-terms` is not set (Generate Mode):
    - Call `read_terms(args.terms)` to get short names from the Term List File
+   - Call `parse_oscal_terms_page(args.oscal_terms_page)` to load OSCAL-specific definitions
    - Call `load_glossary(args.glossary)` to load the NIST glossary
-   - Call `match_terms(short_names, glossary)` to classify terms
+   - Call `match_terms(short_names, glossary, oscal_terms)` to classify terms with priority logic
    - Call `generate_markdown(matched, unmatched, args.output)` to write the glossary
    - Log output path, matched count, unmatched count, exit 0
 
@@ -174,10 +224,16 @@ CLI entry point that selects the operational mode based on arguments.
 class MatchedTerm:
     short_name: str           # e.g., "back-matter"
     human_name: str           # e.g., "Back Matter"
-    definitions: list[dict]   # From NIST glossary definitions array
-    link: str                 # CSRC glossary URL
-    abbr_syn: list[dict] | None  # Abbreviations/synonyms if present
+    definitions: list[dict]   # From NIST glossary definitions array (NIST-sourced)
+    link: str                 # CSRC glossary URL (empty for OSCAL-sourced terms)
+    abbr_syn: list[dict] | None  # Abbreviations/synonyms if present (NIST-sourced)
+    source: str = "NIST CSRC"    # Definition_Source: "OSCAL Page" or "NIST CSRC"
+    oscal_definition: str = ""   # Plain text definition from OSCAL page (OSCAL-sourced)
 ```
+
+The `source` field indicates the origin of the definition:
+- `"OSCAL Page"` — definition came from the OSCAL terminology page; `oscal_definition` contains the text, `definitions` is empty, `link` is empty
+- `"NIST CSRC"` — definition came from the NIST CSRC glossary; `definitions` contains the structured definitions, `link` contains the CSRC URL
 
 ## Data Models
 
@@ -244,6 +300,65 @@ The glossary at `data/glossary-export.json`:
 - Each definition has `text` and `sources` (array of `{text, link}`)
 - `abbrSyn` is optional, contains abbreviations/synonyms
 
+### OSCAL Terminology Page Structure (Input)
+
+The OSCAL terminology page at `data/oscal_docs/OSCAL-Pages-main/src/content/learn/concepts/terminology/_index.md` is a Hugo-format markdown file:
+
+```markdown
+---
+title: Key Concepts and Terms Used in OSCAL
+date: 2020-04-23 16:34:04 -0400
+weight: 10
+aliases:
+ - /concepts/terminology/
+---
+
+Introductory prose (not part of any term)...
+
+## Control Definition
+
+Section intro prose (not a term)...
+
+### Control
+
+Many privacy and security compliance programs are based on or make use of **controls**.
+
+In OSCAL, a control is *a requirement or guideline...*
+
+{{% callout %}}
+A **security control** is defined in NIST SP 800-53...
+> The safeguards or countermeasures prescribed...
+{{% /callout %}}
+
+{{<todo>}}
+#### Control Objective
+TODO
+{{</todo>}}
+
+#### Examples of Controls and Catalogs
+
+Each control has an associated definition...
+
+### Catalog
+
+Framework providers organize control requirements into a **catalog**.
+
+### Baseline
+
+A baseline defines a specific set of selected security control requirements...
+
+{{<callout>}}NIST SP 800-37 defines a baseline as...{{</callout>}}
+```
+
+Key structural elements:
+- **Hugo front matter**: YAML between `---` markers — skipped during parsing
+- **`##` headings**: Section boundaries (e.g., "Control Definition") — not terms, but close the preceding `###` term
+- **`###` headings**: Top-level term names (e.g., "Control", "Catalog", "Baseline") — these are extracted as terms
+- **`####` headings**: Sub-sections within a term (e.g., "Examples of Controls and Catalogs") — content belongs to parent `###` term
+- **`{{% callout %}}` / `{{<callout>}}`**: Supplementary content blocks — included in definition, delimiters stripped
+- **`{{<todo>}}`**: Incomplete placeholder content — skipped entirely (inclusive of delimiters)
+- **Prose paragraphs**: Definition text — collected between heading boundaries
+
 ### Term List File Structure (Input/Output)
 
 The term list file at `data/oscal-terms.txt`:
@@ -270,9 +385,18 @@ control
 ```markdown
 # OSCAL Glossary
 
-Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary).
+Definitions sourced from the [OSCAL Terminology Page](https://pages.nist.gov/OSCAL/learn/concepts/terminology/) and the [NIST CSRC Glossary](https://csrc.nist.gov/glossary).
 
 *Generated: 2024-01-15T10:30:00Z*
+
+## Catalog
+
+Framework providers organize control requirements into a **catalog**.
+The OSCAL catalog model is designed to represent control requirement information...
+
+*Source: OSCAL Page*
+
+---
 
 ## Access Control
 
@@ -283,16 +407,17 @@ Definitions sourced from the [NIST CSRC Glossary](https://csrc.nist.gov/glossary
 
 [CSRC Glossary: Access Control](https://csrc.nist.gov/glossary/term/access_control)
 
+*Source: NIST CSRC*
+
 ---
 
 ## Unmatched Terms
 
-The following OSCAL object types did not have matching entries in the NIST CSRC glossary:
+The following OSCAL object types did not have matching entries in the OSCAL terminology page or the NIST CSRC glossary:
 
 - Include All
 - Select Control
 ```
-
 
 ## Correctness Properties
 
@@ -332,7 +457,7 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 
 *For any* OSCAL short name, converting hyphens to spaces and performing a case-insensitive lookup against the glossary SHALL classify the term as Matched_Term if and only if the glossary contains a matching entry with a non-null, non-empty `definitions` array. Otherwise it SHALL be classified as Unmatched_Term.
 
-**Validates: Requirements 3.1, 3.2, 3.3, 3.4**
+**Validates: Requirements 3.1, 3.3, 3.4, 3.5**
 
 ### Property 7: Alphabetical Ordering
 
@@ -366,7 +491,7 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 
 ### Property 12: Deterministic Output
 
-*For any* pair of runs on the same input terms and NIST glossary, the generated markdown output SHALL be byte-identical after excluding the generation timestamp line.
+*For any* pair of runs on the same input terms, OSCAL terms page, and NIST glossary, the generated markdown output SHALL be byte-identical after excluding the generation timestamp line.
 
 **Validates: Requirements 6.5**
 
@@ -382,6 +507,27 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 
 **Validates: Requirements 8.2, 8.3, 8.4**
 
+### Property 15: OSCAL Page Term Extraction
+
+*For any* Hugo-format markdown file containing `###` headings and `####` headings, `parse_oscal_terms_page()` SHALL return a dict whose keys are the lowercase text of each `###` heading, and SHALL NOT include `####` (or deeper) headings as top-level keys. The dict keys SHALL be normalized to lowercase for case-insensitive matching.
+
+**Validates: Requirements 11.3, 11.4, 11.8**
+
+### Property 16: OSCAL Page Definition Assembly
+
+*For any* Hugo-format markdown file with `###` headings followed by prose paragraphs, callout blocks, and todo blocks, `parse_oscal_terms_page()` SHALL return definitions that include all prose paragraphs and callout content (with Hugo shortcode delimiters stripped), SHALL exclude all content within `{{<todo>}}...{{</todo>}}` blocks, and SHALL exclude Hugo front matter content.
+
+**Validates: Requirements 11.2, 11.5, 11.6, 11.7**
+
+### Property 17: Dual-Source Term Matching Priority
+
+*For any* set of OSCAL short names, OSCAL terms page index, and NIST glossary index, `match_terms()` SHALL:
+- Use the OSCAL page definition when a term exists in the OSCAL terms page, regardless of whether it also exists in the NIST glossary, and set `source="OSCAL Page"`
+- Fall back to the NIST glossary definition when a term is not in the OSCAL terms page but exists in the NIST glossary with non-empty definitions, and set `source="NIST CSRC"`
+- Classify a term as Unmatched_Term when it exists in neither source (or only in the NIST glossary with null/empty definitions)
+
+**Validates: Requirements 3.2, 12.1, 12.3, 12.4, 13.1, 13.2, 13.3**
+
 ## Error Handling
 
 ### Input Validation Errors
@@ -396,6 +542,8 @@ The following OSCAL object types did not have matching entries in the NIST CSRC 
 | Glossary missing `parentTerms` | Log error indicating expected structure, exit | 1 |
 | Term List File missing | Log error with file path, advise running `--extract-terms` first, exit | 1 |
 | Term List File has no valid terms | Log error indicating file contains no terms, exit | 1 |
+| OSCAL Terms Page missing | Log WARNING with file path, continue with NIST glossary only | N/A (degraded) |
+| OSCAL Terms Page has no `###` headings | Log WARNING, continue with NIST glossary only | N/A (degraded) |
 
 ### Output Errors
 
@@ -415,7 +563,7 @@ def _fatal(msg: str) -> NoReturn:
     sys.exit(1)
 ```
 
-All error paths use `sys.exit(1)` for non-zero exit codes, consistent with the `build_oscal_db.py` pattern. Error messages always include the file path and a description of the failure.
+All error paths use `sys.exit(1)` for non-zero exit codes, consistent with the `build_oscal_db.py` pattern. Error messages always include the file path and a description of the failure. The OSCAL terms page uses graceful degradation (warning + continue) rather than fatal errors, since it is an optional enhancement to the glossary.
 
 ## Testing Strategy
 
@@ -425,15 +573,16 @@ Unit tests cover specific examples, edge cases, and error conditions:
 
 - **Schema parsing edge cases**: Missing file, invalid JSON, missing `definitions` key, schema with only scalar types, schema with mixed object/scalar types
 - **Glossary loading edge cases**: Missing file, invalid JSON, missing `parentTerms`, entries with null/empty definitions
-- **Term matching edge cases**: Terms with null definitions (classified as unmatched), no matches found, all terms matched
+- **Term matching edge cases**: Terms with null definitions (classified as unmatched), no matches found, all terms matched, OSCAL page override logging, mixed OSCAL/NIST sources
+- **OSCAL terms page parsing**: Missing file (warning + empty dict), file with no `###` headings (warning + empty dict), front matter skipping, callout block inclusion, todo block exclusion, `####` sub-section handling, real OSCAL terminology page smoke test
 - **Term extraction**: Verify output file format (comment header, sorted terms, no blank lines between terms), directory creation
 - **Term reading**: Missing file error with `--extract-terms` advice, empty file error, files with only comments/blanks, whitespace stripping
-- **Markdown rendering**: Header structure validation, unmatched terms bulleted list, output directory creation
-- **CLI**: Default argument values, `--help` output, unrecognized arguments, `--verbose` logging, exit codes, `--extract-terms` mode selection, `--terms` argument, `--extract-terms` ignoring `--glossary`/`--output`
+- **Markdown rendering**: Header structure validation, unmatched terms bulleted list, output directory creation, Definition_Source annotations for both OSCAL and NIST sources, OSCAL-sourced term rendering (no CSRC link, no numbered definitions)
+- **CLI**: Default argument values, `--help` output, unrecognized arguments, `--verbose` logging, exit codes, `--extract-terms` mode selection, `--terms` argument, `--oscal-terms-page` argument and default, `--extract-terms` ignoring `--oscal-terms-page`/`--glossary`/`--output`
 
 ### Property-Based Tests (Hypothesis)
 
-Property-based tests verify the 14 correctness properties using the `hypothesis` library (already a project dev dependency). Each property test runs a minimum of 100 iterations.
+Property-based tests verify the 17 correctness properties using the `hypothesis` library (already a project dev dependency). Each property test runs a minimum of 100 iterations.
 
 **Library**: `hypothesis` (already in `pyproject.toml` devtest group)
 
@@ -459,6 +608,8 @@ Feature: oscal-glossary-generator, Property {N}: {property_text}
 - `matched_term()`: Generates random MatchedTerm instances for rendering tests
 - `valid_short_name()`: Generates random valid short names (hyphenated, lowercase/uppercase letters, digits) for term list file tests
 - `term_list_file_content()`: Generates random term list file content with valid terms, comments, blank lines, and duplicates
+- `hugo_markdown_file()`: Generates random Hugo-format markdown files with front matter, `##`/`###`/`####` headings, prose paragraphs, callout blocks, and todo blocks
+- `oscal_terms_dict()`: Generates random OSCAL terms page index dicts (lowercase term → definition text)
 
 **Property test mapping**:
 
@@ -473,8 +624,11 @@ Feature: oscal-glossary-generator, Property {N}: {property_text}
 | 7: Alphabetical Ordering | `test_alphabetical_ordering` | Sets of matched term names |
 | 8: Rendering Completeness | `test_rendering_completeness` | Matched terms with varying definition counts |
 | 9: AbbrSyn Rendering | `test_abbrsyn_rendering` | Matched terms with varying abbrSyn entries |
-| 10: Completeness Invariant | `test_completeness_invariant` | Term list + glossary combinations |
+| 10: Completeness Invariant | `test_completeness_invariant` | Term list + glossary + OSCAL terms combinations |
 | 11: Definition Fidelity | `test_definition_fidelity` | Definition texts with special characters, HTML |
-| 12: Deterministic Output | `test_deterministic_output` | Random term list + glossary inputs, two runs |
+| 12: Deterministic Output | `test_deterministic_output` | Random term list + glossary + OSCAL terms inputs, two runs |
 | 13: Term List Round Trip | `test_term_list_round_trip` | Random lists of valid short names |
 | 14: Term List Reading | `test_term_list_reading_correctness` | Files with comments, blanks, duplicates, whitespace |
+| 15: OSCAL Page Term Extraction | `test_oscal_page_term_extraction` | Hugo markdown files with varying `###`/`####` headings |
+| 16: OSCAL Page Definition Assembly | `test_oscal_page_definition_assembly` | Hugo markdown files with prose, callouts, todos, front matter |
+| 17: Dual-Source Matching Priority | `test_dual_source_matching_priority` | Short names with varying presence in OSCAL page vs NIST glossary |
