@@ -57,6 +57,42 @@ OSCAL (Open Security Controls Assessment Language) is a set of framework-agnosti
 | `get_capability` | Retrieve a single capability by UUID with full OSCAL representation |
 | `query_oscal_documentation` | RAG-based documentation query (requires AWS Bedrock Knowledge Base; conditionally registered) |
 | `about` | Server metadata including version and supported OSCAL version |
+| **Catalog tools** | |
+| `query_catalog` | Query OSCAL Catalog documents by UUID, title, type, or list all (paginated) |
+| `list_catalogs` | List loaded OSCAL Catalogs with summary metadata (UUID, title, child count, size) |
+| `list_catalog_controls` | List controls within OSCAL Catalog documents, optionally scoped by parent catalog UUID |
+| `list_catalog_groups` | List control groups (families) within OSCAL Catalog documents, optionally scoped by parent catalog UUID |
+| **SSP tools** | |
+| `query_ssp` | Query OSCAL System Security Plan documents by UUID, title, type, or list all (paginated) |
+| `list_ssps` | List loaded OSCAL System Security Plans with summary metadata |
+| `list_ssp_control_implementations` | List control-implementation elements within OSCAL SSP documents |
+| `list_ssp_system_components` | List system-component elements (servers, services, software) within OSCAL SSP documents |
+| **Profile tools** | |
+| `query_profile` | Query OSCAL Profile documents by UUID, title, type, or list all (paginated) |
+| `list_profiles` | List loaded OSCAL Profiles with summary metadata |
+| `list_profile_imports` | List import elements (catalog/profile references) within OSCAL Profile documents |
+| `list_profile_modify` | List modify elements (control customisations) within OSCAL Profile documents |
+| **Assessment Plan tools** | |
+| `query_assessment_plan` | Query OSCAL Assessment Plan documents by UUID, title, type, or list all (paginated) |
+| `list_assessment_plans` | List loaded OSCAL Assessment Plans with summary metadata |
+| `list_assessment_plan_tasks` | List task elements within OSCAL Assessment Plan documents |
+| `list_assessment_plan_activities` | List activity elements (assessment methods/procedures) within OSCAL Assessment Plan documents |
+| **Assessment Results tools** | |
+| `query_assessment_results` | Query OSCAL Assessment Results documents by UUID, title, type, or list all (paginated) |
+| `list_assessment_results` | List loaded OSCAL Assessment Results with summary metadata |
+| `list_assessment_results_results` | List result elements (assessment outcomes) within OSCAL Assessment Results documents |
+| `list_assessment_results_findings` | List finding elements (control implementation determinations) within OSCAL Assessment Results documents |
+| **POA&M tools** | |
+| `query_poam` | Query OSCAL Plan of Action and Milestones (POA&M) documents by UUID, title, type, or list all (paginated) |
+| `list_poams` | List loaded OSCAL Plans of Action and Milestones with summary metadata |
+| `list_poam_items` | List POA&M item elements (security issues and remediation plans) within OSCAL POA&M documents |
+| **Mapping Collection tools** | |
+| `query_mapping_collection` | Query OSCAL Mapping Collection documents by UUID, title, type, or list all (paginated) |
+| `list_mapping_collections` | List loaded OSCAL Mapping Collections with summary metadata |
+| `list_mapping_collection_mappings` | List mapping elements (cross-framework control relationships) within OSCAL Mapping Collection documents |
+| **Cross-cutting tools** | |
+| `text_search_oscal` | Full-text search across all loaded OSCAL documents and child elements using SQLite FTS5, ranked by relevance |
+| `get_child_element` | Retrieve a single child element by its identifier (UUID or token ID), with optional parent document scoping |
 
 ### Key Tool Parameters
 
@@ -79,6 +115,27 @@ OSCAL (Open Security Controls Assessment Language) is a set of framework-agnosti
 
 **`get_capability`**
 - `uuid` (string, required) — UUID of the capability. Use `list_capabilities` to discover UUIDs.
+
+**Common `query_*` tools** (applies to `query_catalog`, `query_ssp`, `query_profile`, `query_assessment_plan`, `query_assessment_results`, `query_poam`, `query_mapping_collection`)
+- `query_type` (string, default: `"all"`) — `"all"`, `"by_uuid"`, or `"by_title"`.
+- `query_value` (string, optional) — Value to search for. Required for `by_uuid` and `by_title`.
+- `offset` (integer, default: `0`) — Zero-based pagination offset.
+- `limit` (integer, default: `10`) — Maximum items per page (1–100).
+
+**Common `list_*` child element tools** (applies to `list_catalog_controls`, `list_catalog_groups`, `list_ssp_control_implementations`, `list_ssp_system_components`, etc.)
+- `parent_doc_uuid` (string, optional) — UUID of the parent document to scope the listing.
+- `offset` (integer, default: `0`) — Zero-based pagination offset.
+- `limit` (integer, default: `10`) — Maximum items per page (1–100).
+
+**`text_search_oscal`**
+- `query_text` (string, required) — The search text.
+- `oscal_model_type` (string, optional) — Filter results to a specific OSCAL model type (e.g. `"catalog"`, `"system-security-plan"`). When omitted, all model types are searched.
+- `offset` (integer, default: `0`) — Zero-based pagination offset.
+- `limit` (integer, default: `10`) — Maximum items per page (1–100).
+
+**`get_child_element`**
+- `element_id` (string, required) — UUID or token ID of the child element (e.g. `"ac-1"` for a catalog control).
+- `parent_doc_uuid` (string, optional) — UUID of the parent document to narrow the search.
 
 ### Tool Usage Examples
 
@@ -105,6 +162,36 @@ query_component_definition(query_type="by_title", query_value="Amazon S3")
 **Explore component definitions top-down:**
 ```
 list_component_definitions()  →  list_capabilities()  →  get_capability(uuid="...")
+```
+
+**List all loaded catalogs:**
+```
+list_catalogs()
+```
+
+**Query a specific catalog by title:**
+```
+query_catalog(query_type="by_title", query_value="NIST SP 800-53")
+```
+
+**List controls in a specific catalog:**
+```
+list_catalog_controls(parent_doc_uuid="<catalog-uuid>")
+```
+
+**Full-text search across all OSCAL documents:**
+```
+text_search_oscal(query_text="access control", oscal_model_type="catalog")
+```
+
+**Retrieve a specific child element:**
+```
+get_child_element(element_id="ac-1", parent_doc_uuid="<catalog-uuid>")
+```
+
+**Explore OSCAL documents top-down:**
+```
+list_catalogs()  →  list_catalog_controls(parent_doc_uuid="...")  →  get_child_element(element_id="ac-1")
 ```
 
 ## Onboarding

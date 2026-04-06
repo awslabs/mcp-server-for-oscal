@@ -18,6 +18,42 @@ This package contains all tool implementations for the OSCAL MCP server. Each to
 | `get_capability` | Retrieve a single capability by UUID with full OSCAL representation |
 | `query_oscal_documentation` | RAG-based documentation query (requires AWS Bedrock Knowledge Base; conditionally registered) |
 | `about` | Server metadata including version and supported OSCAL version |
+| **Catalog tools** | |
+| `query_catalog` | Query OSCAL Catalog documents by UUID, title, type, or list all (paginated) |
+| `list_catalogs` | List loaded OSCAL Catalogs with summary metadata (UUID, title, child count, size) |
+| `list_catalog_controls` | List controls within OSCAL Catalog documents, optionally scoped by parent catalog UUID |
+| `list_catalog_groups` | List control groups (families) within OSCAL Catalog documents, optionally scoped by parent catalog UUID |
+| **SSP tools** | |
+| `query_ssp` | Query OSCAL System Security Plan documents by UUID, title, type, or list all (paginated) |
+| `list_ssps` | List loaded OSCAL System Security Plans with summary metadata |
+| `list_ssp_control_implementations` | List control-implementation elements within OSCAL SSP documents |
+| `list_ssp_system_components` | List system-component elements (servers, services, software) within OSCAL SSP documents |
+| **Profile tools** | |
+| `query_profile` | Query OSCAL Profile documents by UUID, title, type, or list all (paginated) |
+| `list_profiles` | List loaded OSCAL Profiles with summary metadata |
+| `list_profile_imports` | List import elements (catalog/profile references) within OSCAL Profile documents |
+| `list_profile_modify` | List modify elements (control customisations) within OSCAL Profile documents |
+| **Assessment Plan tools** | |
+| `query_assessment_plan` | Query OSCAL Assessment Plan documents by UUID, title, type, or list all (paginated) |
+| `list_assessment_plans` | List loaded OSCAL Assessment Plans with summary metadata |
+| `list_assessment_plan_tasks` | List task elements within OSCAL Assessment Plan documents |
+| `list_assessment_plan_activities` | List activity elements (assessment methods/procedures) within OSCAL Assessment Plan documents |
+| **Assessment Results tools** | |
+| `query_assessment_results` | Query OSCAL Assessment Results documents by UUID, title, type, or list all (paginated) |
+| `list_assessment_results` | List loaded OSCAL Assessment Results with summary metadata |
+| `list_assessment_results_results` | List result elements (assessment outcomes) within OSCAL Assessment Results documents |
+| `list_assessment_results_findings` | List finding elements (control implementation determinations) within OSCAL Assessment Results documents |
+| **POA&M tools** | |
+| `query_poam` | Query OSCAL Plan of Action and Milestones (POA&M) documents by UUID, title, type, or list all (paginated) |
+| `list_poams` | List loaded OSCAL Plans of Action and Milestones with summary metadata |
+| `list_poam_items` | List POA&M item elements (security issues and remediation plans) within OSCAL POA&M documents |
+| **Mapping Collection tools** | |
+| `query_mapping_collection` | Query OSCAL Mapping Collection documents by UUID, title, type, or list all (paginated) |
+| `list_mapping_collections` | List loaded OSCAL Mapping Collections with summary metadata |
+| `list_mapping_collection_mappings` | List mapping elements (cross-framework control relationships) within OSCAL Mapping Collection documents |
+| **Cross-cutting tools** | |
+| `text_search_oscal` | Full-text search across all loaded OSCAL documents and child elements using SQLite FTS5, ranked by relevance |
+| `get_child_element` | Retrieve a single child element by its identifier (UUID or token ID), with optional parent document scoping |
 
 ### 1. List OSCAL Models
 **Tool**: `list_oscal_models`
@@ -234,15 +270,89 @@ Returns metadata about the MCP server itself.
 
 ---
 
+## Query & List Tools (OSCAL Store)
+
+The OSCAL Store provides a SQLite-backed index of all loaded OSCAL documents and their child elements. Every OSCAL model type has a pair of tools:
+
+- **`query_<model>`** — retrieve full document content, with filtering by UUID, title, or type
+- **`list_<model>`** — return summary metadata (UUID, title, model type, child count, size)
+
+Child element tools (`list_<model>_<element>`) list elements within a specific parent document type. Two cross-cutting tools — `text_search_oscal` and `get_child_element` — operate across all model types.
+
+### Common Parameters for `query_*` Tools
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query_type` | str | `"all"` | One of `"all"`, `"by_uuid"`, `"by_title"`, `"by_type"` |
+| `query_value` | str | `None` | Value to search for (required for `by_uuid`, `by_title`, `by_type`) |
+| `offset` | int | `0` | Zero-based pagination offset |
+| `limit` | int | `10` | Maximum items to return, 1–100 |
+
+### Common Parameters for `list_*` Tools
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `offset` | int | `0` | Zero-based pagination offset |
+| `limit` | int | `10` | Maximum items to return, 1–100 |
+
+### Common Return Format
+
+All `query_*` and `list_*` tools return a paginated response dict:
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `items` | list | Page of result objects |
+| `total` | int | Total number of matching items |
+| `offset` | int | Current pagination offset |
+| `limit` | int | Requested page size |
+| `hasMore` | bool | Whether additional pages exist beyond the current page |
+
+### Child Element List Tools
+
+Tools like `list_catalog_controls`, `list_ssp_system_components`, `list_poam_items`, etc. list child elements within a specific parent document type. In addition to `offset` and `limit`, they accept:
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `parent_doc_uuid` | str | `None` | UUID of the parent document to scope the listing. When omitted, child elements across all documents of that type are returned. |
+
+Each returned item contains: `id`, `title`, `element_type`, `description`, `parentDocumentTitle`, `parentDocumentUuid`.
+
+### `text_search_oscal`
+
+Full-text search across all loaded OSCAL documents and child elements using SQLite FTS5. Results are ranked by relevance.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `query_text` | str | _(required)_ | The search text |
+| `oscal_model_type` | str | `None` | Filter results to a specific OSCAL model type (e.g. `"catalog"`, `"system-security-plan"`). When omitted, all model types are searched. |
+| `offset` | int | `0` | Zero-based pagination offset |
+| `limit` | int | `10` | Maximum items to return, 1–100 |
+
+Returns the standard paginated response. Each item contains: `entity_type`, `entity_id`, `title`, `description`, `model_type`.
+
+### `get_child_element`
+
+Retrieve a single child element by its identifier (UUID or token ID), with optional parent document scoping.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `element_id` | str | _(required)_ | UUID or token ID of the child element (e.g. `"ac-1"` for a catalog control, or a UUID for tasks, findings, etc.) |
+| `parent_doc_uuid` | str | `None` | UUID of the parent document to narrow the search. Recommended for token-based IDs that may not be globally unique. |
+
+Returns a dict with keys: `id`, `title`, `element_type`, `description`, `parentDocumentTitle`, `parentDocumentUuid`, `raw_json` — or `None` if not found. If `element_id` is ambiguous across documents and `parent_doc_uuid` is omitted, returns an error dict with `error: "ambiguous_element_id"` and a list of matching parent document UUIDs.
+
+---
+
 ## Implementation Details
 
 ### Tool Registration
-Tools are registered in `main.py` using the FastMCP framework. Tool functions are collected by `get_tool_list()` in `tools/__init__.py`, which conditionally includes `query_oscal_documentation` only when a Knowledge Base ID is configured. The `about` tool is registered separately in `main.py` as an MCP-server-only tool.
+Tools are registered in `main.py` using the FastMCP framework. Tool functions are collected by `get_tool_list()` in `tools/__init__.py`, which gathers the original tools, query/list tools from `query_oscal_models.py`, and `query_oscal_documentation` (always included). The `about` tool is registered separately in `main.py` as an MCP-server-only tool.
 
 ### Dependencies
 - **strands**: Provides the `@tool` decorator for tool definitions
 - **FastMCP**: MCP server framework
 - **compliance-trestle**: OSCAL Pydantic models and utilities
+- **OscalStore**: SQLite-backed content indexing and full-text search (`oscal_store.py`)
 - **boto3**: AWS SDK (for documentation queries)
 - **requests**: HTTP client (for remote Component Definition loading)
 - **jsonschema**: JSON Schema validation (transitive dependency)
@@ -256,6 +366,8 @@ The `utils.py` module provides shared functionality:
 - `try_notify_client_error()`: Helper for error notifications
 - `verify_package_integrity()`: Package integrity verification
 
+The `query_oscal_models.py` module provides the query/list tool implementations for all OSCAL model types, including per-model `query_*`/`list_*` pairs, child element list tools, `text_search_oscal`, and `get_child_element`.
+
 ### Configuration
 Tools respect configuration from `config.py`, including:
 - `component_definitions_dir`: Directory for Component Definitions
@@ -264,3 +376,6 @@ Tools respect configuration from `config.py`, including:
 - `knowledge_base_id`: Bedrock Knowledge Base ID
 - `aws_profile`: AWS profile for Bedrock queries
 - `log_level`: Logging level
+- `oscal_documents_dir`: Directory containing user OSCAL JSON files
+- `oscal_store_db_path`: Path to persistent SQLite database
+- `oscal_store_cache_size`: Maximum parsed documents in LRU cache
