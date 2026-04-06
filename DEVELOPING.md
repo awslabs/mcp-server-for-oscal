@@ -61,11 +61,13 @@ See [dotenv.example](dotenv.example) for available options. Key environment vari
 
 ### AWS Setup
 
-To use the documentation query feature, you need:
+AWS credentials are required for the OSCAL agent (`oscal-agent`) and optional for the MCP server:
 
 1. **AWS Credentials**: Configure AWS credentials using AWS CLI, environment variables, or IAM roles
-2. **Bedrock Access**: Ensure your AWS account has access to Amazon Bedrock
-3. **Knowledge Base**: Optionally create an OSCAL knowledge base in Bedrock for enhanced documentation queries
+2. **Bedrock Access**: Ensure your AWS account has access to Amazon Bedrock (required for the OSCAL agent; optional for the MCP server)
+3. **Knowledge Base** _(optional)_: Set `OSCAL_KB_ID` to enable the `query_oscal_documentation` tool with a Bedrock Knowledge Base
+
+The MCP server runs without AWS credentials by default — all bundled content (schemas, component definitions, documentation) is available locally. AWS is only needed if you enable the documentation query tool or use the standalone agent.
 
 ## Usage
 
