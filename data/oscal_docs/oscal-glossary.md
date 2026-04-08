@@ -14,6 +14,10 @@ Definitions sourced from the [OSCAL Terminology Page](https://pages.nist.gov/OSC
 
 *Source: NIST CSRC*
 
+In OSCAL, an activity identifies an assessment or related process that can be performed. In the assessment plan, this is an intended activity which may be associated with an assessment task. In the assessment results, this is an activity that was actually performed as part of an assessment.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Address
@@ -40,6 +44,10 @@ Definitions sourced from the [OSCAL Terminology Page](https://pages.nist.gov/OSC
 
 *Source: NIST CSRC*
 
+In OSCAL, an address is a postal address for a location.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Assessment Method
@@ -60,6 +68,10 @@ Definitions sourced from the [OSCAL Terminology Page](https://pages.nist.gov/OSC
 
 *Source: NIST CSRC*
 
+In OSCAL, an assessment method is a local definition of a control objective. Uses catalog syntax for control objective and assessment activities.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Assessment Plan
@@ -75,6 +87,10 @@ Definitions sourced from the [OSCAL Terminology Page](https://pages.nist.gov/OSC
 
 *Source: NIST CSRC*
 
+In OSCAL, a Security Assessment Plan (SAP) is an assessment plan, such as those provided by a FedRAMP assessor.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Assessment Results
@@ -86,6 +102,10 @@ Definitions sourced from the [OSCAL Terminology Page](https://pages.nist.gov/OSC
 [CSRC Glossary: Assessment Results](https://csrc.nist.gov/glossary/term/assessment_results)
 
 *Source: NIST CSRC*
+
+In OSCAL, Security Assessment Results (SAR) are security assessment results, such as those provided by a FedRAMP assessor in the FedRAMP Security Assessment Report.
+
+*Source: OSCAL Complete Schema (XSD)*
 
 ---
 
@@ -135,6 +155,10 @@ Definitions sourced from the [OSCAL Terminology Page](https://pages.nist.gov/OSC
 
 *Source: NIST CSRC*
 
+In OSCAL, an authorization boundary is a description of this system's authorization boundary, optionally supplemented by diagrams that illustrate the authorization boundary.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Capability
@@ -167,6 +191,10 @@ Definitions sourced from the [OSCAL Terminology Page](https://pages.nist.gov/OSC
 
 *Source: NIST CSRC*
 
+In OSCAL, a capability is a grouping of other components and/or capabilities.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Catalog
@@ -186,6 +214,10 @@ Additionally, catalogs may also define objectives and methods for assessing the 
 
 *Source: OSCAL Page*
 
+In OSCAL, a catalog is a structured, organized collection of control information.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Characterization
@@ -198,6 +230,10 @@ Additionally, catalogs may also define objectives and methods for assessing the 
 
 *Source: NIST CSRC*
 
+In OSCAL, a characterization is a collection of descriptive data about the containing object from a specific origin.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Controls
@@ -208,6 +244,10 @@ Additionally, catalogs may also define objectives and methods for assessing the 
 [CSRC Glossary: Controls](https://csrc.nist.gov/glossary/term/controls)
 
 *Source: NIST CSRC*
+
+In OSCAL, a control is a structured object representing a requirement or guideline, which when implemented will reduce an aspect of risk related to an information system and its information.
+
+*Source: OSCAL Complete Schema (XSD)*
 
 ---
 
@@ -229,6 +269,10 @@ Additionally, catalogs may also define objectives and methods for assessing the 
 
 *Source: NIST CSRC*
 
+In OSCAL, coverage is a decimal value from 0-1, representing the percentage coverage of the targets by the sources.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Group
@@ -242,6 +286,10 @@ Additionally, catalogs may also define objectives and methods for assessing the 
 [CSRC Glossary: Group](https://csrc.nist.gov/glossary/term/group)
 
 *Source: NIST CSRC*
+
+In OSCAL, a group (Control Group) is a group of controls, or of groups of controls.
+
+*Source: OSCAL Complete Schema (XSD)*
 
 ---
 
@@ -260,6 +308,10 @@ Additionally, catalogs may also define objectives and methods for assessing the 
 
 *Source: NIST CSRC*
 
+In OSCAL, a mapping description describes the context and intended use of the mapping set.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Matching
@@ -270,6 +322,10 @@ Additionally, catalogs may also define objectives and methods for assessing the 
 [CSRC Glossary: Matching](https://csrc.nist.gov/glossary/term/matching)
 
 *Source: NIST CSRC*
+
+In OSCAL, matching refers to the method used for relating controls within the mapping. The supported methods are aligned with the NIST Interagency Report (IR) 8477, Section 4.3 Set Theory Relationship Mapping.
+
+*Source: OSCAL Complete Schema (XSD)*
 
 ---
 
@@ -286,6 +342,10 @@ Additionally, catalogs may also define objectives and methods for assessing the 
 
 *Source: NIST CSRC*
 
+In OSCAL, parameters provide a mechanism for the dynamic assignment of value(s) in a control.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## Plan Of Action And Milestones
@@ -297,6 +357,10 @@ Additionally, catalogs may also define objectives and methods for assessing the 
 [CSRC Glossary: Plan Of Action And Milestones](https://csrc.nist.gov/glossary/term/plan_of_action_and_milestones)
 
 *Source: NIST CSRC*
+
+In OSCAL, a Plan of Action and Milestones (POA&M) identifies initial and residual risks, deviations, and disposition, such as those required by FedRAMP.
+
+*Source: OSCAL Complete Schema (XSD)*
 
 ---
 
@@ -352,6 +416,10 @@ Additionally, catalogs may also define objectives and methods for assessing the 
 [CSRC Glossary: System Component](https://csrc.nist.gov/glossary/term/system_component)
 
 *Source: NIST CSRC*
+
+In OSCAL, a component is a defined component that can be part of an implemented system.
+
+*Source: OSCAL Complete Schema (XSD)*
 
 ---
 
@@ -438,6 +506,10 @@ See System Security Plan.
 
 *Source: NIST CSRC*
 
+In OSCAL, a System Security Plan (SSP) is a system security plan, such as those described in NIST SP 800-18.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
 ## System User
@@ -458,6 +530,10 @@ Note: With respect to SecCM, an information system user is an individual who use
 [CSRC Glossary: System User](https://csrc.nist.gov/glossary/term/systemuser)
 
 *Source: NIST CSRC*
+
+In OSCAL, a system user is a type of user that interacts with the system based on an associated role.
+
+*Source: OSCAL Complete Schema (XSD)*
 
 ---
 
@@ -485,72 +561,576 @@ Note: With respect to SecCM, an information system user is an individual who use
 
 *Source: NIST CSRC*
 
+In OSCAL, a task represents a scheduled event or milestone, which may be associated with a series of assessment actions.
+
+*Source: OSCAL Complete Schema (XSD)*
+
 ---
 
-## Unmatched Terms
+## Action
 
-The following OSCAL object types did not have matching entries in the OSCAL terminology page or the NIST CSRC glossary:
+1. An action applied by a role within a given party to the content.
 
-- Action
-- Assessment Assets
-- Assessment Part
-- Assessment Subject
-- Assessment Subject Placeholder
-- Associated Risk
-- Authorized Privilege
-- Back Matter
-- Component Definition
-- Confidence Score
-- Control Implementation
-- Data Flow
-- Defined Component
-- Diagram
-- Document Id
-- Finding
-- Finding Target
-- Gap Summary
-- Impact
-- Implementation Status
-- Implemented Requirement
-- Incorporates Component
-- Inventory Item
-- Local Definitions
-- Local Objective
-- Logged By
-- Map
-- Mapping Collection
-- Mapping Item
-- Mapping Provenance
-- Mapping Resource Reference
-- Network Architecture
-- Observation
-- Origin
-- Origin Actor
-- Parameter Constraint
-- Parameter Guideline
-- Parameter Selection
-- Part
-- Poam Item
-- Port Range
-- Profile
-- Protocol
-- Qualifier Item
-- Response
-- Responsible Party
-- Responsible Role
-- Result
-- Reviewed Controls
-- Risk
-- Security Impact Level
-- Select Control By Id
-- Select Objective By Id
-- Select Subject By Id
-- Statement
-- Status
-- Subject Reference
-- System Characteristics
-- System Id
-- System Implementation
-- System Information
-- Telephone Number
-- Threat Id
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Assessment Assets
+
+1. Identifies the assets used to perform this assessment, such as the assessment team, scanning tools, and assumptions.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Assessment Part
+
+1. A partition of an assessment plan or results or a child of another part.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Assessment Subject
+
+**Also known as:** Subject of Assessment
+
+1. Identifies system elements being assessed, such as components, inventory items, and locations. In the assessment plan, this identifies a planned assessment subject. In the assessment results this is an actual assessment subject, and reflects any changes from the plan.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Assessment Subject Placeholder
+
+1. Used when the assessment subjects will be determined as part of one or more other assessment activities. These assessment subjects will be recorded in the assessment results in the assessment log.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Associated Risk
+
+1. Relates the finding to a set of referenced risks that were used to determine the finding.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Authorized Privilege
+
+**Also known as:** Privilege
+
+1. Identifies a specific system privilege held by the user, along with an associated description and/or rationale for the privilege.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Back Matter
+
+1. A collection of resources that may be referenced from within the OSCAL document instance.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Component Definition
+
+1. A collection of component descriptions, which may optionally be grouped by capability.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Confidence Score
+
+1. This records either a string category or a decimal value from 0-1 representing a percentage. Both of these values describe an estimation of the author's confidence that this mapping is correct and accurate.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Control Implementation
+
+1. Describes how the containing component or capability implements an individual control.
+
+2. Describes how the system satisfies a set of controls.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Data Flow
+
+1. A description of the logical flow of information within the system and across its boundaries, optionally supplemented by diagrams that illustrate these flows.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Defined Component
+
+**Also known as:** Component
+
+1. A defined component that can be part of an implemented system.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Diagram
+
+1. A graphic that provides a visual representation the system, or some aspect of it.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Document Id
+
+**Also known as:** Document Identifier
+
+1. A document identifier qualified by an identifier scheme.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Finding
+
+1. Describes an individual finding.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Finding Target
+
+**Also known as:** Objective Status
+
+1. Captures an assessor's conclusions regarding the degree to which an objective is satisfied.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Gap Summary
+
+1. A by-id collection of all controls that were not mapped at all in this mapping-collection. If a control is partially mapped, the parts of the control that are not mappable should be documented in the relationship qualifier.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Impact
+
+**Also known as:** Impact Level
+
+1. The expected level of impact resulting from the described information.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Implementation Status
+
+1. Indicates the degree to which a given control is implemented.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Implemented Requirement
+
+**Also known as:** Control-based Requirement, Control Implementation
+
+1. Describes how the containing component or capability implements an individual control.
+
+2. Describes how the system satisfies the requirements of an individual control.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Incorporates Component
+
+1. The collection of components comprising this capability.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Inventory Item
+
+1. A single managed inventory item within the system.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Local Definitions
+
+1. Used to define data objects that are used in the assessment plan, that do not appear in the referenced SSP.
+
+2. Allows components, and inventory-items to be defined within the POA&M for circumstances where no OSCAL-based SSP exists, or is not delivered with the POA&M.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Local Objective
+
+**Also known as:** Assessment-Specific Control Objective
+
+1. A local definition of a control objective for this assessment. Uses catalog syntax for control objective and assessment actions.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Logged By
+
+1. Used to indicate who created a log entry in what role.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Map
+
+**Also known as:** Mapping Entry
+
+1. A relationship-based mapping between a source and target set consisting of members (i.e., controls, control statements) from the respective source and target.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Mapping Collection
+
+1. A collection of relationship-based control and/or control statement mappings.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Mapping Item
+
+**Also known as:** Mapping Entry Item
+
+1. A specific edge within a source or target that is the subject of a mapping.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Mapping Provenance
+
+1. Describes requirements, incompatibilities and gaps that are identified between a target and source in a mapping item.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Mapping Resource Reference
+
+**Also known as:** Mapped Resource Reference
+
+1. A reference to a resource that is either the source or the target of a mapping.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Network Architecture
+
+1. A description of the system's network architecture, optionally supplemented by diagrams that illustrate the network architecture.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Observation
+
+1. Describes an individual observation.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Origin
+
+1. Identifies the source of the finding, such as a tool, interviewed person, or activity.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Origin Actor
+
+**Also known as:** Originating Actor
+
+1. The actor that produces an observation, a finding, or a risk. One or more actor type can be used to specify a person that is using a tool.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Parameter Constraint
+
+**Also known as:** Constraint
+
+1. A formal or informal expression of a constraint or test.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Parameter Guideline
+
+**Also known as:** Guideline
+
+1. A prose statement that provides a recommendation for the use of a parameter.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Parameter Selection
+
+**Also known as:** Selection
+
+1. Presenting a choice among alternatives.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Part
+
+1. An annotated, markup-based textual element of a control's or catalog group's definition, or a child of another part.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Poam Item
+
+**Also known as:** POA&M Item
+
+1. Describes an individual POA&M item.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Port Range
+
+1. Where applicable this is the transport layer protocol port range an IPv4-based or IPv6-based service uses.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Profile
+
+1. Each OSCAL profile is defined by a profile element.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Protocol
+
+**Also known as:** Service Protocol Information
+
+1. Information about the protocol used to provide a service.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Qualifier Item
+
+**Also known as:** Relationship Qualifier
+
+1. Describes requirements, incompatibilities and gaps that are identified between a target and source in a mapping item.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Response
+
+**Also known as:** Risk Response
+
+1. Describes either recommended or an actual plan for addressing the risk.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Responsible Party
+
+1. A reference to a set of persons and/or organizations that have responsibility for performing the referenced role in the context of the containing object.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Responsible Role
+
+1. A reference to a role with responsibility for performing a function relative to the containing object, optionally associated with a set of persons and/or organizations that perform that role.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Result
+
+**Also known as:** Assessment Result
+
+1. Used by the assessment results and POA&M. In the assessment results, this identifies all of the assessment observations and findings, initial and residual risks, deviations, and disposition. In the POA&M, this identifies initial and residual risks, deviations, and disposition.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Reviewed Controls
+
+**Also known as:** Reviewed Controls and Control Objectives
+
+1. Identifies the controls being assessed and their control objectives.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Risk
+
+**Also known as:** Identified Risk
+
+1. An identified risk.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Security Impact Level
+
+1. The overall level of expected impact resulting from unauthorized disclosure, modification, or loss of access to information.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Select Control By Id
+
+**Also known as:** Select Control
+
+1. Used to select a control for inclusion/exclusion based on one or more control identifiers. A set of statement identifiers can be used to target the inclusion/exclusion to only specific control statements providing more granularity over the specific statements that are within the assessment scope.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Select Objective By Id
+
+**Also known as:** Select Objective
+
+1. Used to select a control objective for inclusion/exclusion based on the control objective's identifier.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Select Subject By Id
+
+**Also known as:** Select Assessment Subject
+
+1. Identifies a set of assessment subjects to include/exclude by UUID.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Statement
+
+**Also known as:** Specific Control Statement, Control Statement Implementation
+
+1. Identifies which statements within a control are addressed.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Status
+
+1. Describes the operational status of the system.
+
+2. Describes the operational status of the system component.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Subject Reference
+
+**Also known as:** Identifies the Subject
+
+1. A human-oriented identifier reference to a resource. Use type to indicate whether the identified resource is a component, inventory item, location, user, or something else.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## System Characteristics
+
+1. Contains the characteristics of the system, such as its name, purpose, and security impact level.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## System Id
+
+**Also known as:** System Identification
+
+1. A human-oriented, globally unique identifier with cross-instance scope that can be used to reference this system identification property elsewhere in this or other OSCAL instances.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## System Implementation
+
+1. Provides information as to how the system is implemented.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## System Information
+
+1. Contains details about all information types that are stored, processed, or transmitted by the system, such as privacy information, and those defined in NIST SP 800-60.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Telephone Number
+
+1. A telephone service number as defined by ITU-T E.164.
+
+*Source: OSCAL Complete Schema (XSD)*
+
+---
+
+## Threat Id
+
+**Also known as:** Threat ID
+
+1. A pointer, by ID, to an externally-defined threat.
+
+*Source: OSCAL Complete Schema (XSD)*
