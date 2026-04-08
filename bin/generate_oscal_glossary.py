@@ -90,8 +90,37 @@ def _is_object_type(definition: dict) -> bool:
     return False
 
 
+def extract_oscal_version(schema_path: Path) -> str:
+    """Extract the OSCAL version from the schema ``$id`` field.
+
+    The ``$id`` follows the pattern
+    ``http://csrc.nist.gov/ns/oscal/1.0/<version>/oscal-complete-schema.json``.
+    Returns the version string (e.g. ``1.2.1``) or ``"unknown"`` if it
+    cannot be determined.
+    """
+    try:
+        raw = schema_path.read_text(encoding="utf-8")
+        schema = json.loads(raw)
+    except (OSError, json.JSONDecodeError):
+        return "unknown"
+
+    schema_id = schema.get("$id", "")
+    # Pattern: .../ns/oscal/1.0/<version>/oscal-complete-schema.json
+    import re as _re
+
+    m = _re.search(r"/ns/oscal/[\d.]+/([\d.]+)/", schema_id)
+    return m.group(1) if m else "unknown"
+
+
 def parse_schema(schema_path: Path) -> list[str]:
-    """Load the OSCAL schema and return deduplicated, sorted short names."""
+    """Load the OSCAL schema and return deduplicated, sorted short names.
+
+    Also warns about formal names (``title`` fields) that appear across
+    multiple definition keys but are not themselves represented as a
+    short name in the output.  This catches cases like "Component" being
+    split across ``defined-component`` and ``system-component`` without
+    a unified ``component`` entry.
+    """
     if not schema_path.exists():
         _fatal(f"Schema file not found: {schema_path}")
 
@@ -111,6 +140,8 @@ def parse_schema(schema_path: Path) -> list[str]:
     definitions: dict = schema["definitions"]
     seen: dict[str, bool] = {}
     result: list[str] = []
+    # Track formal-name → set of short names for shared-name detection
+    formal_to_shorts: dict[str, set[str]] = {}
 
     for key, entry in definitions.items():
         if not isinstance(entry, dict):
@@ -126,6 +157,28 @@ def parse_schema(schema_path: Path) -> list[str]:
         if short_name not in seen:
             seen[short_name] = True
             result.append(short_name)
+
+        # Record formal name mapping
+        title = entry.get("title", "")
+        if title:
+            formal_to_shorts.setdefault(title, set()).add(short_name)
+
+    # Warn about formal names shared across multiple definitions whose
+    # hyphenated form is not already in the result set.
+    result_set = set(result)
+    for formal_name, shorts in sorted(formal_to_shorts.items()):
+        if len(shorts) <= 1:
+            continue
+        candidate = formal_name.lower().replace(" ", "-")
+        if candidate not in result_set:
+            logger.warning(
+                "Formal name '%s' is shared by definitions %s but '%s' "
+                "is not in the extracted terms — consider adding it to "
+                "the terms list",
+                formal_name,
+                sorted(shorts),
+                candidate,
+            )
 
     return sorted(result)
 
@@ -462,7 +515,8 @@ def match_terms(
 
 
 def generate_markdown(
-    matched: list[MatchedTerm], unmatched: list[str], output_path: Path
+    matched: list[MatchedTerm], unmatched: list[str], output_path: Path,
+    oscal_version: str = "unknown",
 ) -> None:
     """Render matched and unmatched terms to a markdown glossary file.
 
@@ -479,14 +533,15 @@ def generate_markdown(
     lines.append("# OSCAL Glossary")
     lines.append("")
     lines.append(
-        "Definitions sourced from the "
+        f"Definitions for OSCAL v{oscal_version} object types and related "
+        "terms, sourced from the "
         "[OSCAL Terminology Page]"
         "(https://pages.nist.gov/OSCAL/learn/concepts/terminology/) "
         "and the "
         "[NIST CSRC Glossary](https://csrc.nist.gov/glossary)."
     )
     lines.append("")
-    lines.append(f"*Generated: {timestamp}*")
+    lines.append(f"*OSCAL version: {oscal_version} — Generated: {timestamp}*")
     lines.append("")
 
     # Matched terms in case-insensitive alphabetical order by human_name
@@ -717,7 +772,8 @@ def main() -> None:
                 short_name,
             )
 
-    generate_markdown(matched, unmatched, args.output)
+    generate_markdown(matched, unmatched, args.output,
+                      oscal_version=extract_oscal_version(args.schema))
 
     logger.info(
         "Done — wrote %s (%d matched, %d unmatched)",

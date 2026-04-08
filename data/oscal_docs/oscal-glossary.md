@@ -57,9 +57,10 @@ Reference: [Assessment Plan > local-definitions > objectives-and-methods > parts
 
 ## Assessment Plan
 
+The objectives for the security and privacy [Control](#control) assessments and a detailed roadmap of how to conduct such assessments. The OSCAL Assessment Plan model represents an assessment plan such as those provided by a FedRAMP assessor.
+
 **Also known as:** Security Assessment Plan (SAP)
 
-The objectives for the security and privacy [Control](#control) assessments and a detailed roadmap of how to conduct such assessments. The OSCAL Assessment Plan model represents an assessment plan such as those provided by a FedRAMP assessor.
 
 Reference: [Assessment Plan](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan)
 
@@ -68,9 +69,10 @@ Reference: [Assessment Plan](https://pages.nist.gov/OSCAL-Reference/models/v1.2.
 
 ## Assessment Results
 
+The [Findings](#finding), [Observations](#observation), [Risks](#risk), and disposition produced by an assessment. The OSCAL Assessment [Results](#result) model represents security assessment results such as those provided by a FedRAMP assessor in the FedRAMP Security Assessment Report.
+
 **Also known as:** Security Assessment Results (SAR)
 
-The [Findings](#finding), [Observations](#observation), [Risks](#risk), and disposition produced by an assessment. The OSCAL Assessment [Results](#result) model represents security assessment results such as those provided by a FedRAMP assessor in the FedRAMP Security Assessment Report.
 
 Reference: [Assessment Results](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results)
 
@@ -79,9 +81,9 @@ Reference: [Assessment Results](https://pages.nist.gov/OSCAL-Reference/models/v1
 
 ## Assessment Subject
 
-**Also known as:** Subject of Assessment
-
 Identifies system elements being assessed, such as components, [Inventory Items](#inventory-item), and locations. In the [Assessment Plan](#assessment-plan), this identifies a planned Assessment Subject. In the [Assessment Results](#assessment-results), this is an actual Assessment Subject and reflects any changes from the plan.
+
+**Also known as:** Subject of Assessment
 
 Reference: [Assessment Plan > assessment-subjects](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/assessment-subjects)
 
@@ -100,9 +102,10 @@ Reference: [Assessment Results > results > findings > related-risks](https://pag
 
 ## Authorization Boundary
 
+A description of the system's authorization boundary — all components of a system to be authorized for operation by an authorizing official, excluding separately authorized systems to which the system is connected. May be optionally supplemented by [Diagrams](#diagram) that illustrate the authorization boundary.
+
 **Also known as:** system boundary
 
-A description of the system's authorization boundary — all components of a system to be authorized for operation by an authorizing official, excluding separately authorized systems to which the system is connected. May be optionally supplemented by [Diagrams](#diagram) that illustrate the authorization boundary.
 
 Reference: [SSP > system-characteristics > authorization-boundary](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-characteristics/authorization-boundary)
 
@@ -111,9 +114,9 @@ Reference: [SSP > system-characteristics > authorization-boundary](https://pages
 
 ## Authorized Privilege
 
-**Also known as:** Privilege
-
 Identifies a specific system privilege held by a user, along with an associated description and/or rationale for the privilege.
+
+**Also known as:** Privilege
 
 Reference: [Assessment Plan > local-definitions > users > authorized-privileges](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/local-definitions/users/authorized-privileges) | [Assessment Results > results > local-definitions > users > authorized-privileges](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results/local-definitions/users/authorized-privileges) | [SSP > system-implementation > users > authorized-privileges](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-implementation/users/authorized-privileges)
 
@@ -173,6 +176,11 @@ A string category or a decimal value from 0–1 representing a percentage, descr
 Reference: [Mapping Collection > mappings > confidence-score](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/mapping-collection/mappings/confidence-score) | [Mapping Collection > mappings > maps > confidence-score](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/mapping-collection/mappings/maps/confidence-score) | [Mapping Collection > provenance > confidence-score](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/mapping-collection/provenance/confidence-score)
 
 
+## Constraint
+
+See [Parameter Constraint](#parameter-constraint).
+
+
 ## Control
 
 A structured object representing a requirement or guideline, which when implemented will reduce an aspect of [Risk](#risk) related to an information system and its information. More broadly, Controls are policies, procedures, guidelines, practices, or organizational structures that manage security, privacy, and other risks.
@@ -180,6 +188,11 @@ A structured object representing a requirement or guideline, which when implemen
 Reference: [Catalog > controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/controls) | [Catalog > controls > controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/controls/controls) | [Catalog > groups > controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/controls) | [Catalog > groups > controls > controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/controls/controls)
 
 *Sources: [NIST SP 800-63-4](https://doi.org/10.6028/NIST.SP.800-63-4); [NIST CSRC](https://csrc.nist.gov/glossary/term/controls)*
+
+
+## Control Group
+
+See [Group](#group).
 
 
 ## Control Implementation
@@ -207,9 +220,9 @@ Reference: [SSP > system-characteristics > data-flow](https://pages.nist.gov/OSC
 
 ## Defined Component
 
-**Also known as:** Component
-
 A [Component](#component) as defined within a [Component Definition](#component-definition). See Component.
+
+**Also known as:** Component
 
 Reference: [Component Definition > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/components)
 
@@ -223,9 +236,9 @@ Reference: [SSP > system-characteristics > authorization-boundary > diagrams](ht
 
 ## Document Id
 
-**Also known as:** Document Identifier
-
 A document identifier qualified by an identifier scheme.
+
+**Also known as:** Document Identifier
 
 Reference: [All models > back-matter > resources > document-ids](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/back-matter/resources/document-ids) | [All models > metadata > document-ids](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/metadata/document-ids)
 
@@ -239,9 +252,9 @@ Reference: [Assessment Results > results > findings](https://pages.nist.gov/OSCA
 
 ## Finding Target
 
-**Also known as:** Objective Status
-
 Captures an assessor's conclusions regarding the degree to which an objective is satisfied.
+
+**Also known as:** Objective Status
 
 Reference: [Assessment Results > results > findings > target](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results/findings/target) | [POA&M > findings > target](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones/findings/target)
 
@@ -255,22 +268,38 @@ Reference: [Mapping Collection > mappings > source-gap-summary](https://pages.ni
 
 ## Group
 
+A group of [Controls](#control), or of groups of Controls. Groups provide organizational structure within a [Catalog](#catalog) or [Profile](#profile).
+
 **Also known as:** Control Group
 
-A group of [Controls](#control), or of groups of Controls. Groups provide organizational structure within a [Catalog](#catalog) or [Profile](#profile).
 
 Reference: [Catalog > groups](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups) | [Catalog > groups > groups](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/groups) | [Profile > merge > custom > groups](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/merge/custom/groups) | [Profile > merge > custom > groups > groups](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/merge/custom/groups/groups)
 
 *Source: [NIST CSRC](https://csrc.nist.gov/glossary/term/group)*
 
 
-## Impact
+## Guideline
 
-**Also known as:** Impact Level
+See [Parameter Guideline](#parameter-guideline).
+
+
+## Identified Risk
+
+See [Risk](#risk).
+
+
+## Impact
 
 The expected level of impact resulting from the described information.
 
+**Also known as:** Impact Level
+
 Reference: [SSP > system-characteristics > system-information > information-types > availability-impact](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-characteristics/system-information/information-types/availability-impact) | [SSP > system-characteristics > system-information > information-types > confidentiality-impact](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-characteristics/system-information/information-types/confidentiality-impact) | [SSP > system-characteristics > system-information > information-types > integrity-impact](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-characteristics/system-information/information-types/integrity-impact)
+
+
+## Impact Level
+
+See [Impact](#impact).
 
 
 ## Implementation Status
@@ -282,9 +311,9 @@ Reference: [Assessment Results > results > findings > target > implementation-st
 
 ## Implemented Requirement
 
-**Also known as:** Control-based Requirement
-
 Describes how the containing component or [Capability](#capability) implements an individual [Control](#control) (in a [Component Definition](#component-definition)), or how the system satisfies the requirements of an individual Control (in a [System Security Plan](#system-security-plan)).
+
+**Also known as:** Control-based Requirement
 
 Reference: [Component Definition > capabilities > control-implementations > implemented-requirements](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/capabilities/control-implementations/implemented-requirements) | [Component Definition > components > control-implementations > implemented-requirements](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/components/control-implementations/implemented-requirements) | [SSP > control-implementation > implemented-requirements](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/control-implementation/implemented-requirements)
 
@@ -305,16 +334,16 @@ Reference: [Assessment Plan > local-definitions > inventory-items](https://pages
 
 ## Local Definitions
 
-Data objects used in the [Assessment Plan](#assessment-plan) or POA&M that do not appear in the referenced SSP. In a POA&M, allows components and [Inventory Items](#inventory-item) to be defined when no OSCAL-based SSP exists or is not delivered with the POA&M.
+Data objects used in the [Assessment Plan](#assessment-plan) or POA&M that do not appear in the referenced [SSP](#ssp). In a POA&M, allows components and [Inventory Items](#inventory-item) to be defined when no OSCAL-based SSP exists or is not delivered with the POA&M.
 
 Reference: [Assessment Plan > local-definitions](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/local-definitions) | [Assessment Results > local-definitions](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/local-definitions) | [Assessment Results > results > local-definitions](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results/local-definitions) | [POA&M > local-definitions](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones/local-definitions)
 
 
 ## Local Objective
 
-**Also known as:** Assessment-Specific Control Objective
-
 A local definition of a [Control](#control) objective for an assessment, using [Catalog](#catalog) syntax for control objectives and assessment [Actions](#action).
+
+**Also known as:** Assessment-Specific Control Objective
 
 Reference: [Assessment Plan > local-definitions > objectives-and-methods](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/local-definitions/objectives-and-methods) | [Assessment Results > local-definitions > objectives-and-methods](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/local-definitions/objectives-and-methods)
 
@@ -328,18 +357,19 @@ Reference: [Assessment Results > results > assessment-log > entries > logged-by]
 
 ## Map
 
-**Also known as:** Mapping Entry
-
 A relationship-based [Mapping](#mapping) between a source and target set consisting of members (i.e., [Controls](#control), control [Statements](#statement)) from the respective source and target.
+
+**Also known as:** Mapping Entry
 
 Reference: [Mapping Collection > mappings > maps](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/mapping-collection/mappings/maps)
 
 
 ## Mapping
 
+An indication that one concept is related to another concept. A Mapping describes the context and intended use of a mapping set between [Control](#control) frameworks.
+
 **Also known as:** concept mapping
 
-An indication that one concept is related to another concept. A Mapping describes the context and intended use of a mapping set between [Control](#control) frameworks.
 
 Reference: [Mapping Collection > mappings](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/mapping-collection/mappings)
 
@@ -355,9 +385,9 @@ Reference: [Mapping Collection](https://pages.nist.gov/OSCAL-Reference/models/v1
 
 ## Mapping Item
 
-**Also known as:** Mapping Entry Item
-
 A specific edge within a source or target that is the subject of a [Mapping](#mapping).
+
+**Also known as:** Mapping Entry Item
 
 Reference: [Mapping Collection > mappings > maps > sources](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/mapping-collection/mappings/maps/sources) | [Mapping Collection > mappings > maps > targets](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/mapping-collection/mappings/maps/targets)
 
@@ -371,9 +401,9 @@ Reference: [Mapping Collection > provenance](https://pages.nist.gov/OSCAL-Refere
 
 ## Mapping Resource Reference
 
-**Also known as:** Mapped Resource Reference
-
 A reference to a resource that is either the source or the target of a [Mapping](#mapping).
+
+**Also known as:** Mapped Resource Reference
 
 Reference: [Mapping Collection > mappings > source-resource](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/mapping-collection/mappings/source-resource) | [Mapping Collection > mappings > target-resource](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/mapping-collection/mappings/target-resource)
 
@@ -394,6 +424,11 @@ A description of the system's network architecture, optionally supplemented by d
 Reference: [SSP > system-characteristics > network-architecture](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-characteristics/network-architecture)
 
 
+## Objective Status
+
+See [Finding Target](#finding-target).
+
+
 ## Observation
 
 Describes an individual observation made during an assessment.
@@ -410,9 +445,9 @@ Reference: [Assessment Results > results > findings > origins](https://pages.nis
 
 ## Origin Actor
 
-**Also known as:** Originating Actor
-
 The actor that produces an [Observation](#observation), a [Finding](#finding), or a [Risk](#risk). One or more actor types can be used to specify a person that is using a tool.
+
+**Also known as:** Originating Actor
 
 Reference: [Assessment Results > results > observations > origins > actors](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results/observations/origins/actors) | [POA&M > observations > origins > actors](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones/observations/origins/actors)
 
@@ -428,27 +463,27 @@ Reference: [Catalog > controls > params](https://pages.nist.gov/OSCAL-Reference/
 
 ## Parameter Constraint
 
-**Also known as:** Constraint
-
 A formal or informal expression of a constraint or test applied to a [Parameter](#parameter).
+
+**Also known as:** Constraint
 
 Reference: [Catalog > controls > params > constraints](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/controls/params/constraints) | [Catalog > groups > controls > params > constraints](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/controls/params/constraints) | [Catalog > groups > params > constraints](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/params/constraints) | [Catalog > params > constraints](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/params/constraints) | [Profile > modify > set-parameters > constraints](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/modify/set-parameters/constraints)
 
 
 ## Parameter Guideline
 
-**Also known as:** Guideline
-
 A prose statement that provides a recommendation for the use of a [Parameter](#parameter).
+
+**Also known as:** Guideline
 
 Reference: [Catalog > controls > params > guidelines](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/controls/params/guidelines) | [Catalog > groups > controls > params > guidelines](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/controls/params/guidelines) | [Catalog > groups > params > guidelines](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/params/guidelines) | [Catalog > params > guidelines](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/params/guidelines) | [Profile > modify > set-parameters > guidelines](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/modify/set-parameters/guidelines)
 
 
 ## Parameter Selection
 
-**Also known as:** Selection
-
 Presents a choice among alternatives for a [Parameter](#parameter) value.
+
+**Also known as:** Selection
 
 Reference: [Catalog > controls > params > select](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/controls/params/select) | [Catalog > groups > controls > params > select](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/controls/params/select) | [Catalog > groups > params > select](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/params/select) | [Catalog > params > select](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/params/select) | [Profile > modify > set-parameters > select](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/modify/set-parameters/select)
 
@@ -462,9 +497,10 @@ Reference: [Catalog > controls > parts](https://pages.nist.gov/OSCAL-Reference/m
 
 ## Plan Of Action And Milestones
 
+A document that identifies [Tasks](#task) needing to be accomplished, detailing resources required, milestones, and scheduled completion dates. The POA&M identifies initial and residual [Risks](#risk), deviations, and disposition, such as those required by FedRAMP.
+
 **Also known as:** POA&M
 
-A document that identifies [Tasks](#task) needing to be accomplished, detailing resources required, milestones, and scheduled completion dates. The POA&M identifies initial and residual [Risks](#risk), deviations, and disposition, such as those required by FedRAMP.
 
 Reference: [POA&M](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones)
 
@@ -485,6 +521,11 @@ Where applicable, the transport layer protocol port range an IPv4-based or IPv6-
 Reference: [Assessment Plan > assessment-assets > components > protocols > port-ranges](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/assessment-assets/components/protocols/port-ranges) | [Assessment Plan > local-definitions > components > protocols > port-ranges](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/local-definitions/components/protocols/port-ranges) | [Component Definition > components > protocols > port-ranges](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/components/protocols/port-ranges) | [POA&M > local-definitions > components > protocols > port-ranges](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones/local-definitions/components/protocols/port-ranges) | [SSP > system-implementation > components > protocols > port-ranges](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-implementation/components/protocols/port-ranges)
 
 
+## Privilege
+
+See [Authorized Privilege](#authorized-privilege).
+
+
 ## Profile
 
 Each OSCAL Profile is defined by a profile element. A Profile selects and tailors [Controls](#control) from one or more [Catalogs](#catalog) for a specific use case or baseline.
@@ -494,27 +535,27 @@ Reference: [Profile](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/comple
 
 ## Protocol
 
-**Also known as:** Service Protocol Information
-
 Information about the protocol used to provide a service.
+
+**Also known as:** Service Protocol Information
 
 Reference: [Assessment Plan > assessment-assets > components > protocols](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/assessment-assets/components/protocols) | [Assessment Plan > local-definitions > components > protocols](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/local-definitions/components/protocols) | [Assessment Results > results > local-definitions > components > protocols](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results/local-definitions/components/protocols) | [Component Definition > components > protocols](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/components/protocols) | [POA&M > local-definitions > assessment-assets > components > protocols](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones/local-definitions/assessment-assets/components/protocols) | [POA&M > local-definitions > components > protocols](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones/local-definitions/components/protocols) | [SSP > system-implementation > components > protocols](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-implementation/components/protocols)
 
 
 ## Qualifier Item
 
-**Also known as:** Relationship Qualifier
-
 Describes requirements, incompatibilities, and gaps identified between a target and source in a [mapping item](#mapping-item).
+
+**Also known as:** Relationship Qualifier
 
 Reference: [Mapping Collection > mappings > maps > qualifiers](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/mapping-collection/mappings/maps/qualifiers)
 
 
 ## Response
 
-**Also known as:** Risk Response
-
 Describes either a recommended or an actual plan for addressing a [Risk](#risk).
+
+**Also known as:** Risk Response
 
 Reference: [Assessment Results > results > risks > remediations](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results/risks/remediations) | [POA&M > risks > remediations](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones/risks/remediations)
 
@@ -535,29 +576,39 @@ Reference: [Assessment Plan > assessment-assets > components > responsible-roles
 
 ## Result
 
-**Also known as:** Assessment Result
-
 Used by the [Assessment Results](#assessment-results) and POA&M. In the Assessment Results, this identifies all of the assessment [Observations](#observation) and [Findings](#finding), initial and residual [Risks](#risk), deviations, and disposition. In the POA&M, this identifies initial and residual Risks, deviations, and disposition.
+
+**Also known as:** Assessment Result
 
 Reference: [Assessment Results > results](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results)
 
 
 ## Reviewed Controls
 
-**Also known as:** Reviewed Controls and Control Objectives
-
 Identifies the [Controls](#control) being assessed and their control objectives.
+
+**Also known as:** Reviewed Controls and Control Objectives
 
 Reference: [Assessment Plan > local-definitions > activities > steps > reviewed-controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/local-definitions/activities/steps/reviewed-controls) | [Assessment Plan > reviewed-controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/reviewed-controls) | [Assessment Results > local-definitions > activities > steps > reviewed-controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/local-definitions/activities/steps/reviewed-controls) | [Assessment Results > results > reviewed-controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results/reviewed-controls)
 
 
 ## Risk
 
+An [identified risk](#identified-risk) within the system being assessed.
+
 **Also known as:** Identified Risk
 
-An identified risk within the system being assessed.
-
 Reference: [Assessment Results > results > risks](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results/risks) | [POA&M > risks](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones/risks)
+
+
+## SAP
+
+See [Assessment Plan](#assessment-plan).
+
+
+## SAR
+
+See [Assessment Results](#assessment-results).
 
 
 ## Security Impact Level
@@ -569,32 +620,42 @@ Reference: [SSP > system-characteristics > security-impact-level](https://pages.
 
 ## Select Control By Id
 
-**Also known as:** Select Control
-
 Used to select a [Control](#control) for inclusion/exclusion based on one or more control identifiers. A set of [Statement](#statement) identifiers can be used to target the inclusion/exclusion to only specific control Statements, providing more granularity over the specific Statements that are within the assessment scope.
+
+**Also known as:** Select Control
 
 
 ## Select Objective By Id
 
-**Also known as:** Select Objective
-
 Used to select a control objective for inclusion/exclusion based on the control objective's identifier.
+
+**Also known as:** Select Objective
 
 
 ## Select Subject By Id
 
-**Also known as:** Select Assessment Subject
-
 Identifies a set of [assessment subjects](#assessment-subject) to include/exclude by UUID.
+
+**Also known as:** Select Assessment Subject
 
 Reference: [Assessment Plan > assessment-subjects > exclude-subjects](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/assessment-subjects/exclude-subjects) | [Assessment Plan > tasks > associated-activities > subjects > exclude-subjects](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/tasks/associated-activities/subjects/exclude-subjects) | [Assessment Plan > tasks > subjects > exclude-subjects](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/tasks/subjects/exclude-subjects)
 
 
+## Selection
+
+See [Parameter Selection](#parameter-selection).
+
+
+## SSP
+
+See [System Security Plan](#system-security-plan).
+
+
 ## Statement
 
-**Also known as:** Specific Control Statement, Control Statement Implementation
-
 Identifies which Statements within a [Control](#control) are addressed.
+
+**Also known as:** Specific Control Statement, Control Statement Implementation
 
 Reference: [Component Definition > capabilities > control-implementations > implemented-requirements > statements](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/capabilities/control-implementations/implemented-requirements/statements) | [Component Definition > components > control-implementations > implemented-requirements > statements](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/components/control-implementations/implemented-requirements/statements) | [SSP > control-implementation > implemented-requirements > statements](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/control-implementation/implemented-requirements/statements)
 
@@ -608,9 +669,9 @@ Reference: [Assessment Plan > assessment-assets > components > status](https://p
 
 ## Subject Reference
 
-**Also known as:** Identifies the Subject
-
 A human-oriented identifier reference to a resource. Use type to indicate whether the identified resource is a component, [Inventory Item](#inventory-item), location, user, or something else.
+
+**Also known as:** Identifies the Subject
 
 Reference: [Assessment Plan > tasks > subjects](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/tasks/subjects) | [Assessment Results > results > observations > subjects](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results/observations/subjects)
 
@@ -624,9 +685,10 @@ Reference: [SSP > system-characteristics](https://pages.nist.gov/OSCAL-Reference
 
 ## System Component
 
+A [Component](#component) as used within a [System Security Plan](#system-security-plan) or assessment context, representing a discrete identifiable information technology asset (hardware, software, firmware) that is a building block of the system.
+
 **Also known as:** Component
 
-A [Component](#component) as used within a [System Security Plan](#system-security-plan) or assessment context, representing a discrete identifiable information technology asset (hardware, software, firmware) that is a building block of the system.
 
 Reference: [Assessment Plan > assessment-assets > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/assessment-assets/components) | [Assessment Plan > local-definitions > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/local-definitions/components) | [SSP > system-implementation > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-implementation/components)
 
@@ -635,9 +697,9 @@ Reference: [Assessment Plan > assessment-assets > components](https://pages.nist
 
 ## System Id
 
-**Also known as:** System Identification
-
 A human-oriented, globally unique identifier with cross-instance scope that can be used to reference a system identification property elsewhere in this or other OSCAL instances.
+
+**Also known as:** System Identification
 
 Reference: [POA&M > system-id](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones/system-id) | [SSP > system-characteristics > system-ids](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-characteristics/system-ids)
 
@@ -658,9 +720,10 @@ Reference: [SSP > system-characteristics > system-information](https://pages.nis
 
 ## System Security Plan
 
+A document that describes how an organization meets or plans to meet the security requirements for a system, including the system boundary, the operating environment, how security requirements are implemented, and the relationships with or connections to other systems. The OSCAL [SSP](#ssp) model represents a system security plan such as those described in NIST SP 800-18.
+
 **Also known as:** SSP
 
-A document that describes how an organization meets or plans to meet the security requirements for a system, including the system boundary, the operating environment, how security requirements are implemented, and the relationships with or connections to other systems. The OSCAL SSP model represents a system security plan such as those described in NIST SP 800-18.
 
 Reference: [SSP](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan)
 
@@ -694,9 +757,10 @@ Reference: [All models > metadata > locations > telephone-numbers](https://pages
 
 ## Threat Id
 
-**Also known as:** Threat ID
-
 A pointer, by ID, to an externally-defined threat.
 
+**Also known as:** Threat ID
+
 Reference: [Assessment Results > results > risks > threat-ids](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-results/results/risks/threat-ids) | [POA&M > risks > threat-ids](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/plan-of-action-and-milestones/risks/threat-ids)
+
 

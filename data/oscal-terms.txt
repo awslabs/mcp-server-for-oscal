@@ -17,6 +17,7 @@ back-matter
 capability
 catalog
 characterization
+component
 component-definition
 confidence-score
 controls
