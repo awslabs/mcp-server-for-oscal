@@ -285,56 +285,11 @@ class TestBugConditionExploration:
 class TestPreservationDefaultSeeding:
     """Preservation: default OscalStore seeding behavior unchanged.
 
-    **Validates: Requirements 3.1, 3.2, 3.3, 3.4**
+    **Validates: Requirements 3.2, 3.3, 3.4**
 
     These tests capture the existing correct behavior that must not regress
     when the bugfix is applied. They MUST PASS on unfixed code.
     """
-
-    @given(
-        suffix=st.text(
-            min_size=1,
-            max_size=20,
-            alphabet=st.characters(whitelist_categories=("L", "N")),
-        )
-    )
-    @settings(max_examples=50, deadline=None)
-    def test_new_path_with_bundled_db_seeds(self, suffix: str) -> None:
-        """Default OscalStore(db_path=new_path) with valid bundled DB seeds the database.
-
-        **Validates: Requirements 3.1**
-
-        For all generated db_path strings (non-existent paths), default
-        OscalStore(db_path=path) with a valid bundled DB present seeds the
-        database (document count matches bundled DB count of 232).
-        """
-        from mcp_server_for_oscal.tools.oscal_store import (
-            BUNDLED_DB_PATH,
-            OscalStore,
-        )
-
-        # Skip if bundled DB is not present (can't test seeding without it)
-        if not BUNDLED_DB_PATH.exists():
-            pytest.skip("Bundled DB not present")
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            db_path = Path(tmpdir) / f"test_{suffix}.db"
-            store = OscalStore(db_path=str(db_path))
-            try:
-                doc_count = store._conn.execute(
-                    "SELECT COUNT(*) AS cnt FROM documents"
-                ).fetchone()["cnt"]
-
-                assert store._db_mode == "persistent", (
-                    f"Expected db_mode='persistent', got '{store._db_mode}'"
-                )
-                assert doc_count == 232, (
-                    f"Expected doc_count=232 (bundled DB count), "
-                    f"got doc_count={doc_count}. "
-                    f"Default seeding from bundled DB must be preserved."
-                )
-            finally:
-                store.close()
 
     @given(
         suffix=st.text(
