@@ -196,7 +196,7 @@ build-agentcore-container = [
 ]
 
 [tool.hatch.envs.hatch-test]
-# parallel = true
+parallel = true
 extra-dependencies = ["pytest-asyncio", "hypothesis"]
 
 [tool.hatch.envs.hatch-test.scripts]

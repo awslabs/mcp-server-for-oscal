@@ -1,6 +1,7 @@
 """
 Tests for the query_component_definition tool.
 """
+import copy
 import json
 import zipfile
 from pathlib import Path
@@ -21,6 +22,47 @@ from mcp_server_for_oscal.tools.query_component_definition import (
     list_components,
     query_component_definition,
 )
+from mcp_server_for_oscal.tools import query_component_definition as _qcd_module
+
+
+@pytest.fixture(autouse=True)
+def reset_store():
+    """Save, clear, and restore _store and _oscal_store around each test."""
+    # Save _store state (deep copy of all index dicts + stats)
+    saved_cdefs_by_path = copy.deepcopy(_store._cdefs_by_path)
+    saved_cdefs_by_uuid = copy.deepcopy(_store._cdefs_by_uuid)
+    saved_cdefs_by_title = copy.deepcopy(_store._cdefs_by_title)
+    saved_components_by_uuid = copy.deepcopy(_store._components_by_uuid)
+    saved_components_by_title = copy.deepcopy(_store._components_by_title)
+    saved_components_to_cdef = copy.deepcopy(_store._components_to_cdef_by_uuid)
+    saved_capabilities_by_uuid = copy.deepcopy(_store._capabilities_by_uuid)
+    saved_capabilities_by_name = copy.deepcopy(_store._capabilities_by_name)
+    saved_capabilities_to_cdef = copy.deepcopy(_store._capabilities_to_cdef_by_uuid)
+    saved_stats = copy.deepcopy(_store._stats)
+
+    # Save _oscal_store
+    saved_oscal_store = _qcd_module._oscal_store
+
+    # Clear both singletons
+    _store._reset()
+    _qcd_module._oscal_store = None
+
+    yield
+
+    # Restore _store state
+    _store._cdefs_by_path = saved_cdefs_by_path
+    _store._cdefs_by_uuid = saved_cdefs_by_uuid
+    _store._cdefs_by_title = saved_cdefs_by_title
+    _store._components_by_uuid = saved_components_by_uuid
+    _store._components_by_title = saved_components_by_title
+    _store._components_to_cdef_by_uuid = saved_components_to_cdef
+    _store._capabilities_by_uuid = saved_capabilities_by_uuid
+    _store._capabilities_by_name = saved_capabilities_by_name
+    _store._capabilities_to_cdef_by_uuid = saved_capabilities_to_cdef
+    _store._stats = saved_stats
+
+    # Restore _oscal_store
+    _qcd_module._oscal_store = saved_oscal_store
 
 
 class TestLoadComponentDefinitionsFromDirectory:
@@ -292,7 +334,7 @@ class TestQueryComponentDefinitionTool:
         assert result["limit"] == 10
         assert result["hasMore"] is False
 
-    def test_query_by_type_not_found(self, mock_context):
+    def test_query_by_type_not_found(self, mock_context, setup_component_defs_dir):
         """Test querying components by type that doesn't exist returns empty."""
         result = query_component_definition(
             ctx=mock_context,
@@ -318,7 +360,7 @@ class TestQueryComponentDefinitionTool:
                 return_format="raw",
             )
 
-    def test_query_invalid_query_type(self, mock_context):
+    def test_query_invalid_query_type(self, mock_context, setup_component_defs_dir):
         """Test that invalid query_type raises error."""
         with pytest.raises(ValueError, match="Invalid query_type"):
             query_component_definition(
@@ -346,6 +388,8 @@ class TestQueryComponentDefinitionTool:
         monkeypatch.setattr(
             config_module.config, "component_definitions_dir", str(comp_defs_dir)
         )
+
+        _load_component_definitions_from_directory()
 
         # Query with component definition filter
         result =  query_component_definition(
@@ -380,6 +424,8 @@ class TestQueryComponentDefinitionTool:
             config_module.config, "component_definitions_dir", str(comp_defs_dir)
         )
 
+        _load_component_definitions_from_directory()
+
         # Query with component definition filter
         result =  query_component_definition(
             ctx=mock_context,
@@ -412,6 +458,8 @@ class TestQueryComponentDefinitionTool:
         monkeypatch.setattr(
             config_module.config, "component_definitions_dir", str(comp_defs_dir)
         )
+
+        _load_component_definitions_from_directory()
 
         # Query with non-matching filter - should return empty, not raise
         result = query_component_definition(
@@ -1485,3 +1533,129 @@ class TestQueryComponentDefinitionProperties:
         assert result["components"] == full_list[offset : offset + limit]
         assert result["total_count"] == len(full_list)
         assert result["hasMore"] == (offset + limit < len(full_list))
+
+
+# ---------------------------------------------------------------------------
+# Hypothesis strategies for store state round-trip property test
+# ---------------------------------------------------------------------------
+
+_simple_dict = st.dictionaries(st.text(max_size=10), st.text(max_size=10), max_size=5)
+_stats_dict = st.fixed_dictionaries(
+    {
+        "loaded_files": st.integers(min_value=0, max_value=1000),
+        "processed_zip_files": st.integers(min_value=0, max_value=1000),
+        "zip_file_contents": st.integers(min_value=0, max_value=1000),
+        "processed_json_files": st.integers(min_value=0, max_value=1000),
+        "component_definitions_indexed": st.integers(min_value=0, max_value=1000),
+        "components_indexed": st.integers(min_value=0, max_value=1000),
+        "processed_external_files": st.integers(min_value=0, max_value=1000),
+        "capabilities_indexed": st.integers(min_value=0, max_value=1000),
+    }
+)
+
+
+class TestStoreStateSaveResetRestoreRoundTrip:
+    """Property-based test: store state save/reset/restore round-trip.
+
+    Feature: parallel-safe-tests, Property 1: Store state save/reset/restore round-trip
+
+    For any ComponentDefinitionStore state (arbitrary index dictionaries and
+    stats counters), saving a deep copy of all attributes, calling _reset(),
+    and then restoring the saved values should yield a store state equivalent
+    to the original.
+
+    **Validates: Requirements 1.1, 1.2, 1.4, 2.1, 2.2, 2.4**
+    """
+
+    @settings(max_examples=100, deadline=None)
+    @given(
+        cdefs_by_path=_simple_dict,
+        cdefs_by_uuid=_simple_dict,
+        cdefs_by_title=_simple_dict,
+        components_by_uuid=_simple_dict,
+        components_by_title=_simple_dict,
+        components_to_cdef_by_uuid=_simple_dict,
+        capabilities_by_uuid=_simple_dict,
+        capabilities_by_name=_simple_dict,
+        capabilities_to_cdef_by_uuid=_simple_dict,
+        stats=_stats_dict,
+    )
+    def test_save_reset_restore_preserves_state(
+        self,
+        cdefs_by_path,
+        cdefs_by_uuid,
+        cdefs_by_title,
+        components_by_uuid,
+        components_by_title,
+        components_to_cdef_by_uuid,
+        capabilities_by_uuid,
+        capabilities_by_name,
+        capabilities_to_cdef_by_uuid,
+        stats,
+    ):
+        """Feature: parallel-safe-tests, Property 1: Store state save/reset/restore round-trip
+
+        **Validates: Requirements 1.1, 1.2, 1.4, 2.1, 2.2, 2.4**
+        """
+        # 1. Set arbitrary state on _store
+        _store._cdefs_by_path = dict(cdefs_by_path)
+        _store._cdefs_by_uuid = dict(cdefs_by_uuid)
+        _store._cdefs_by_title = dict(cdefs_by_title)
+        _store._components_by_uuid = dict(components_by_uuid)
+        _store._components_by_title = dict(components_by_title)
+        _store._components_to_cdef_by_uuid = dict(components_to_cdef_by_uuid)
+        _store._capabilities_by_uuid = dict(capabilities_by_uuid)
+        _store._capabilities_by_name = dict(capabilities_by_name)
+        _store._capabilities_to_cdef_by_uuid = dict(capabilities_to_cdef_by_uuid)
+        _store._stats = dict(stats)
+
+        # 2. Save via deep copy (simulating the fixture's save step)
+        saved_cdefs_by_path = copy.deepcopy(_store._cdefs_by_path)
+        saved_cdefs_by_uuid = copy.deepcopy(_store._cdefs_by_uuid)
+        saved_cdefs_by_title = copy.deepcopy(_store._cdefs_by_title)
+        saved_components_by_uuid = copy.deepcopy(_store._components_by_uuid)
+        saved_components_by_title = copy.deepcopy(_store._components_by_title)
+        saved_components_to_cdef = copy.deepcopy(_store._components_to_cdef_by_uuid)
+        saved_capabilities_by_uuid = copy.deepcopy(_store._capabilities_by_uuid)
+        saved_capabilities_by_name = copy.deepcopy(_store._capabilities_by_name)
+        saved_capabilities_to_cdef = copy.deepcopy(_store._capabilities_to_cdef_by_uuid)
+        saved_stats = copy.deepcopy(_store._stats)
+
+        # 3. Call _reset() (simulating the fixture's clear step)
+        _store._reset()
+
+        # Verify _reset() actually cleared everything
+        assert _store._cdefs_by_path == {}
+        assert _store._cdefs_by_uuid == {}
+        assert _store._cdefs_by_title == {}
+        assert _store._components_by_uuid == {}
+        assert _store._components_by_title == {}
+        assert _store._components_to_cdef_by_uuid == {}
+        assert _store._capabilities_by_uuid == {}
+        assert _store._capabilities_by_name == {}
+        assert _store._capabilities_to_cdef_by_uuid == {}
+        assert all(v == 0 for v in _store._stats.values())
+
+        # 4. Restore the saved values (simulating the fixture's restore step)
+        _store._cdefs_by_path = saved_cdefs_by_path
+        _store._cdefs_by_uuid = saved_cdefs_by_uuid
+        _store._cdefs_by_title = saved_cdefs_by_title
+        _store._components_by_uuid = saved_components_by_uuid
+        _store._components_by_title = saved_components_by_title
+        _store._components_to_cdef_by_uuid = saved_components_to_cdef
+        _store._capabilities_by_uuid = saved_capabilities_by_uuid
+        _store._capabilities_by_name = saved_capabilities_by_name
+        _store._capabilities_to_cdef_by_uuid = saved_capabilities_to_cdef
+        _store._stats = saved_stats
+
+        # 5. Assert all 10 attributes match the original values
+        assert _store._cdefs_by_path == cdefs_by_path
+        assert _store._cdefs_by_uuid == cdefs_by_uuid
+        assert _store._cdefs_by_title == cdefs_by_title
+        assert _store._components_by_uuid == components_by_uuid
+        assert _store._components_by_title == components_by_title
+        assert _store._components_to_cdef_by_uuid == components_to_cdef_by_uuid
+        assert _store._capabilities_by_uuid == capabilities_by_uuid
+        assert _store._capabilities_by_name == capabilities_by_name
+        assert _store._capabilities_to_cdef_by_uuid == capabilities_to_cdef_by_uuid
+        assert _store._stats == stats
