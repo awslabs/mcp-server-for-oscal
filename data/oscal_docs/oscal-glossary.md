@@ -186,9 +186,19 @@ Reference: [Assessment Results > results > risks > characterizations](https://pa
 
 
 
+## Component
+
+A reusable building block that can be part of an implemented system. In a [Component Definition](#component-definition), Components describe capabilities that may be instantiated. In a [System Security Plan](#system-security-plan), Components represent the actual system elements. See also [Defined Component](#defined-component) and [System Component](#system-component).
+
+Reference: [Assessment Plan > local-definitions > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/local-definitions/components) | [Component Definition > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/components) | [SSP > system-implementation > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-implementation/components)
+
+*Source: [OSCAL Complete Schema (XSD)]*
+
+---
+
 ## Component Definition
 
-A collection of component descriptions, which may optionally be grouped by [Capability](#capability).
+A collection of Component descriptions, which may optionally be grouped by [Capability](#capability).
 
 Reference: [Component Definition](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition)
 
@@ -250,7 +260,7 @@ Reference: [SSP > system-characteristics > data-flow](https://pages.nist.gov/OSC
 
 **Also known as:** Component
 
-A defined component that can be part of an implemented system.
+A Component as defined within a [Component Definition](#component-definition). See Component.
 
 Reference: [Component Definition > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/components)
 
@@ -808,9 +818,9 @@ Reference: [SSP > system-characteristics](https://pages.nist.gov/OSCAL-Reference
 
 ## System Component
 
-**Also known as:** component
+**Also known as:** Component
 
-A discrete identifiable information technology asset (hardware, software, firmware) that represents a building block of a system and can be part of an implemented system.
+A Component as used within a [System Security Plan](#system-security-plan) or assessment context, representing a discrete identifiable information technology asset (hardware, software, firmware) that is a building block of the system.
 
 Reference: [Assessment Plan > assessment-assets > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/assessment-assets/components) | [Assessment Plan > local-definitions > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/assessment-plan/local-definitions/components) | [SSP > system-implementation > components](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/system-implementation/components)
 
