@@ -170,16 +170,21 @@ class OscalStore:
                 try:
                     p.parent.mkdir(parents=True, exist_ok=True)
                     shutil.copy2(BUNDLED_DB_PATH, p)
-                    self._db_mode = "persistent"
-                    logger.info(
-                        "Seeded persistent DB from bundled DB at %s", db_path
-                    )
-                    return db_path
                 except OSError:
                     logger.warning(
                         "Failed to copy bundled DB to %s; creating fresh DB",
                         db_path,
                     )
+                else:
+                    # Verify the copy's integrity
+                    expected_hash = self._get_expected_db_hash()
+                    if expected_hash:
+                        self._verify_file_hash(p, expected_hash)
+                    self._db_mode = "persistent"
+                    logger.info(
+                        "Seeded persistent DB from bundled DB at %s", db_path
+                    )
+                    return db_path
 
         # Create a new empty persistent DB
         p.parent.mkdir(parents=True, exist_ok=True)
@@ -209,14 +214,18 @@ class OscalStore:
         dest = Path(self._temp_dir.name) / "oscal_store.db"
         try:
             shutil.copy2(BUNDLED_DB_PATH, dest)
-            self._db_mode = "bundled"
-            logger.info("Copied bundled DB to temp location %s", dest)
-            return str(dest)
         except OSError:
             logger.warning(
                 "Failed to copy bundled DB; falling back to ephemeral"
             )
             return self._create_ephemeral()
+
+        expected_hash = self._get_expected_db_hash()
+        if expected_hash:
+            self._verify_file_hash(dest, expected_hash)
+        self._db_mode = "bundled"
+        logger.info("Copied bundled DB to temp location %s", dest)
+        return str(dest)
 
     def _create_ephemeral(self) -> str:
         """Create an ephemeral DB in a temporary directory."""
@@ -228,6 +237,56 @@ class OscalStore:
         self._db_mode = "ephemeral"
         logger.info("Creating ephemeral DB at %s", dest)
         return str(dest)
+
+    @staticmethod
+    def _get_expected_db_hash() -> str | None:
+        """Read the expected SHA-256 hash for oscal_store.db from hashes.json.
+
+        Returns:
+            The expected hex digest string, or None if hashes.json is
+            missing, malformed, or lacks an entry for oscal_store.db.
+        """
+        if not BUNDLED_HASHES_PATH.exists():
+            logger.warning(
+                "hashes.json not found at %s; cannot verify DB",
+                BUNDLED_HASHES_PATH,
+            )
+            return None
+
+        try:
+            manifest = json.loads(BUNDLED_HASHES_PATH.read_text())
+        except (json.JSONDecodeError, OSError) as exc:
+            logger.warning("Failed to read hashes.json: %s", exc)
+            return None
+
+        expected = manifest.get("file_hashes", {}).get("oscal_store.db")
+        if not expected:
+            logger.warning("No hash entry for oscal_store.db in hashes.json")
+        return expected
+
+    @staticmethod
+    def _verify_file_hash(file_path: Path, expected_hash: str) -> None:
+        """Verify a file's SHA-256 matches the expected hash.
+
+        Args:
+            file_path: Path to the file to verify.
+            expected_hash: Expected SHA-256 hex digest.
+
+        Raises:
+            RuntimeError: If the hash does not match.
+        """
+        h = hashlib.sha256()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                h.update(chunk)
+
+        actual_hash = h.hexdigest()
+        if actual_hash != expected_hash:
+            file_path.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"Post-copy integrity check failed for {file_path}: "
+                f"expected {expected_hash}, got {actual_hash}"
+            )
 
     @staticmethod
     def _verify_bundled_db() -> bool:
@@ -245,25 +304,8 @@ class OscalStore:
         if not BUNDLED_DB_PATH.exists():
             return False
 
-        if not BUNDLED_HASHES_PATH.exists():
-            logger.warning(
-                "hashes.json not found at %s; cannot verify bundled DB",
-                BUNDLED_HASHES_PATH,
-            )
-            return False
-
-        try:
-            manifest = json.loads(BUNDLED_HASHES_PATH.read_text())
-        except (json.JSONDecodeError, OSError) as exc:
-            logger.warning("Failed to read hashes.json: %s", exc)
-            return False
-
-        file_hashes = manifest.get("file_hashes", {})
-        expected_hash = file_hashes.get("oscal_store.db")
+        expected_hash = OscalStore._get_expected_db_hash()
         if not expected_hash:
-            logger.warning(
-                "No hash entry for oscal_store.db in hashes.json"
-            )
             return False
 
         h = hashlib.sha256()
