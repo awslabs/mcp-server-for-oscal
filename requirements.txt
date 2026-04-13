@@ -15,11 +15,11 @@ attrs==26.1.0
     #   referencing
 bcrypt==5.0.0
     # via paramiko
-boto3==1.42.85
+boto3==1.42.88
     # via
     #   mcp-server-for-oscal (pyproject.toml)
     #   strands-agents
-botocore==1.42.85
+botocore==1.42.88
     # via
     #   boto3
     #   s3transfer
@@ -42,7 +42,7 @@ cmarkgfm==2025.10.22
     # via compliance-trestle
 compliance-trestle==4.0.1
     # via mcp-server-for-oscal (pyproject.toml)
-cryptography==46.0.5
+cryptography==46.0.7
     # via
     #   compliance-trestle
     #   paramiko
@@ -77,7 +77,7 @@ idna==3.11
     #   requests
 ilcli==0.3.2
     # via compliance-trestle
-importlib-metadata==8.7.1
+importlib-metadata==8.9.0
     # via opentelemetry-api
 importlib-resources==6.5.2
     # via compliance-trestle
@@ -103,20 +103,20 @@ mcp==1.27.0
     #   strands-agents
 openpyxl==3.1.5
     # via compliance-trestle
-opentelemetry-api==1.40.0
+opentelemetry-api==1.41.0
     # via
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-threading
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
     #   strands-agents
-opentelemetry-instrumentation==0.61b0
+opentelemetry-instrumentation==0.62b0
     # via opentelemetry-instrumentation-threading
-opentelemetry-instrumentation-threading==0.61b0
+opentelemetry-instrumentation-threading==0.62b0
     # via strands-agents
-opentelemetry-sdk==1.40.0
+opentelemetry-sdk==1.41.0
     # via strands-agents
-opentelemetry-semantic-conventions==0.61b0
+opentelemetry-semantic-conventions==0.62b0
     # via
     #   opentelemetry-instrumentation
     #   opentelemetry-sdk
@@ -136,7 +136,7 @@ pydantic==2.12.5
     #   mcp
     #   pydantic-settings
     #   strands-agents
-pydantic-core==2.41.5
+pydantic-core==2.45.0
     # via pydantic
 pydantic-settings==2.13.1
     # via mcp
@@ -152,7 +152,7 @@ python-dotenv==1.2.2
     #   pydantic-settings
 python-frontmatter==1.1.0
     # via compliance-trestle
-python-multipart==0.0.24
+python-multipart==0.0.26
     # via mcp
 pyyaml==6.0.3
     # via
