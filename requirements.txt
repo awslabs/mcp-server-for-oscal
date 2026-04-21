@@ -15,11 +15,11 @@ attrs==26.1.0
     #   referencing
 bcrypt==5.0.0
     # via paramiko
-boto3==1.42.85
+boto3==1.42.91
     # via
     #   mcp-server-for-oscal (pyproject.toml)
     #   strands-agents
-botocore==1.42.85
+botocore==1.42.91
     # via
     #   boto3
     #   s3transfer
@@ -40,9 +40,9 @@ click==8.3.2
     # via uvicorn
 cmarkgfm==2025.10.22
     # via compliance-trestle
-compliance-trestle==4.0.1
+compliance-trestle==4.0.2
     # via mcp-server-for-oscal (pyproject.toml)
-cryptography==46.0.5
+cryptography==46.0.7
     # via
     #   compliance-trestle
     #   paramiko
@@ -51,7 +51,7 @@ defusedxml==0.7.1
     # via compliance-trestle
 dnspython==2.8.0
     # via email-validator
-docstring-parser==0.17.0
+docstring-parser==0.18.0
     # via strands-agents
 email-validator==2.3.0
     # via pydantic
@@ -77,7 +77,7 @@ idna==3.11
     #   requests
 ilcli==0.3.2
     # via compliance-trestle
-importlib-metadata==8.7.1
+importlib-metadata==8.9.0
     # via opentelemetry-api
 importlib-resources==6.5.2
     # via compliance-trestle
@@ -103,20 +103,20 @@ mcp==1.27.0
     #   strands-agents
 openpyxl==3.1.5
     # via compliance-trestle
-opentelemetry-api==1.40.0
+opentelemetry-api==1.41.0
     # via
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-threading
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
     #   strands-agents
-opentelemetry-instrumentation==0.61b0
+opentelemetry-instrumentation==0.62b0
     # via opentelemetry-instrumentation-threading
-opentelemetry-instrumentation-threading==0.61b0
+opentelemetry-instrumentation-threading==0.62b0
     # via strands-agents
-opentelemetry-sdk==1.40.0
+opentelemetry-sdk==1.41.0
     # via strands-agents
-opentelemetry-semantic-conventions==0.61b0
+opentelemetry-semantic-conventions==0.62b0
     # via
     #   opentelemetry-instrumentation
     #   opentelemetry-sdk
@@ -124,19 +124,19 @@ orderedmultidict==1.0.2
     # via furl
 orjson==3.11.8
     # via compliance-trestle
-packaging==26.0
+packaging==26.1
     # via opentelemetry-instrumentation
 paramiko==4.0.0
     # via compliance-trestle
 pycparser==3.0
     # via cffi
-pydantic==2.12.5
+pydantic==2.13.2
     # via
     #   compliance-trestle
     #   mcp
     #   pydantic-settings
     #   strands-agents
-pydantic-core==2.41.5
+pydantic-core==2.46.2
     # via pydantic
 pydantic-settings==2.13.1
     # via mcp
@@ -152,7 +152,7 @@ python-dotenv==1.2.2
     #   pydantic-settings
 python-frontmatter==1.1.0
     # via compliance-trestle
-python-multipart==0.0.24
+python-multipart==0.0.26
     # via mcp
 pyyaml==6.0.3
     # via
@@ -185,7 +185,7 @@ starlette==1.0.0
     # via
     #   mcp
     #   sse-starlette
-strands-agents==1.35.0
+strands-agents==1.36.0
     # via mcp-server-for-oscal (pyproject.toml)
 typing-extensions==4.15.0
     # via
@@ -217,5 +217,5 @@ wrapt==1.17.3
     # via
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-threading
-zipp==3.23.0
+zipp==3.23.1
     # via importlib-metadata
