@@ -130,11 +130,11 @@ Reference: [All models > back-matter](https://pages.nist.gov/OSCAL-Reference/mod
 
 ## Capability
 
-A grouping of other components and/or Capabilities. In the broader NIST context, a combination of mutually reinforcing security and/or privacy [Controls](#control) implemented by technical, physical, and procedural means, typically selected to achieve a common information security- or privacy-related purpose.
+A grouping of other components and/or Capabilities. In the broader NIST context, a security or privacy capability is a function that a system or organization must provide to satisfy a stakeholder protection need; such capabilities are achieved by the activities or actions — automated or nonautomated — carried out by information systems and organizations, and are typically realized through a combination of mutually reinforcing [Controls](#control) implemented by technical, physical, and procedural means, selected to achieve a common information security- or privacy-related purpose.
 
 Reference: [Component Definition > capabilities](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/capabilities)
 
-*Sources: [NIST SP 800-53 Rev. 5](https://doi.org/10.6028/NIST.SP.800-53r5); [NIST CSRC](https://csrc.nist.gov/glossary/term/capability)*
+*Sources: [NIST SP 800-53 Rev. 5 §2.1–2.2](https://doi.org/10.6028/NIST.SP.800-53r5); [NIST CSRC](https://csrc.nist.gov/glossary/term/capability)*
 
 
 ## Catalog
@@ -183,11 +183,11 @@ See [Parameter Constraint](#parameter-constraint).
 
 ## Control
 
-A structured object representing a requirement or guideline, which when implemented will reduce an aspect of [Risk](#risk) related to an information system and its information. More broadly, Controls are policies, procedures, guidelines, practices, or organizational structures that manage security, privacy, and other risks.
+A structured object representing a requirement or guideline, which when implemented will reduce an aspect of [Risk](#risk) related to an information system and its information. In NIST SP 800-53r5, Controls are descriptions of safeguards and protection capabilities — administrative, technical, and/or physical — selected and implemented by an organization to satisfy system requirements and to reflect the protection needs of organizational stakeholders. A Control may be a **base control** or a **control enhancement** that adds functionality or specificity to, or increases the strength of, a base control. More broadly, Controls are policies, procedures, guidelines, practices, or organizational structures that manage security, privacy, and other risks.
 
 Reference: [Catalog > controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/controls) | [Catalog > controls > controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/controls/controls) | [Catalog > groups > controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/controls) | [Catalog > groups > controls > controls](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/controls/controls)
 
-*Sources: [NIST SP 800-63-4](https://doi.org/10.6028/NIST.SP.800-63-4); [NIST CSRC](https://csrc.nist.gov/glossary/term/controls)*
+*Sources: [NIST SP 800-53 Rev. 5 §2.1–2.2](https://doi.org/10.6028/NIST.SP.800-53r5); [NIST SP 800-63-4](https://doi.org/10.6028/NIST.SP.800-63-4); [NIST CSRC](https://csrc.nist.gov/glossary/term/controls)*
 
 
 ## Control Group
@@ -197,9 +197,11 @@ See [Group](#group).
 
 ## Control Implementation
 
-Describes how the containing component or [Capability](#capability) implements an individual [Control](#control) (in a [Component Definition](#component-definition)), or how the system satisfies a set of Controls (in a [System Security Plan](#system-security-plan)).
+Describes how the containing component or [Capability](#capability) implements an individual [Control](#control) (in a [Component Definition](#component-definition)), or how the system satisfies a set of Controls (in a [System Security Plan](#system-security-plan)). NIST SP 800-53r5 identifies three implementation approaches: **common (inheritable)**, where the Control is developed and operated by an entity other than the system owner and its protection is inherited by multiple systems; **system-specific**, where the system owner and authorizing official are primarily responsible; and **hybrid**, where one part of the Control is inherited and another part is system-specific.
 
 Reference: [Component Definition > capabilities > control-implementations](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/capabilities/control-implementations) | [Component Definition > components > control-implementations](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/component-definition/components/control-implementations) | [SSP > control-implementation](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/system-security-plan/control-implementation)
+
+*Source: [NIST SP 800-53 Rev. 5 §2.3](https://doi.org/10.6028/NIST.SP.800-53r5)*
 
 
 ## Coverage
@@ -268,14 +270,14 @@ Reference: [Mapping Collection > mappings > source-gap-summary](https://pages.ni
 
 ## Group
 
-A group of [Controls](#control), or of groups of Controls. Groups provide organizational structure within a [Catalog](#catalog) or [Profile](#profile).
+A group of [Controls](#control), or of groups of Controls. Groups provide organizational structure within a [Catalog](#catalog) or [Profile](#profile). In NIST SP 800-53r5, the top-level groups of a catalog correspond to **control families** — each addressing a specific topic and identified by a two-character family identifier (e.g., `AC` for Access Control, `PS` for Personnel Security).
 
 **Also known as:** Control Group
 
 
 Reference: [Catalog > groups](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups) | [Catalog > groups > groups](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/groups) | [Profile > merge > custom > groups](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/merge/custom/groups) | [Profile > merge > custom > groups > groups](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/merge/custom/groups/groups)
 
-*Source: [NIST CSRC](https://csrc.nist.gov/glossary/term/group)*
+*Sources: [NIST SP 800-53 Rev. 5 §2.2](https://doi.org/10.6028/NIST.SP.800-53r5); [NIST CSRC](https://csrc.nist.gov/glossary/term/group)*
 
 
 ## Guideline
@@ -454,11 +456,11 @@ Reference: [Assessment Results > results > observations > origins > actors](http
 
 ## Parameter
 
-Parameters provide a mechanism for the dynamic assignment of value(s) in a [Control](#control). More broadly, a value used to control the operation of a function or used by a function to compute outputs.
+Parameters provide a mechanism for the dynamic assignment of value(s) in a [Control](#control) as part of tailoring. In NIST SP 800-53r5 catalogs, parameters appear as bracketed *assignment* operations (allowing any value) or *selection* operations (choice from a specified list); once organization-defined values are specified, they become part of the Control and also apply to any control enhancements of that base Control. More broadly, a parameter is a value used to control the operation of a function or used by a function to compute outputs.
 
 Reference: [Catalog > controls > params](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/controls/params) | [Catalog > groups > controls > params](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/controls/params) | [Catalog > groups > params](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/params) | [Catalog > params](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/params) | [Profile > merge > custom > groups > params](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/merge/custom/groups/params) | [Profile > modify > alters > adds > params](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/modify/alters/adds/params)
 
-*Source: [NIST CSRC](https://csrc.nist.gov/glossary/term/parameter)*
+*Sources: [NIST SP 800-53 Rev. 5 §2.2](https://doi.org/10.6028/NIST.SP.800-53r5); [NIST CSRC](https://csrc.nist.gov/glossary/term/parameter)*
 
 
 ## Parameter Constraint
@@ -481,18 +483,22 @@ Reference: [Catalog > controls > params > guidelines](https://pages.nist.gov/OSC
 
 ## Parameter Selection
 
-Presents a choice among alternatives for a [Parameter](#parameter) value.
+Presents a choice among alternatives for a [Parameter](#parameter) value. In contrast to assignment operations, which allow complete flexibility in the designation of parameter values, selection operations narrow the range of potential values by providing a specific list of items from which organizations choose.
 
 **Also known as:** Selection
 
 Reference: [Catalog > controls > params > select](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/controls/params/select) | [Catalog > groups > controls > params > select](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/controls/params/select) | [Catalog > groups > params > select](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/params/select) | [Catalog > params > select](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/params/select) | [Profile > modify > set-parameters > select](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/modify/set-parameters/select)
 
+*Source: [NIST SP 800-53 Rev. 5 §2.2](https://doi.org/10.6028/NIST.SP.800-53r5)*
+
 
 ## Part
 
-An annotated, markup-based textual element of a [Control](#control)'s or [Catalog](#catalog) [Group](#group)'s definition, or a child of another Part.
+An annotated, markup-based textual element of a [Control](#control)'s or [Catalog](#catalog) [Group](#group)'s definition, or a child of another Part. In an OSCAL [Catalog](#catalog), Parts typically carry the standard structural sections of a NIST SP 800-53r5 control — the control statement, discussion, related controls, and references — as well as control objectives and other structured prose.
 
 Reference: [Catalog > controls > parts](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/controls/parts) | [Catalog > groups > parts](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/catalog/groups/parts) | [Profile > merge > custom > groups > parts](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/merge/custom/groups/parts) | [Profile > modify > alters > adds > parts](https://pages.nist.gov/OSCAL-Reference/models/v1.2.1/complete/json-reference/#/profile/modify/alters/adds/parts)
+
+*Source: [NIST SP 800-53 Rev. 5 §2.2](https://doi.org/10.6028/NIST.SP.800-53r5)*
 
 
 ## Plan Of Action And Milestones
