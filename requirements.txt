@@ -152,7 +152,7 @@ python-dotenv==1.2.2
     #   pydantic-settings
 python-frontmatter==1.1.0
     # via compliance-trestle
-python-multipart==0.0.24
+python-multipart==0.0.27
     # via mcp
 pyyaml==6.0.3
     # via
