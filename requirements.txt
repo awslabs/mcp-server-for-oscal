@@ -40,7 +40,7 @@ click==8.3.2
     # via uvicorn
 cmarkgfm==2025.10.22
     # via compliance-trestle
-compliance-trestle==4.0.1
+compliance-trestle==4.0.3
     # via mcp-server-for-oscal (pyproject.toml)
 cryptography==46.0.5
     # via
