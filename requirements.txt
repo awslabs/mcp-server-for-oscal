@@ -140,7 +140,7 @@ pydantic-core==2.41.5
     # via pydantic
 pydantic-settings==2.13.1
     # via mcp
-pyjwt==2.12.1
+pyjwt==2.13.0
     # via mcp
 pynacl==1.6.2
     # via paramiko
